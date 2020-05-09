@@ -1,9 +1,8 @@
 import asyncio
 import logging
 from collections import deque
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
-from ._cython import cyfastcache
 from .protocol import MemcacheAsciiProtocol, create_protocol
 
 logger = logging.getLogger(__name__)

@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import logging
 import random
-import sys
 import time
 
 import uvloop

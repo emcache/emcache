@@ -1,5 +1,3 @@
-import pytest
-
 from fastcache._cython import cyfastcache
 
 

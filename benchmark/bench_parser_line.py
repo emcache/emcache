@@ -51,7 +51,7 @@ async def cython_multi_line_implementation():
     ev = asyncio.Event()
     start = time.time()
     for i in range(NUM_ITERATIONS):
-        parser = _cyfastcache.MultiLineParser(ev)
+        parser = cyfastcache.MultiLineParser(ev)
         parser.feed_data(b"VALUE key 0 5\r\nvalue\r\n")
         parser.feed_data(b"END\r\n")
     elapsed = time.time() - start

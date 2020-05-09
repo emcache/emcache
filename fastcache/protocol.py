@@ -35,7 +35,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         logger.debug("Connection made")
 
     def connection_lost(self, exc) -> None:
-        logger.warning(f"Connection lost: {err}")
+        logger.warning(f"Connection lost: {exc}")
 
     def data_received(self, data: bytes) -> None:
         self._parser.feed_data(data)

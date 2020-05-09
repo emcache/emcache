@@ -1,8 +1,3 @@
-import os
-import os.path
-import re
-import shutil
-import subprocess
 import sys
 
 from Cython.Build import cythonize
@@ -35,6 +30,7 @@ dev_requires = [
     "pytest-cov==2.8.1",
     "black==19.10b0",
     "isort==4.3.21",
+    "flake8==3.7.9",
 ]
 
 setup(

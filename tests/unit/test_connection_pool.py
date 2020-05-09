@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 from asynctest import CoroutineMock
@@ -112,7 +112,7 @@ class TestConnectionPool:
     async def test_waiters_FIFO(self, event_loop, mocker):
         # Check that waiters queue are seen as FIFO queue, where we try to rescue the latency
         # of the last ones.
-        create_protocol = mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(return_value=Mock()))
+        mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(return_value=Mock()))
 
         waiters_woken_up = []
 
@@ -140,7 +140,7 @@ class TestConnectionPool:
         # Check that waiters that are cancelled are suported and do not break
         # the flow for wake up pending ones.
 
-        create_protocol = mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(return_value=Mock()))
+        mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(return_value=Mock()))
 
         waiters_woken_up = []
 
@@ -220,7 +220,7 @@ class TestWaitingForAConnectionContext:
         waiter = event_loop.create_future()
 
         async def coro():
-            async with ConnectionContext(connection_pool, None, waiter) as connection_returned:
+            async with WaitingForAConnectionContext(connection_pool, None, waiter) as connection_returned:
                 assert connection_returned is connection
 
         task = event_loop.create_task(coro())

@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from typing import Optional
 
@@ -40,7 +39,7 @@ class Client:
 
     async def set(self, key: bytes, value: bytes) -> bool:
         """Set a specific value for a given key.
-        
+
         Returns True if the key was stored succesfully, otherwise
         a `CommandErrorException` is raised.
         """

@@ -1,5 +1,3 @@
-from unittest.mock import Mock, patch
-
 import pytest
 
 from fastcache.node import DEFAULT_MAX_CONNECTIONS, Node
@@ -21,9 +19,9 @@ class TestNode:
         assert repr(node) == "<Node host=localhost port=11211>"
 
     async def test_connection_pool(self, connection_pool):
-        node = Node("localhost", 11211)
+        Node("localhost", 11211)
         connection_pool.assert_called_with("localhost", 11211, DEFAULT_MAX_CONNECTIONS)
 
     async def test_max_connections(self, connection_pool):
-        node = Node("localhost", 11211, max_connections=16)
+        Node("localhost", 11211, max_connections=16)
         connection_pool.assert_called_with("localhost", 11211, 16)

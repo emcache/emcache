@@ -1,11 +1,7 @@
 import asyncio
 import logging
-from collections import deque
-from typing import Dict, List, Optional, Tuple
 
-from ._cython import cyfastcache
 from .connection_pool import BaseConnectionContext, ConnectionPool
-from .protocol import MemcacheAsciiProtocol, create_protocol
 
 # Has been observed that values higher than 32 do not provide
 # a significant increase on the OPS/sec, while them could have
