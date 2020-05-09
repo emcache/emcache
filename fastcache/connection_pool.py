@@ -46,8 +46,8 @@ class ConnectionPool:
                 waiter.set_result(None)
                 break
 
-    async def _create_new_connection(self):
-        """Creates a new connection in background, and once its ready
+    async def _create_new_connection(self) -> None:
+        """ Creates a new connection in background, and once its ready
         adds it to the poool.
         """
         try:
@@ -60,7 +60,7 @@ class ConnectionPool:
         self._wakeup_next_waiter()
         logger.info(f"{self} new connection created")
 
-    def create_connection_context(self) -> '_BaseConnectionContext':
+    def create_connection_context(self) -> 'BaseConnectionContext':
         """ Returns a connection context that might provide a connection
         ready to be used, or a future connection ready to be used.
 
@@ -85,15 +85,16 @@ class ConnectionPool:
     # Below methods are used by the _BaseConnectionContext and derivated classes.
 
     def acquire_connection(self):
-        """Returns an available connection, if there is."""
+        """ Returns an available connection, if there is."""
         return self._connection_pool.pop()
 
     def release_connection(self, connection: MemcacheAsciiProtocol):
-        """Returns back to the pool aconnection."""
+        """ Returns back to the pool a connection."""
         self._connection_pool.append(connection)
         self._wakeup_next_waiter()
 
     def remove_waiter(self, waiter: asyncio.Future):
+        "" "Remove a specifici waiter"""
         self._waiters.remove(waiter)
 
 
@@ -121,7 +122,7 @@ class BaseConnectionContext:
         self._waiter = waiter
 
     async def __aenter__(self) -> MemcacheAsciiProtocol:
-        raise NotImplemented
+        raise NotImplementedError
 
     async def __aexit__(self, fexc_type, exc, tb) -> None:
         self._connection_pool.release_connection(self._connection)
