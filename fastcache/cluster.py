@@ -1,9 +1,8 @@
 import logging
 from typing import List, Tuple
 
-from .node import Node
 from ._cython import cyfastcache
-
+from .node import Node
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +23,8 @@ class Cluster:
 
         # Create nodes and configure them to be used by the Rendezvous
         # hashing.
-        self._nodes = [
-            Node(host, port) for host, port in node_addresses]
-        self._rdz_nodes = [
-            cyfastcache.RendezvousNode(node.host, node.port, node) for node in self._nodes]
+        self._nodes = [Node(host, port) for host, port in node_addresses]
+        self._rdz_nodes = [cyfastcache.RendezvousNode(node.host, node.port, node) for node in self._nodes]
 
         logger.debug(f"Cluster configured with {len(self._nodes)} nodes")
 

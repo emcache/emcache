@@ -3,9 +3,8 @@ import logging
 from collections import deque
 from typing import Dict, List, Optional, Tuple
 
-from .protocol import create_protocol, MemcacheAsciiProtocol 
 from ._cython import cyfastcache
-
+from .protocol import MemcacheAsciiProtocol, create_protocol
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +19,7 @@ class ConnectionPool:
     _connection_task: Optional[asyncio.Task]
     _connection_in_progress: bool
 
-    def __init__(self, host: str, port: int,  max_connections: int):
+    def __init__(self, host: str, port: int, max_connections: int):
         self._host = host
         self._port = port
         self._total_connections = 0
@@ -60,7 +59,7 @@ class ConnectionPool:
         self._wakeup_next_waiter()
         logger.info(f"{self} new connection created")
 
-    def create_connection_context(self) -> 'BaseConnectionContext':
+    def create_connection_context(self) -> "BaseConnectionContext":
         """ Returns a connection context that might provide a connection
         ready to be used, or a future connection ready to be used.
 
@@ -94,7 +93,7 @@ class ConnectionPool:
         self._wakeup_next_waiter()
 
     def remove_waiter(self, waiter: asyncio.Future):
-        "" "Remove a specifici waiter"""
+        "" "Remove a specifici waiter" ""
         self._waiters.remove(waiter)
 
 
@@ -113,10 +112,11 @@ class BaseConnectionContext:
     __slots__ = ("_connection_pool", "_connection", "_waiter")
 
     def __init__(
-            self,
-            connection_pool: ConnectionPool,
-            connection: Optional[MemcacheAsciiProtocol],
-            waiter: Optional[asyncio.Future]) -> None:
+        self,
+        connection_pool: ConnectionPool,
+        connection: Optional[MemcacheAsciiProtocol],
+        waiter: Optional[asyncio.Future],
+    ) -> None:
         self._connection_pool = connection_pool
         self._connection = connection
         self._waiter = waiter

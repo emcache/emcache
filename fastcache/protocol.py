@@ -4,7 +4,6 @@ from typing import List, Optional, Union
 
 from ._cython import cyfastcache
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -42,7 +41,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         self._parser.feed_data(data)
 
     async def get_cmd(self, key: bytes) -> List[bytes]:
-        data = b'get ' + key + b'\r\n'
+        data = b"get " + key + b"\r\n"
         future = self._loop.create_future()
         parser = cyfastcache.AsciiMultiLineParser(future)
         self._parser = parser
@@ -52,9 +51,9 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
     async def set_cmd(self, key: bytes, value: bytes) -> bytes:
         len_value = str(len(value)).encode()
-        data = b'set ' + key + b' 0 0 ' + len_value + b'\r\n'
+        data = b"set " + key + b" 0 0 " + len_value + b"\r\n"
         data += value
-        data += b'\r\n'
+        data += b"\r\n"
         future = self._loop.create_future()
         parser = cyfastcache.AsciiOneLineParser(future)
         self._parser = parser
@@ -64,10 +63,6 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
 
 async def create_protocol(host: str, port: int) -> MemcacheAsciiProtocol:
-        loop = asyncio.get_running_loop()
-        _, protocol = await loop.create_connection(
-            MemcacheAsciiProtocol,
-            host=host,
-            port=port
-        )
-        return protocol
+    loop = asyncio.get_running_loop()
+    _, protocol = await loop.create_connection(MemcacheAsciiProtocol, host=host, port=port)
+    return protocol

@@ -16,6 +16,15 @@ install-dev:
 
 compile: clean setup-build
 
+format:
+	isort --recursive .
+	black .
+
+lint:
+	isort --check-only --recursive .
+	black --check .
+	flake8
+
 acceptance:
 	pytest -sv tests/acceptance
 

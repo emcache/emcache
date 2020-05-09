@@ -3,10 +3,9 @@ import logging
 from collections import deque
 from typing import Dict, List, Optional, Tuple
 
-from .protocol import create_protocol, MemcacheAsciiProtocol 
-from .connection_pool import BaseConnectionContext, ConnectionPool 
 from ._cython import cyfastcache
-
+from .connection_pool import BaseConnectionContext, ConnectionPool
+from .protocol import MemcacheAsciiProtocol, create_protocol
 
 # Has been observed that values higher than 32 do not provide
 # a significant increase on the OPS/sec, while them could have
@@ -23,15 +22,11 @@ class Node:
     """
 
     _host: str
-    _port: int 
+    _port: int
     _connection_pool: ConnectionPool
     _loop: asyncio.AbstractEventLoop
 
-    def __init__(
-            self,
-            host: str,
-            port: int,
-            max_connections: int=DEFAULT_MAX_CONNECTIONS) -> None:
+    def __init__(self, host: str, port: int, max_connections: int = DEFAULT_MAX_CONNECTIONS) -> None:
         self._host = host
         self._port = port
         self._loop = asyncio.get_running_loop()

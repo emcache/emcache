@@ -2,15 +2,15 @@ import asyncio
 import logging
 from typing import Optional
 
-from .cluster import Cluster
 from ._cython import cyfastcache
-
+from .cluster import Cluster
 
 logger = logging.getLogger(__name__)
 
 
 class CommandErrorException(Exception):
     """Exception raised when a command finished with error."""
+
     pass
 
 
@@ -52,8 +52,7 @@ class Client:
         async with node.connection() as connection:
             result = await connection.set_cmd(key, value)
 
-        if result != b'STORED':
-            raise CommandErrorException(
-                "set command finished with error, response returned {result}")
+        if result != b"STORED":
+            raise CommandErrorException("set command finished with error, response returned {result}")
 
         return result

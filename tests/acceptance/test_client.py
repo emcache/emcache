@@ -1,14 +1,13 @@
-import pytest
 import time
 
-from fastcache import Client
+import pytest
 
+from fastcache import Client
 
 pytestmark = pytest.mark.asyncio
 
 
 class TestCacheClient:
-
     async def test_get_and_set(self):
         client = Client("localhost", 11211)
         value = str(time.time()).encode()

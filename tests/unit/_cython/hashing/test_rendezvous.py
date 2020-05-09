@@ -4,7 +4,6 @@ from fastcache._cython import cyfastcache
 
 
 class TestRendezvousNode:
-
     def test_node_is_public_attribute(self):
         node = object()
         rendezvous_node = cyfastcache.RendezvousNode("host", 11211, node)
@@ -12,7 +11,6 @@ class TestRendezvousNode:
 
 
 class TestNodeSelection:
-
     def test_one_node(self):
         # Having only one node no matter the key value
         # would need to return always the same node
@@ -29,25 +27,14 @@ class TestNodeSelection:
         rendezvous_node2 = cyfastcache.RendezvousNode("host2", 11211, node2)
         rendezvous_node3 = cyfastcache.RendezvousNode("host3", 11211, node3)
 
-        list_of_rendezvous_nodes = [
-            rendezvous_node1,
-            rendezvous_node2,
-            rendezvous_node3
-        ]
+        list_of_rendezvous_nodes = [rendezvous_node1, rendezvous_node2, rendezvous_node3]
 
-        keys_per_node = {
-            node1: [],
-            node2: [],
-            node3: []
-        }
+        keys_per_node = {node1: [], node2: [], node3: []}
 
         # keys should be ~ evenly distributed through all of the nodes.
         for i in range(1000):
             key = str(i).encode()
-            node_selected = cyfastcache.node_selection(
-                key,
-                list_of_rendezvous_nodes
-            )
+            node_selected = cyfastcache.node_selection(key, list_of_rendezvous_nodes)
             keys_per_node[node_selected].append(key)
 
         # Just check that the number of keys per node are close
@@ -58,18 +45,11 @@ class TestNodeSelection:
 
         # Operations for the same keys should be idempotent when same
         # keys are used.
-        next_round_keys_per_node = {
-            node1: [],
-            node2: [],
-            node3: []
-        }
+        next_round_keys_per_node = {node1: [], node2: [], node3: []}
 
         for i in range(1000):
             key = str(i).encode()
-            node_selected = cyfastcache.node_selection(
-                key,
-                list_of_rendezvous_nodes
-            )
+            node_selected = cyfastcache.node_selection(key, list_of_rendezvous_nodes)
             next_round_keys_per_node[node_selected].append(key)
 
         assert keys_per_node[node1] == next_round_keys_per_node[node1]

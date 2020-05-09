@@ -1,8 +1,8 @@
 import asyncio
-import time
 import re
-from fastcache._cython import cyfastcache
+import time
 
+from fastcache._cython import cyfastcache
 
 NUM_ITERATIONS = 1_000_000
 KEYS = [
@@ -10,11 +10,12 @@ KEYS = [
     # A valid one
     b"12345678",
     # An valid one
-    b"12345678\n"
+    b"12345678\n",
 ]
 
 
-_valid_key_re = re.compile(b'^[\x21-\x7e]{1,250}$')
+_valid_key_re = re.compile(b"^[\x21-\x7e]{1,250}$")
+
 
 async def aiomemcache_implementation():
     start = time.time()
@@ -24,21 +25,24 @@ async def aiomemcache_implementation():
     elapsed = time.time() - start
     print("Vesion 1 Cython total time {}".format(elapsed))
 
+
 async def cython_version_1_implementation():
     start = time.time()
     for i in range(NUM_ITERATIONS):
         for key in KEYS:
-           cyfastcache.is_key_valid_version_1(key)
+            cyfastcache.is_key_valid_version_1(key)
     elapsed = time.time() - start
     print("Vesion 1 Cython total time {}".format(elapsed))
+
 
 async def cython_version_2_implementation():
     start = time.time()
     for i in range(NUM_ITERATIONS):
         for key in KEYS:
-           cyfastcache.is_key_valid_version_2(key)
+            cyfastcache.is_key_valid_version_2(key)
     elapsed = time.time() - start
     print("Vesion 2 Cython total time {}".format(elapsed))
+
 
 asyncio.run(aiomemcache_implementation())
 asyncio.run(cython_version_1_implementation())

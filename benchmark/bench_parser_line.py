@@ -1,7 +1,7 @@
 import asyncio
 import time
-from fastcache._cython import cyfastcache
 
+from fastcache._cython import cyfastcache
 
 NUM_ITERATIONS = 1_000_000
 CR = 13  # \r
@@ -16,13 +16,14 @@ class OneLineParser:
 
     def feed_data(self, buffer_):
         self.buffer_.extend(buffer_)
-        
+
         last = len(self.buffer_) - 1
         if last == 0:
             return
 
         if self.buffer_[last - 1] == CR and self.buffer_[last] == LF:
             self.response_event.set()
+
 
 async def python_one_line_implementation():
     ev = asyncio.Event()
@@ -44,6 +45,7 @@ async def cython_one_line_implementation():
         parser.feed_data(b"\n")
     elapsed = time.time() - start
     print("One line Cython total time {}".format(elapsed))
+
 
 async def cython_multi_line_implementation():
     ev = asyncio.Event()

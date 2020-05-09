@@ -1,8 +1,9 @@
 import asyncio
 import time
-import mmh3
-from fastcache._cython import cyfastcache
 
+import mmh3
+
+from fastcache._cython import cyfastcache
 
 NUM_ITERATIONS = 1_000_000
 KEYS = [
@@ -10,6 +11,7 @@ KEYS = [
     b"123456789101112123134",
     b"12345678123123123123123123123",
 ]
+
 
 async def mmh3_hash32(num_hashes):
     start = time.time()
@@ -20,6 +22,7 @@ async def mmh3_hash32(num_hashes):
     elapsed = time.time() - start
     print("mmh3_hash32 with {} hashes, total time {}".format(num_hashes, elapsed))
 
+
 async def mmh3_hash64(num_hashes):
     start = time.time()
     for i in range(NUM_ITERATIONS):
@@ -28,6 +31,7 @@ async def mmh3_hash64(num_hashes):
                 mmh3.hash(key)
     elapsed = time.time() - start
     print("mmh3_hash64 with {} hashes, total time {}".format(num_hashes, elapsed))
+
 
 async def mmh3_hash128(num_hashes):
     start = time.time()
@@ -38,6 +42,7 @@ async def mmh3_hash128(num_hashes):
     elapsed = time.time() - start
     print("mmh3_hash128 with {} hashes, total time {}".format(num_hashes, elapsed))
 
+
 async def select_node(num_nodes):
     nodes = [object() for _ in range(num_nodes)]
     rendezvous_nodes = [cyfastcache.RendezvousNode(str(i).encode(), node) for i, node in enumerate(nodes)]
@@ -47,6 +52,7 @@ async def select_node(num_nodes):
             cyfastcache.node_selection(key, rendezvous_nodes)
     elapsed = time.time() - start
     print("Node Selection with {} nodes total time {}".format(num_nodes, elapsed))
+
 
 asyncio.run(mmh3_hash64(1))
 asyncio.run(mmh3_hash128(1))
@@ -60,4 +66,3 @@ asyncio.run(select_node(2))
 asyncio.run(select_node(4))
 asyncio.run(select_node(8))
 asyncio.run(select_node(16))
-
