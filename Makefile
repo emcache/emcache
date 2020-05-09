@@ -24,6 +24,11 @@ unit:
 
 test: unit acceptance
 
+coverage:
+	coverage run -m pytest -v tests/unit --junitxml=build/test.xml
+	coverage xml -i -o build/coverage.xml
+	coverage report
+
 stress:
 	python benchmark/sets_gets_stress.py --duration 60 --concurrency 32
 
