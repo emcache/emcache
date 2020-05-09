@@ -1,0 +1,8 @@
+fastcache.egg-info/
+__pycache__
+build
+*.so
+*.swp
+*.c
+*.pyc
+*.swo
