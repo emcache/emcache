@@ -1,3 +1,4 @@
+import os
 import sys
 
 from Cython.Build import cythonize
@@ -10,12 +11,14 @@ vi = sys.version_info
 if vi < (3, 7):
     raise RuntimeError("fastcache requires Python 3.7 or greater")
 
+MURMUR3_DIR = os.path.join(os.path.dirname(__file__), 'vendor', 'murmur3')
+
 extensions = [
     Extension(
         "fastcache._cython.cyfastcache",
         sources=["fastcache/_cython/cyfastcache.pyx"],
-        include_dirs=["/Users/paufreixes/pfreixes/murmur3"],
-        library_dirs=["/Users/paufreixes/pfreixes/murmur3"],
+        include_dirs=[MURMUR3_DIR],
+        library_dirs=[MURMUR3_DIR],
         libraries=["murmur3"],
     )
 ]
