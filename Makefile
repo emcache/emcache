@@ -39,6 +39,6 @@ coverage:
 	coverage report
 
 stress:
-	python benchmark/sets_gets_stress.py --duration 60 --concurrency 32
+	python benchmark/sets_gets_stress.py --duration 10 --concurrency 32
 
 .PHONY: clean setup-build install install-dev compile unit test acceptance stress

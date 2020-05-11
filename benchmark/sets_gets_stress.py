@@ -85,7 +85,6 @@ async def main():
 
     await benchmark("SET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
     await benchmark("GET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
-    await benchmark("SET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
 
 
 if __name__ == "__main__":

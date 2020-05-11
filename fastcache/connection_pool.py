@@ -11,20 +11,22 @@ logger = logging.getLogger(__name__)
 class ConnectionPool:
 
     _waiters: deque
-    _connection_pool: deque
+    _unused_connections: deque
     _total_connections: int
     _max_connections: int
     _loop: asyncio.AbstractEventLoop
     _connection_task: Optional[asyncio.Task]
     _connection_in_progress: bool
+    _connections_waited: int
 
     def __init__(self, host: str, port: int, max_connections: int):
         self._host = host
         self._port = port
         self._total_connections = 0
+        self._stats_connections_waited = 0
         self._max_connections = max_connections
         self._waiters = deque()
-        self._connection_pool = deque(maxlen=max_connections)
+        self._unused_connections = deque(maxlen=max_connections)
         self._connection_task = None
         self._creating_connection = False
         self._loop = asyncio.get_running_loop()
@@ -35,14 +37,18 @@ class ConnectionPool:
     def __repr__(self):
         return str(self)
 
-    def _wakeup_next_waiter(self):
-        if not self._waiters:
-            return
-
+    def _wakeup_next_waiter_or_append_to_unused(self, connection):
+        waiter_found = None
         for waiter in reversed(self._waiters):
             if not waiter.done():
-                waiter.set_result(None)
+                waiter_found = waiter
                 break
+
+        if waiter_found is not None:
+            waiter_found.set_result(connection)
+            self._waiters.remove(waiter_found)
+        else:
+            self._unused_connections.append(connection)
 
     async def _create_new_connection(self) -> None:
         """ Creates a new connection in background, and once its ready
@@ -50,13 +56,11 @@ class ConnectionPool:
         """
         try:
             connection = await create_protocol(self._host, self._port)
+            self._total_connections += 1
+            self._wakeup_next_waiter_or_append_to_unused(connection)
+            logger.info(f"{self} new connection created")
         finally:
             self._creating_connection = False
-
-        self._total_connections += 1
-        self._connection_pool.append(connection)
-        self._wakeup_next_waiter()
-        logger.info(f"{self} new connection created")
 
     def create_connection_context(self) -> "BaseConnectionContext":
         """ Returns a connection context that might provide a connection
@@ -65,8 +69,8 @@ class ConnectionPool:
         Behind the scenes will try to make grow the pool when there
         are no connections available.
         """
-        if len(self._connection_pool) > 0 and len(self._waiters) == 0:
-            connection = self._connection_pool.pop()
+        if len(self._unused_connections) > 0:
+            connection = self._unused_connections.pop()
             return ConnectionContext(self, connection, None)
 
         waiter = self._loop.create_future()
@@ -78,22 +82,24 @@ class ConnectionPool:
             self._creating_connection = True
             self._connection_task = self._loop.create_task(self._create_new_connection())
 
+        self._stats_connections_waited += 1
         return WaitingForAConnectionContext(self, None, waiter)
 
     # Below methods are used by the _BaseConnectionContext and derivated classes.
 
-    def acquire_connection(self):
-        """ Returns an available connection, if there is."""
-        return self._connection_pool.pop()
-
     def release_connection(self, connection: MemcacheAsciiProtocol):
         """ Returns back to the pool a connection."""
-        self._connection_pool.append(connection)
-        self._wakeup_next_waiter()
+        self._wakeup_next_waiter_or_append_to_unused(connection)
 
     def remove_waiter(self, waiter: asyncio.Future):
         "" "Remove a specifici waiter" ""
         self._waiters.remove(waiter)
+
+    # stats methods
+    def stats_connections_waited(self) -> int:
+        value = self._stats_connections_waited
+        self._stats_connections_waited = 0
+        return value
 
 
 class BaseConnectionContext:
@@ -141,9 +147,9 @@ class WaitingForAConnectionContext(BaseConnectionContext):
 
     async def __aenter__(self) -> MemcacheAsciiProtocol:
         try:
-            await self._waiter
-        finally:
+            self._connection = await self._waiter
+        except asyncio.CancelledError:
             self._connection_pool.remove_waiter(self._waiter)
+            raise
 
-        self._connection = self._connection_pool.acquire_connection()
         return self._connection

@@ -11,7 +11,7 @@ vi = sys.version_info
 if vi < (3, 7):
     raise RuntimeError("fastcache requires Python 3.7 or greater")
 
-MURMUR3_DIR = os.path.join(os.path.dirname(__file__), 'vendor', 'murmur3')
+MURMUR3_DIR = os.path.join(os.path.dirname(__file__), "vendor", "murmur3")
 
 extensions = [
     Extension(

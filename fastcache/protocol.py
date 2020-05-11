@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import socket
 from typing import List, Optional, Union
 
 from ._cython import cyfastcache
@@ -32,6 +33,8 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
     def connection_made(self, transport) -> None:
         self._transport = transport
+        sock = transport.get_extra_info("socket")
+        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
         logger.debug("Connection made")
 
     def connection_lost(self, exc) -> None:

@@ -20,12 +20,6 @@ class TestConnectionPool:
         assert str(connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=0>"
         assert repr(connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=0>"
 
-    async def test_release_and_acquire_connection(self):
-        connection = Mock()
-        connection_pool = ConnectionPool("localhost", 11211, 1)
-        connection_pool.release_connection(connection)
-        assert connection_pool.acquire_connection() == connection
-
     async def test_remove_waiter(self):
         waiter = Mock()
         connection_pool = ConnectionPool("localhost", 11211, 1)
@@ -109,8 +103,8 @@ class TestConnectionPool:
 
         create_protocol.assert_not_called()
 
-    async def test_waiters_FIFO(self, event_loop, mocker):
-        # Check that waiters queue are seen as FIFO queue, where we try to rescue the latency
+    async def test_waiters_LIFO(self, event_loop, mocker):
+        # Check that waiters queue are seen as LIFO queue, where we try to rescue the latency
         # of the last ones.
         mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(return_value=Mock()))
 
@@ -144,19 +138,14 @@ class TestConnectionPool:
 
         waiters_woken_up = []
 
-        # the three context, the one that should be executed first
-        #  will be orchestrated for knowing when it was able to gather
-        # a connection. This will allow us to cancel a paused context
-        # which theorethically should not break the flow for finnally
-        # wake up the last one.
-        ev1 = asyncio.Event()
-        ev2 = asyncio.Event()
+        begin = asyncio.Event()
+        end = asyncio.Event()
 
-        async def coro_orchestrated(connection_context):
+        async def lazy_coro(connection_context):
             async with connection_context as _:
-                ev1.set()
-                await ev2.wait()
+                begin.set()
                 waiters_woken_up.append(connection_context)
+                await end.wait()
 
         async def coro(connection_context):
             async with connection_context as _:
@@ -168,28 +157,43 @@ class TestConnectionPool:
         connection_context2 = connection_pool.create_connection_context()
         connection_context3 = connection_pool.create_connection_context()
 
-        task1 = event_loop.create_task(coro(connection_context1))
+        # Because of the LIFO nature, the context 3 should be the first one
+        # on having assigned the unique connection that will be available once
+        #  is created.
+        task1 = event_loop.create_task(lazy_coro(connection_context3))
+
+        # Others will remain block until the first one finishes.
         task2 = event_loop.create_task(coro(connection_context2))
-        task3 = event_loop.create_task(coro_orchestrated(connection_context3))
+        task3 = event_loop.create_task(coro(connection_context1))
 
-        # simulates that all tasks are initiated and all context reaches
-        await ev1.wait()
+        # waits till connection_context3 reaches the context
+        await begin.wait()
 
-        # cancel the second connection
+        # cancel the connection_context2 that should be part
+        #  of the waiters.
         task2.cancel()
 
-        ev2.set()
+        # notify the connection_context3 can move forward
+        end.set()
 
+        # wait till all tasks are finished
         await asyncio.gather(*[task1, task2, task3], return_exceptions=True)
 
-        # check that where called in the right order
+        # check that where called in the right order, and the one cancelled
+        # does not appear here.
         assert waiters_woken_up == [connection_context3, connection_context1]
 
-        # check that there are no waiters pending
+        # check that there are no waiters pending, also the cancelled ones
+        # was removed.
         assert len(connection_pool._waiters) == 0
 
 
 class TestBaseConnectionContext:
+    async def test_at_enter_not_iplemented(self):
+        with pytest.raises(NotImplementedError):
+            async with BaseConnectionContext(Mock(), Mock(), None):
+                pass
+
     async def test_release_connection_at_exit(self):
         class MyContext(BaseConnectionContext):
             async def __aenter__(self):
