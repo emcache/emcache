@@ -22,10 +22,12 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
     _parser: Optional[Union[cyfastcache.AsciiOneLineParser, cyfastcache.AsciiMultiLineParser]]
     _transport: Optional[asyncio.Transport]
     _loop: asyncio.AbstractEventLoop
+    _closed: bool
 
     def __init__(self) -> None:
         self._loop = asyncio.get_running_loop()
         self._transport = None
+        self._closed = False
 
         # Parser is configured during the execution of the command,
         # and will depend on the nature of the command
@@ -38,10 +40,20 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         logger.debug("Connection made")
 
     def connection_lost(self, exc) -> None:
+        if self._closed:
+            return
+
         logger.warning(f"Connection lost: {exc}")
 
     def data_received(self, data: bytes) -> None:
         self._parser.feed_data(data)
+
+    def close(self):
+        if self._closed:
+            return
+
+        self._closed = True
+        self._transport.close()
 
     async def get_cmd(self, key: bytes) -> List[bytes]:
         data = b"get " + key + b"\r\n"

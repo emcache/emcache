@@ -1,4 +1,5 @@
 import asyncio
+import time
 from unittest.mock import Mock
 
 import pytest
@@ -13,23 +14,26 @@ from fastcache.connection_pool import (
 
 pytestmark = pytest.mark.asyncio
 
+MAX_CONNECTIONS = 1
+MAX_UNUSED_TIME = 1
+
 
 class TestConnectionPool:
     async def test_str(self):
-        connection_pool = ConnectionPool("localhost", 11211, 1)
+        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
         assert str(connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=0>"
         assert repr(connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=0>"
 
     async def test_remove_waiter(self):
         waiter = Mock()
-        connection_pool = ConnectionPool("localhost", 11211, 1)
+        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
         connection_pool._waiters.append(waiter)
         connection_pool.remove_waiter(waiter)
         assert waiter not in connection_pool._waiters
 
     async def test_connection_context_connection(self):
         connection = Mock()
-        connection_pool = ConnectionPool("localhost", 11211, 1)
+        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
 
         # add a new connection into th pool
         connection_pool.release_connection(connection)
@@ -49,7 +53,7 @@ class TestConnectionPool:
             async with connection_context as connection_from_pool:
                 return connection_from_pool
 
-        connection_pool = ConnectionPool("localhost", 11211, 1)
+        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
         connection_context = connection_pool.create_connection_context()
 
         # wait for a new connection available in another task
@@ -70,7 +74,7 @@ class TestConnectionPool:
             async with connection_context as _:
                 pass
 
-        connection_pool = ConnectionPool("localhost", 11211, 1)
+        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
 
         # Try to get a connection many times.
         connection_context1 = connection_pool.create_connection_context()
@@ -91,7 +95,7 @@ class TestConnectionPool:
         # will be created.
         create_protocol = mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock())
 
-        connection_pool = ConnectionPool("localhost", 11211, 1)
+        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
 
         # add a new connection into the pool and use it
         connection_pool.release_connection(Mock())
@@ -114,7 +118,7 @@ class TestConnectionPool:
             async with connection_context as _:
                 waiters_woken_up.append(connection_context)
 
-        connection_pool = ConnectionPool("localhost", 11211, 1)
+        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
 
         # Try to get a connection many times.
         connection_context1 = connection_pool.create_connection_context()
@@ -151,7 +155,7 @@ class TestConnectionPool:
             async with connection_context as _:
                 waiters_woken_up.append(connection_context)
 
-        connection_pool = ConnectionPool("localhost", 11211, 1)
+        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
 
         connection_context1 = connection_pool.create_connection_context()
         connection_context2 = connection_pool.create_connection_context()
@@ -186,6 +190,76 @@ class TestConnectionPool:
         # check that there are no waiters pending, also the cancelled ones
         # was removed.
         assert len(connection_pool._waiters) == 0
+
+    async def test_purgue_connections(self, event_loop, mocker):
+
+        # Mock everything, we will be calling it by hand
+        get_running_loop = Mock()
+        call_later = Mock()
+        asyncio_patched = mocker.patch("fastcache.connection_pool.asyncio")
+        asyncio_patched.get_running_loop = get_running_loop
+        get_running_loop.return_value.call_later = call_later
+
+        connection_pool = ConnectionPool("localhost", 11211, 2, 60)
+
+        # Check that the call late was done with the right parameters
+        call_later.assert_called_with(60, connection_pool._purgue_unused_connections)
+
+        # we add two connections by hand, with different timestamps.
+        none_expired_connection = Mock()
+        expired_connection = Mock()
+
+        connection_pool._unused_connections.append(none_expired_connection)
+        connection_pool._unused_connections.append(expired_connection)
+
+        connection_pool._connections_last_time_used[none_expired_connection] = time.monotonic()
+        connection_pool._connections_last_time_used[expired_connection] = time.monotonic() - 61
+
+        # Run the purgue
+        connection_pool._purgue_unused_connections()
+
+        # Check that the expired has been removed and the none expired is still there
+        assert expired_connection not in connection_pool._unused_connections
+        assert none_expired_connection in connection_pool._unused_connections
+
+        assert expired_connection not in connection_pool._connections_last_time_used
+        assert none_expired_connection in connection_pool._connections_last_time_used
+
+    async def test_purgue_connections_disabled(self, event_loop, mocker):
+        get_running_loop = Mock()
+        call_later = Mock()
+        asyncio_patched = mocker.patch("fastcache.connection_pool.asyncio")
+        asyncio_patched.get_running_loop = get_running_loop
+        get_running_loop.return_value.call_later = call_later
+
+        ConnectionPool("localhost", 11211, MAX_CONNECTIONS, None)
+
+        # check that the mock wiring was done correctly by at least observing
+        # the call to the `get_running_loop`
+        assert get_running_loop.called
+
+        # With a None the call_later should not be called
+        assert not call_later.called
+
+    async def test_create_and_update_connection_timestamp(self, event_loop, mocker):
+        connection = Mock()
+        mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(return_value=connection))
+
+        now = time.monotonic()
+
+        connection_pool = ConnectionPool("localhost", 11211, 1, 60)
+
+        # Create a new connection and use it
+        connection_context = connection_pool.create_connection_context()
+        async with connection_context as _:
+            # Check that the first timestamp saved is the one that was used
+            # during the creation time.
+            assert connection_pool._connections_last_time_used[connection] > now
+            creation_timestamp = connection_pool._connections_last_time_used[connection]
+
+        # Finally when the connection is relased back to the pool the timestamp
+        # is also upated.
+        assert connection_pool._connections_last_time_used[connection] > creation_timestamp
 
 
 class TestBaseConnectionContext:

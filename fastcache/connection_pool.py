@@ -1,7 +1,8 @@
 import asyncio
 import logging
+import time
 from collections import deque
-from typing import Optional
+from typing import Dict, Optional
 
 from .protocol import MemcacheAsciiProtocol, create_protocol
 
@@ -15,21 +16,34 @@ class ConnectionPool:
     _total_connections: int
     _max_connections: int
     _loop: asyncio.AbstractEventLoop
-    _connection_task: Optional[asyncio.Task]
-    _connection_in_progress: bool
+    _creating_connection_task: Optional[asyncio.Task]
+    _create_connection_in_progress: bool
     _connections_waited: int
+    _connections_last_time_used: Dict[MemcacheAsciiProtocol, float]
+    _max_unused_time_seconds: Optional[int]
 
-    def __init__(self, host: str, port: int, max_connections: int):
+    def __init__(self, host: str, port: int, max_connections: int, max_unused_time_seconds: Optional[int]):
         self._host = host
         self._port = port
+        self._loop = asyncio.get_running_loop()
+
+        # attributes used for handling connections and waiters
         self._total_connections = 0
         self._stats_connections_waited = 0
         self._max_connections = max_connections
         self._waiters = deque()
         self._unused_connections = deque(maxlen=max_connections)
-        self._connection_task = None
+
+        # attributes used for creating new connections
+        self._creating_connection_task = None
         self._creating_connection = False
-        self._loop = asyncio.get_running_loop()
+
+        # attributes used for purging connections
+        self._connections_last_time_used = {}
+        self._max_unused_time_seconds = max_unused_time_seconds
+        self._total_purged_connections = 0
+        if max_unused_time_seconds is not None:
+            self._loop.call_later(self._max_unused_time_seconds, self._purgue_unused_connections)
 
     def __str__(self):
         return f"<ConnectionPool host={self._host} port={self._port} total_connections={self._total_connections}>"
@@ -37,7 +51,32 @@ class ConnectionPool:
     def __repr__(self):
         return str(self)
 
+    def _purgue_unused_connections(self):
+        """ Iterate over all of the connections and see which ones have not
+        been used recently and if its the case close and remove them.
+        """
+        now = time.monotonic()
+        for connection, last_time_used in self._connections_last_time_used.copy().items():
+            if last_time_used + self._max_unused_time_seconds > now:
+                continue
+
+            # Close the connection
+            connection.close()
+
+            # Remove it from all of class attributes
+            self._unused_connections.remove(connection)
+            del self._connections_last_time_used[connection]
+
+            # update the stats
+            self._total_connections -= 1
+            self._total_purged_connections += 1
+            logger.info(f"{self} Connection purgued")
+
+        self._loop.call_later(self._max_unused_time_seconds, self._purgue_unused_connections)
+
     def _wakeup_next_waiter_or_append_to_unused(self, connection):
+        self._connections_last_time_used[connection] = time.monotonic()
+
         waiter_found = None
         for waiter in reversed(self._waiters):
             if not waiter.done():
@@ -56,6 +95,7 @@ class ConnectionPool:
         """
         try:
             connection = await create_protocol(self._host, self._port)
+            self._connections_last_time_used[connection] = time.monotonic()
             self._total_connections += 1
             self._wakeup_next_waiter_or_append_to_unused(connection)
             logger.info(f"{self} new connection created")
@@ -80,7 +120,7 @@ class ConnectionPool:
         # in the pool and there is no an ongoing creation of a connection.
         if self._creating_connection is False and self._total_connections < self._max_connections:
             self._creating_connection = True
-            self._connection_task = self._loop.create_task(self._create_new_connection())
+            self._creating_connection_task = self._loop.create_task(self._create_new_connection())
 
         self._stats_connections_waited += 1
         return WaitingForAConnectionContext(self, None, waiter)

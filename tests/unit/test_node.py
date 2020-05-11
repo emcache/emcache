@@ -1,6 +1,6 @@
 import pytest
 
-from fastcache.node import DEFAULT_MAX_CONNECTIONS, Node
+from fastcache.node import DEFAULT_MAX_CONNECTIONS, DEFAULT_MAX_UNUSED_TIME_SECONDS, Node
 
 pytestmark = pytest.mark.asyncio
 
@@ -20,8 +20,12 @@ class TestNode:
 
     async def test_connection_pool(self, connection_pool):
         Node("localhost", 11211)
-        connection_pool.assert_called_with("localhost", 11211, DEFAULT_MAX_CONNECTIONS)
+        connection_pool.assert_called_with("localhost", 11211, DEFAULT_MAX_CONNECTIONS, DEFAULT_MAX_UNUSED_TIME_SECONDS)
 
     async def test_max_connections(self, connection_pool):
         Node("localhost", 11211, max_connections=16)
-        connection_pool.assert_called_with("localhost", 11211, 16)
+        connection_pool.assert_called_with("localhost", 11211, 16, DEFAULT_MAX_UNUSED_TIME_SECONDS)
+
+    async def test_max_unused_time(self, connection_pool):
+        Node("localhost", 11211, max_unused_time_seconds=300)
+        connection_pool.assert_called_with("localhost", 11211, DEFAULT_MAX_CONNECTIONS, 300)

@@ -24,6 +24,29 @@ class TestMemcacheAsciiProtocol:
         protocol.connection_made(mock_transport)
         assert protocol._transport is mock_transport
 
+    async def test_connection_lost(self, event_loop):
+        mock_transport = Mock()
+        protocol = MemcacheAsciiProtocol()
+        protocol.connection_made(mock_transport)
+        protocol.connection_lost(None)
+
+        # if it is closed does nothing
+        protocol.close()
+        protocol.connection_lost(None)
+
+    async def test_close(self, event_loop):
+        mock_transport = Mock()
+        protocol = MemcacheAsciiProtocol()
+        protocol.connection_made(mock_transport)
+
+        # Calling many times will end up calling
+        # only once to the transport close method
+        protocol.close()
+        protocol.close()
+        protocol.close()
+
+        protocol._transport.close.assert_called_once()
+
     async def test_get_cmd(self, event_loop, protocol):
         async def coro():
             await protocol.get_cmd(b"foo")
