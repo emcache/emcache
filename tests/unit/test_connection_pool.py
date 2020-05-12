@@ -6,19 +6,18 @@ import pytest
 from asynctest import CoroutineMock
 
 from fastcache.connection_pool import (
-    DEFAULT_CONNECTION_TIMEOUT,
-    DEFAULT_MAX_CONNECTIONS,
-    DEFAULT_MAX_UNUSED_TIME_SECONDS,
     BaseConnectionContext,
     ConnectionContext,
     ConnectionPool,
     WaitingForAConnectionContext,
 )
+from fastcache.default_values import (
+    DEFAULT_CONNECTION_TIMEOUT,
+    DEFAULT_MAX_CONNECTIONS,
+    DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
+)
 
 pytestmark = pytest.mark.asyncio
-
-MAX_CONNECTIONS = 1
-MAX_UNUSED_TIME = 1
 
 
 @pytest.fixture
@@ -28,7 +27,7 @@ async def minimal_connection_pool():
         11211,
         max_connections=1,
         # Disable purge and connection timeout
-        max_unused_time_seconds=None,
+        purge_unused_connections_after=None,
         connection_timeout=None,
     )
 
@@ -38,9 +37,9 @@ class TestConnectionPool:
         connection_pool = ConnectionPool("localhost", 11211)
         assert connection_pool._max_connections == DEFAULT_MAX_CONNECTIONS
 
-    async def test_default_max_unused_time(self):
+    async def test_default_purge_unused_connections_after(self):
         connection_pool = ConnectionPool("localhost", 11211)
-        assert connection_pool._max_unused_time_seconds == DEFAULT_MAX_UNUSED_TIME_SECONDS
+        assert connection_pool._purge_unused_connections_after == DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER
 
     async def test_default_connection_timneout(self):
         connection_pool = ConnectionPool("localhost", 11211)
@@ -237,7 +236,7 @@ class TestConnectionPool:
         asyncio_patched.get_running_loop = get_running_loop
         get_running_loop.return_value.call_later = call_later
 
-        connection_pool = ConnectionPool("localhost", 11211, max_connections=2, max_unused_time_seconds=60)
+        connection_pool = ConnectionPool("localhost", 11211, max_connections=2, purge_unused_connections_after=60)
 
         # Check that the call late was done with the right parameters
         call_later.assert_called_with(60, connection_pool._purge_unused_connections)
@@ -269,7 +268,7 @@ class TestConnectionPool:
         asyncio_patched.get_running_loop = get_running_loop
         get_running_loop.return_value.call_later = call_later
 
-        ConnectionPool("localhost", 11211, max_connections=1, max_unused_time_seconds=None)
+        ConnectionPool("localhost", 11211, max_connections=1, purge_unused_connections_after=None)
 
         # check that the mock wiring was done correctly by at least observing
         # the call to the `get_running_loop`
@@ -284,7 +283,7 @@ class TestConnectionPool:
 
         now = time.monotonic()
 
-        connection_pool = ConnectionPool("localhost", 11211, max_connections=1, max_unused_time_seconds=60)
+        connection_pool = ConnectionPool("localhost", 11211, max_connections=1, purge_unused_connections_after=60)
 
         # Create a new connection and use it
         connection_context = connection_pool.create_connection_context()

@@ -4,19 +4,8 @@ import time
 from collections import deque
 from typing import Dict, Optional
 
+from .default_values import DEFAULT_CONNECTION_TIMEOUT, DEFAULT_MAX_CONNECTIONS, DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER
 from .protocol import MemcacheAsciiProtocol, create_protocol
-
-# Has been observed that values higher than 32 do not provide
-# a significant increase on the OPS/sec, while them could have
-# a negative impact on the latency.
-DEFAULT_MAX_CONNECTIONS = 32
-
-# Purging is disabled by default
-DEFAULT_MAX_UNUSED_TIME_SECONDS = None
-
-# Default connection timeout
-DEFAULT_CONNECTION_TIMEOUT = 1.0
-
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +21,7 @@ class ConnectionPool:
     _create_connection_in_progress: bool
     _connections_waited: int
     _connections_last_time_used: Dict[MemcacheAsciiProtocol, float]
-    _max_unused_time_seconds: Optional[int]
+    _purge_unused_connections_after: Optional[int]
     _connection_timeout: Optional[float]
 
     def __init__(
@@ -41,7 +30,7 @@ class ConnectionPool:
         port: int,
         *,
         max_connections: int = DEFAULT_MAX_CONNECTIONS,
-        max_unused_time_seconds: Optional[int] = DEFAULT_MAX_UNUSED_TIME_SECONDS,
+        purge_unused_connections_after: Optional[float] = DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
         connection_timeout: Optional[float] = DEFAULT_CONNECTION_TIMEOUT,
     ):
         self._host = host
@@ -62,10 +51,10 @@ class ConnectionPool:
 
         # attributes used for purging connections
         self._connections_last_time_used = {}
-        self._max_unused_time_seconds = max_unused_time_seconds
+        self._purge_unused_connections_after = purge_unused_connections_after
         self._total_purged_connections = 0
-        if max_unused_time_seconds is not None:
-            self._loop.call_later(self._max_unused_time_seconds, self._purge_unused_connections)
+        if purge_unused_connections_after is not None:
+            self._loop.call_later(self._purge_unused_connections_after, self._purge_unused_connections)
 
     def __str__(self):
         return f"<ConnectionPool host={self._host} port={self._port} total_connections={self._total_connections}>"
@@ -79,7 +68,7 @@ class ConnectionPool:
         """
         now = time.monotonic()
         for connection, last_time_used in self._connections_last_time_used.copy().items():
-            if last_time_used + self._max_unused_time_seconds > now:
+            if last_time_used + self._purge_unused_connections_after > now:
                 continue
 
             # Close the connection
@@ -94,7 +83,7 @@ class ConnectionPool:
             self._total_purged_connections += 1
             logger.info(f"{self} Connection purged")
 
-        self._loop.call_later(self._max_unused_time_seconds, self._purge_unused_connections)
+        self._loop.call_later(self._purge_unused_connections_after, self._purge_unused_connections)
 
     def _wakeup_next_waiter_or_append_to_unused(self, connection):
         self._connections_last_time_used[connection] = time.monotonic()

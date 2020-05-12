@@ -63,6 +63,8 @@ async def benchmark(desc: str, coro_op, max_keys: int, client: Client, concurren
     print("\tAvg: {0:.6f}".format(avg))
     print("\tP90: {0:.6f}".format(p90))
     print("\tP99: {0:.6f}".format(p99))
+    print(client._cluster._nodes[0]._connection_pool.stats_connections_waited())
+    print(client._cluster._nodes[0]._connection_pool.stats_ops_per_connection())
 
 
 async def main():
@@ -81,10 +83,17 @@ async def main():
     )
     args = parser.parse_args()
 
-    client = Client("localhost", 11211)
+    client = Client(
+        "localhost",
+        11211,
+        # Handle timeouts is not for free, ~20% of
+        #  degradation, for the benchmark we disable the
+        # usage of timeouts.
+        timeout=None,
+    )
 
     await benchmark("SET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
-    await benchmark("GET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
+    await benchmark("GET", cmd_get, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
 
 
 if __name__ == "__main__":
