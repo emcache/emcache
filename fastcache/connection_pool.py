@@ -43,7 +43,7 @@ class ConnectionPool:
         self._max_unused_time_seconds = max_unused_time_seconds
         self._total_purged_connections = 0
         if max_unused_time_seconds is not None:
-            self._loop.call_later(self._max_unused_time_seconds, self._purgue_unused_connections)
+            self._loop.call_later(self._max_unused_time_seconds, self._purge_unused_connections)
 
     def __str__(self):
         return f"<ConnectionPool host={self._host} port={self._port} total_connections={self._total_connections}>"
@@ -51,7 +51,7 @@ class ConnectionPool:
     def __repr__(self):
         return str(self)
 
-    def _purgue_unused_connections(self):
+    def _purge_unused_connections(self):
         """ Iterate over all of the connections and see which ones have not
         been used recently and if its the case close and remove them.
         """
@@ -70,9 +70,9 @@ class ConnectionPool:
             # update the stats
             self._total_connections -= 1
             self._total_purged_connections += 1
-            logger.info(f"{self} Connection purgued")
+            logger.info(f"{self} Connection purged")
 
-        self._loop.call_later(self._max_unused_time_seconds, self._purgue_unused_connections)
+        self._loop.call_later(self._max_unused_time_seconds, self._purge_unused_connections)
 
     def _wakeup_next_waiter_or_append_to_unused(self, connection):
         self._connections_last_time_used[connection] = time.monotonic()

@@ -191,7 +191,7 @@ class TestConnectionPool:
         # was removed.
         assert len(connection_pool._waiters) == 0
 
-    async def test_purgue_connections(self, event_loop, mocker):
+    async def test_purge_connections(self, event_loop, mocker):
 
         # Mock everything, we will be calling it by hand
         get_running_loop = Mock()
@@ -203,7 +203,7 @@ class TestConnectionPool:
         connection_pool = ConnectionPool("localhost", 11211, 2, 60)
 
         # Check that the call late was done with the right parameters
-        call_later.assert_called_with(60, connection_pool._purgue_unused_connections)
+        call_later.assert_called_with(60, connection_pool._purge_unused_connections)
 
         # we add two connections by hand, with different timestamps.
         none_expired_connection = Mock()
@@ -215,8 +215,8 @@ class TestConnectionPool:
         connection_pool._connections_last_time_used[none_expired_connection] = time.monotonic()
         connection_pool._connections_last_time_used[expired_connection] = time.monotonic() - 61
 
-        # Run the purgue
-        connection_pool._purgue_unused_connections()
+        # Run the purge
+        connection_pool._purge_unused_connections()
 
         # Check that the expired has been removed and the none expired is still there
         assert expired_connection not in connection_pool._unused_connections
@@ -225,7 +225,7 @@ class TestConnectionPool:
         assert expired_connection not in connection_pool._connections_last_time_used
         assert none_expired_connection in connection_pool._connections_last_time_used
 
-    async def test_purgue_connections_disabled(self, event_loop, mocker):
+    async def test_purge_connections_disabled(self, event_loop, mocker):
         get_running_loop = Mock()
         call_later = Mock()
         asyncio_patched = mocker.patch("fastcache.connection_pool.asyncio")
