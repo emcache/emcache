@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 import pytest
@@ -15,3 +16,9 @@ class TestCacheClient:
         value_retrieved = await client.get(b"key")
 
         assert value == value_retrieved
+
+    async def test_timeout(self):
+        unreachable_target = "0.0.0.1"
+        client = Client(unreachable_target, 11211, timeout=0.1)
+        with pytest.raises(asyncio.TimeoutError):
+            await client.get(b"key")

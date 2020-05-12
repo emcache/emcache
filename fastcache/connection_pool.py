@@ -112,6 +112,8 @@ class ConnectionPool:
             logger.info(f"{self} new connection created")
         except asyncio.TimeoutError:
             logger.warning(f"{self} new connection could not be created, it timed out!")
+        except OSError as exc:
+            logger.warning(f"{self} new connection could not be created, an error ocurred {exc}")
         finally:
             self._creating_connection = False
 

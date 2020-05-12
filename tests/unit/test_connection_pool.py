@@ -109,6 +109,20 @@ class TestConnectionPool:
         # check that we have called the create_protocol
         create_protocol.assert_called_with("localhost", 11211, timeout=1.0)
 
+    async def test_create_connection_with_timeout_error(self, event_loop, mocker):
+        mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(side_effect=asyncio.TimeoutError))
+
+        connection_pool = ConnectionPool("localhost", 11211, connection_timeout=1.0)
+        await connection_pool._create_new_connection()
+        assert connection_pool._total_connections == 0
+
+    async def test_create_connection_with_oserror(self, event_loop, mocker):
+        mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(side_effect=OSError))
+
+        connection_pool = ConnectionPool("localhost", 11211, connection_timeout=1.0)
+        await connection_pool._create_new_connection()
+        assert connection_pool._total_connections == 0
+
     async def test_connection_context_one_create_connection(self, event_loop, mocker, minimal_connection_pool):
         # Checks that while there is an ongoing connection creation, mo more connections
         # will be created.
