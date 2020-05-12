@@ -3,13 +3,6 @@ import logging
 
 from .connection_pool import BaseConnectionContext, ConnectionPool
 
-# Has been observed that values higher than 32 do not provide
-# a significant increase on the OPS/sec, while them could have
-# a negative impact on the latency.
-DEFAULT_MAX_CONNECTIONS = 32
-
-DEFAULT_MAX_UNUSED_TIME_SECONDS = 60
-
 logger = logging.getLogger(__name__)
 
 
@@ -24,17 +17,11 @@ class Node:
     _connection_pool: ConnectionPool
     _loop: asyncio.AbstractEventLoop
 
-    def __init__(
-        self,
-        host: str,
-        port: int,
-        max_connections: int = DEFAULT_MAX_CONNECTIONS,
-        max_unused_time_seconds: int = DEFAULT_MAX_UNUSED_TIME_SECONDS,
-    ) -> None:
+    def __init__(self, host: str, port: int,) -> None:
         self._host = host
         self._port = port
         self._loop = asyncio.get_running_loop()
-        self._connection_pool = ConnectionPool(host, port, max_connections, max_unused_time_seconds)
+        self._connection_pool = ConnectionPool(host, port)
         logger.info(f"{self} new node created")
 
     def __str__(self) -> str:

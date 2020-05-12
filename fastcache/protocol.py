@@ -77,7 +77,14 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         return parser.value()
 
 
-async def create_protocol(host: str, port: int) -> MemcacheAsciiProtocol:
+async def create_protocol(host: str, port: int, *, timeout: int = None) -> MemcacheAsciiProtocol:
+    """ Create a new connection which supports the Memcache protocol, if timeout is provided
+    an `asyncio.TimeoutError` can be raised."""
     loop = asyncio.get_running_loop()
-    _, protocol = await loop.create_connection(MemcacheAsciiProtocol, host=host, port=port)
+    if timeout is None:
+        _, protocol = await loop.create_connection(MemcacheAsciiProtocol, host=host, port=port)
+    else:
+        _, protocol = await asyncio.wait_for(
+            loop.create_connection(MemcacheAsciiProtocol, host=host, port=port), timeout
+        )
     return protocol

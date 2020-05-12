@@ -6,6 +6,9 @@ import pytest
 from asynctest import CoroutineMock
 
 from fastcache.connection_pool import (
+    DEFAULT_CONNECTION_TIMEOUT,
+    DEFAULT_MAX_CONNECTIONS,
+    DEFAULT_MAX_UNUSED_TIME_SECONDS,
     BaseConnectionContext,
     ConnectionContext,
     ConnectionPool,
@@ -18,32 +21,53 @@ MAX_CONNECTIONS = 1
 MAX_UNUSED_TIME = 1
 
 
+@pytest.fixture
+async def minimal_connection_pool():
+    return ConnectionPool(
+        "localhost",
+        11211,
+        max_connections=1,
+        # Disable purge and connection timeout
+        max_unused_time_seconds=None,
+        connection_timeout=None,
+    )
+
+
 class TestConnectionPool:
-    async def test_str(self):
-        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
-        assert str(connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=0>"
-        assert repr(connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=0>"
+    async def test_default_max_connections(self):
+        connection_pool = ConnectionPool("localhost", 11211)
+        assert connection_pool._max_connections == DEFAULT_MAX_CONNECTIONS
 
-    async def test_remove_waiter(self):
+    async def test_default_max_unused_time(self):
+        connection_pool = ConnectionPool("localhost", 11211)
+        assert connection_pool._max_unused_time_seconds == DEFAULT_MAX_UNUSED_TIME_SECONDS
+
+    async def test_default_connection_timneout(self):
+        connection_pool = ConnectionPool("localhost", 11211)
+        assert connection_pool._connection_timeout == DEFAULT_CONNECTION_TIMEOUT
+
+    async def test_str(self, minimal_connection_pool):
+        assert str(minimal_connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=0>"
+        assert repr(minimal_connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=0>"
+
+    async def test_remove_waiter(self, minimal_connection_pool):
         waiter = Mock()
-        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
-        connection_pool._waiters.append(waiter)
-        connection_pool.remove_waiter(waiter)
-        assert waiter not in connection_pool._waiters
+        minimal_connection_pool._waiters.append(waiter)
+        minimal_connection_pool.remove_waiter(waiter)
+        assert waiter not in minimal_connection_pool._waiters
 
-    async def test_connection_context_connection(self):
+    async def test_connection_context_connection(self, minimal_connection_pool):
         connection = Mock()
-        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
 
         # add a new connection into th pool
-        connection_pool.release_connection(connection)
+        minimal_connection_pool.release_connection(connection)
 
         # new connection should be used now
-        connection_context = connection_pool.create_connection_context()
+        connection_context = minimal_connection_pool.create_connection_context()
         async with connection_context as connection_from_pool:
             assert connection_from_pool is connection
 
-    async def test_connection_context_waiting_connection(self, event_loop, mocker):
+    async def test_connection_context_waiting_connection(self, event_loop, mocker, minimal_connection_pool):
         connection = Mock()
         create_protocol = mocker.patch(
             "fastcache.connection_pool.create_protocol", CoroutineMock(return_value=connection)
@@ -53,8 +77,7 @@ class TestConnectionPool:
             async with connection_context as connection_from_pool:
                 return connection_from_pool
 
-        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
-        connection_context = connection_pool.create_connection_context()
+        connection_context = minimal_connection_pool.create_connection_context()
 
         # wait for a new connection available in another task
         task = event_loop.create_task(coro(connection_context))
@@ -63,9 +86,31 @@ class TestConnectionPool:
         assert connection_from_pool is connection
 
         # check that we have called the create_protocol
-        create_protocol.assert_called_with("localhost", 11211)
+        create_protocol.assert_called_with("localhost", 11211, timeout=None)
 
-    async def test_connection_context_one_create_connection(self, event_loop, mocker):
+    async def test_connection_context_waiting_connection_with_timeout(self, event_loop, mocker):
+        connection = Mock()
+        create_protocol = mocker.patch(
+            "fastcache.connection_pool.create_protocol", CoroutineMock(return_value=connection)
+        )
+
+        connection_pool = ConnectionPool("localhost", 11211, connection_timeout=1.0)
+
+        async def coro(connection_context):
+            async with connection_context as _:
+                pass
+
+        connection_context = connection_pool.create_connection_context()
+
+        # wait for a new connection available in another task
+        task = event_loop.create_task(coro(connection_context))
+
+        await task
+
+        # check that we have called the create_protocol
+        create_protocol.assert_called_with("localhost", 11211, timeout=1.0)
+
+    async def test_connection_context_one_create_connection(self, event_loop, mocker, minimal_connection_pool):
         # Checks that while there is an ongoing connection creation, mo more connections
         # will be created.
         create_protocol = mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(return_value=Mock()))
@@ -74,12 +119,10 @@ class TestConnectionPool:
             async with connection_context as _:
                 pass
 
-        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
-
         # Try to get a connection many times.
-        connection_context1 = connection_pool.create_connection_context()
-        connection_context2 = connection_pool.create_connection_context()
-        connection_context3 = connection_pool.create_connection_context()
+        connection_context1 = minimal_connection_pool.create_connection_context()
+        connection_context2 = minimal_connection_pool.create_connection_context()
+        connection_context3 = minimal_connection_pool.create_connection_context()
 
         task1 = event_loop.create_task(coro(connection_context1))
         task2 = event_loop.create_task(coro(connection_context2))
@@ -90,24 +133,22 @@ class TestConnectionPool:
         # check that we have called the create_protocol just once
         create_protocol.assert_called_once()
 
-    async def test_connection_context_waiting_connection_max_connections(self, mocker):
+    async def test_connection_context_waiting_connection_max_connections(self, mocker, minimal_connection_pool):
         # Checks that once max connections have been reached, no more connections
         # will be created.
         create_protocol = mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock())
 
-        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
-
         # add a new connection into the pool and use it
-        connection_pool.release_connection(Mock())
-        _ = connection_pool.create_connection_context()
+        minimal_connection_pool.release_connection(Mock())
+        _ = minimal_connection_pool.create_connection_context()
 
         # try to use a new one, since max_connections should be already
         # reached, the `create_protocol` should not be called
-        _ = connection_pool.create_connection_context()
+        _ = minimal_connection_pool.create_connection_context()
 
         create_protocol.assert_not_called()
 
-    async def test_waiters_LIFO(self, event_loop, mocker):
+    async def test_waiters_LIFO(self, event_loop, mocker, minimal_connection_pool):
         # Check that waiters queue are seen as LIFO queue, where we try to rescue the latency
         # of the last ones.
         mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(return_value=Mock()))
@@ -118,12 +159,10 @@ class TestConnectionPool:
             async with connection_context as _:
                 waiters_woken_up.append(connection_context)
 
-        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
-
         # Try to get a connection many times.
-        connection_context1 = connection_pool.create_connection_context()
-        connection_context2 = connection_pool.create_connection_context()
-        connection_context3 = connection_pool.create_connection_context()
+        connection_context1 = minimal_connection_pool.create_connection_context()
+        connection_context2 = minimal_connection_pool.create_connection_context()
+        connection_context3 = minimal_connection_pool.create_connection_context()
 
         task1 = event_loop.create_task(coro(connection_context1))
         task2 = event_loop.create_task(coro(connection_context2))
@@ -134,7 +173,7 @@ class TestConnectionPool:
         # check that where called in the right order
         assert waiters_woken_up == [connection_context3, connection_context2, connection_context1]
 
-    async def test_waiters_cancellation_is_supported(self, event_loop, mocker):
+    async def test_waiters_cancellation_is_supported(self, event_loop, mocker, minimal_connection_pool):
         # Check that waiters that are cancelled are suported and do not break
         # the flow for wake up pending ones.
 
@@ -155,11 +194,9 @@ class TestConnectionPool:
             async with connection_context as _:
                 waiters_woken_up.append(connection_context)
 
-        connection_pool = ConnectionPool("localhost", 11211, MAX_CONNECTIONS, MAX_UNUSED_TIME)
-
-        connection_context1 = connection_pool.create_connection_context()
-        connection_context2 = connection_pool.create_connection_context()
-        connection_context3 = connection_pool.create_connection_context()
+        connection_context1 = minimal_connection_pool.create_connection_context()
+        connection_context2 = minimal_connection_pool.create_connection_context()
+        connection_context3 = minimal_connection_pool.create_connection_context()
 
         # Because of the LIFO nature, the context 3 should be the first one
         # on having assigned the unique connection that will be available once
@@ -189,7 +226,7 @@ class TestConnectionPool:
 
         # check that there are no waiters pending, also the cancelled ones
         # was removed.
-        assert len(connection_pool._waiters) == 0
+        assert len(minimal_connection_pool._waiters) == 0
 
     async def test_purge_connections(self, event_loop, mocker):
 
@@ -200,7 +237,7 @@ class TestConnectionPool:
         asyncio_patched.get_running_loop = get_running_loop
         get_running_loop.return_value.call_later = call_later
 
-        connection_pool = ConnectionPool("localhost", 11211, 2, 60)
+        connection_pool = ConnectionPool("localhost", 11211, max_connections=2, max_unused_time_seconds=60)
 
         # Check that the call late was done with the right parameters
         call_later.assert_called_with(60, connection_pool._purge_unused_connections)
@@ -232,7 +269,7 @@ class TestConnectionPool:
         asyncio_patched.get_running_loop = get_running_loop
         get_running_loop.return_value.call_later = call_later
 
-        ConnectionPool("localhost", 11211, MAX_CONNECTIONS, None)
+        ConnectionPool("localhost", 11211, max_connections=1, max_unused_time_seconds=None)
 
         # check that the mock wiring was done correctly by at least observing
         # the call to the `get_running_loop`
@@ -247,7 +284,7 @@ class TestConnectionPool:
 
         now = time.monotonic()
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 60)
+        connection_pool = ConnectionPool("localhost", 11211, max_connections=1, max_unused_time_seconds=60)
 
         # Create a new connection and use it
         connection_context = connection_pool.create_connection_context()

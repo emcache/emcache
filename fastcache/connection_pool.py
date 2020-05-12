@@ -6,6 +6,18 @@ from typing import Dict, Optional
 
 from .protocol import MemcacheAsciiProtocol, create_protocol
 
+# Has been observed that values higher than 32 do not provide
+# a significant increase on the OPS/sec, while them could have
+# a negative impact on the latency.
+DEFAULT_MAX_CONNECTIONS = 32
+
+# Purging is disabled by default
+DEFAULT_MAX_UNUSED_TIME_SECONDS = None
+
+# Default connection timeout
+DEFAULT_CONNECTION_TIMEOUT = 1.0
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,11 +33,21 @@ class ConnectionPool:
     _connections_waited: int
     _connections_last_time_used: Dict[MemcacheAsciiProtocol, float]
     _max_unused_time_seconds: Optional[int]
+    _connection_timeout: Optional[float]
 
-    def __init__(self, host: str, port: int, max_connections: int, max_unused_time_seconds: Optional[int]):
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        *,
+        max_connections: int = DEFAULT_MAX_CONNECTIONS,
+        max_unused_time_seconds: Optional[int] = DEFAULT_MAX_UNUSED_TIME_SECONDS,
+        connection_timeout: Optional[float] = DEFAULT_CONNECTION_TIMEOUT,
+    ):
         self._host = host
         self._port = port
         self._loop = asyncio.get_running_loop()
+        self._connection_timeout = connection_timeout
 
         # attributes used for handling connections and waiters
         self._total_connections = 0
@@ -94,11 +116,13 @@ class ConnectionPool:
         adds it to the poool.
         """
         try:
-            connection = await create_protocol(self._host, self._port)
+            connection = await create_protocol(self._host, self._port, timeout=self._connection_timeout)
             self._connections_last_time_used[connection] = time.monotonic()
             self._total_connections += 1
             self._wakeup_next_waiter_or_append_to_unused(connection)
             logger.info(f"{self} new connection created")
+        except asyncio.TimeoutError:
+            logger.warning(f"{self} new connection could not be created, it timed out!")
         finally:
             self._creating_connection = False
 
