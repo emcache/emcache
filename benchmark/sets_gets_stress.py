@@ -63,8 +63,6 @@ async def benchmark(desc: str, coro_op, max_keys: int, client: Client, concurren
     print("\tAvg: {0:.6f}".format(avg))
     print("\tP90: {0:.6f}".format(p90))
     print("\tP99: {0:.6f}".format(p99))
-    print(client._cluster._nodes[0]._connection_pool.stats_connections_waited())
-    print(client._cluster._nodes[0]._connection_pool.stats_ops_per_connection())
 
 
 async def main():
