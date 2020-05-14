@@ -60,9 +60,9 @@ class TestMemcacheAsciiProtocol:
 
         protocol._transport.write.assert_called_with(b"get foo\r\n")
 
-    async def test_set_cmd(self, event_loop, protocol):
+    async def test_storage_command(self, event_loop, protocol):
         async def coro():
-            await protocol.set_cmd(b"foo", b"value")
+            await protocol.storage_command(b"set", b"foo", b"value", 0, 0, False)
 
         task = event_loop.create_task(coro())
         await asyncio.sleep(0)
@@ -72,6 +72,10 @@ class TestMemcacheAsciiProtocol:
         await task
 
         protocol._transport.write.assert_called_with(b"set foo 0 0 5\r\nvalue\r\n")
+
+    async def test_storage_command_noreply(self, event_loop, protocol):
+        await protocol.storage_command(b"set", b"foo", b"value", 0, 0, True)
+        protocol._transport.write.assert_called_with(b"set foo 0 0 5 noreply\r\nvalue\r\n")
 
 
 async def test_create_protocol(event_loop, mocker):

@@ -3,16 +3,15 @@ import logging
 from typing import Optional
 
 from ._cython import cyfastcache
+from .client_errors import NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster
 from .default_values import DEFAULT_TIMEOUT
+from .protocol import NOT_STORED, STORED
 
 logger = logging.getLogger(__name__)
 
 
-class CommandErrorException(Exception):
-    """Exception raised when a command finished with error."""
-
-    pass
+MAX_ALLOWED_FLAG_VALUE = 2 ** 16
 
 
 class OpTimeout:
@@ -61,6 +60,23 @@ class Client:
         self._cluster = Cluster([(host, port)])
         self._timeout = timeout
 
+    async def _storage_command(
+        self, command: bin, key: bin, value: bin, flags: int, exptime: int, noreply: bool
+    ) -> None:
+        """ Intermediate function used for all storage commands `add`, `set`,
+        `replace`, `append` and `prepend`.
+        """
+        if flags > MAX_ALLOWED_FLAG_VALUE:
+            raise ValueError(f"flags can not be higher than {MAX_ALLOWED_FLAG_VALUE}")
+
+        if cyfastcache.is_key_valid(key) is False:
+            raise ValueError("Key has invalid charcters")
+
+        node = self._cluster.pick_node(key)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                return await connection.storage_command(command, key, value, flags, exptime, noreply)
+
     async def get(self, key: bytes) -> Optional[bytes]:
         """Return the value associated with the key.
 
@@ -82,25 +98,115 @@ class Client:
         else:
             return values[0]
 
-    async def set(self, key: bytes, value: bytes) -> bool:
+    async def set(self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False) -> None:
         """Set a specific value for a given key.
 
-        Returns True if the key was stored succesfully, otherwise
-        a `CommandErrorException` is raised.
+        If command fails a `StorageCommandError` is raised, however
+        when `noreply` option is used there is no ack from the Memcached
+        server, not raising any command error.
 
         If timeout is not disabled, an `asyncio.TimeoutError` will
         be returned in case of a timed out operation.
+
+        Other parameters are optional, use them in the following
+        situations:
+
+        - `flags` is an arbitrary 16-bit unsigned integer stored
+        along the value that can be retrieved later with a retrieval
+        command.
+        - `exptime` is the expiration time expressed as an aboslute
+        timestamp. By default, it is set to 0 meaning that the there
+        is no expiration time.
+        - `noreply` when is set memcached will not return a response
+        back telling how the opreation finished, avoiding a full round
+        trip between the client and sever. By using this, the client
+        won't have an explicit way for knowing if the storage command
+        finished correctly. By default is disabled.
         """
+        result = await self._storage_command(b"set", key, value, flags, exptime, noreply)
 
-        if cyfastcache.is_key_valid(key) is False:
-            raise ValueError("Key has invalid charcters")
+        if not noreply and result != STORED:
+            raise StorageCommandError(f"Command finished with error, response returned {result}")
 
-        node = self._cluster.pick_node(key)
-        async with OpTimeout(self._timeout, self._loop):
-            async with node.connection() as connection:
-                result = await connection.set_cmd(key, value)
+    async def add(self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False) -> None:
+        """Set a specific value for a given key if and only if the key
+        does not already exist.
 
-        if result != b"STORED":
-            raise CommandErrorException("set command finished with error, response returned {result}")
+        If the command fails because the key already exists a
+        `NotStoredStorageCommandError` exception is raised, for other
+        errors the generic `StorageCommandError` is used. However when
+        `noreply` option is used there is no ack from the Memcached
+        server, not raising any command error.
 
-        return result
+        Take a look at the `set` command for parameters description.
+        """
+        result = await self._storage_command(b"add", key, value, flags, exptime, noreply)
+
+        if not noreply and result == NOT_STORED:
+            raise NotStoredStorageCommandError()
+        elif not noreply and result != STORED:
+            raise StorageCommandError(f"Command finished with error, response returned {result}")
+
+    async def replace(
+        self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False
+    ) -> None:
+        """Set a specific value for a given key if and only if the key
+        already exists.
+
+        If the command fails because the key was not found a
+        `NotStoredStorageCommandError` exception is raised, for other
+        errors the generic `StorageCommandError` is used. However when
+        `noreply` option is used there is no ack from the Memcached
+        server, not raising any command error.
+
+        Take a look at the `set` command for parameters description.
+        """
+        result = await self._storage_command(b"replace", key, value, flags, exptime, noreply)
+
+        if not noreply and result == NOT_STORED:
+            raise NotStoredStorageCommandError()
+        elif not noreply and result != STORED:
+            raise StorageCommandError(f"Command finished with error, response returned {result}")
+
+    async def append(
+        self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False
+    ) -> None:
+        """Append a specific value for a given key to the current value
+        if and only if the key already exists.
+
+        If the command fails because the key was not found a
+        `NotStoredStorageCommandError` exception is raised, for other
+        errors the generic `StorageCommandError` is used. However when
+        `noreply` option is used there is no ack from the Memcached
+        server, not raising any command error.
+
+        Take a look at the `set` command for parameters description.
+        """
+        result = await self._storage_command(b"append", key, value, flags, exptime, noreply)
+
+        if not noreply and result == NOT_STORED:
+            raise NotStoredStorageCommandError()
+        elif not noreply and result != STORED:
+            raise StorageCommandError(f"Command finished with error, response returned {result}")
+
+    async def prepend(
+        self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False
+    ) -> None:
+        """Prepend a specific value for a given key to the current value
+        if and only if the key already exists.
+
+        If the command fails because the key was not found a
+        `NotStoredStorageCommandError` exception is raised, for other
+        errors the generic `StorageCommandError` is used. However when
+        `noreply` option is used there is no ack from the Memcached
+        server, not raising any command error.
+
+        Take a look at the `set` command for parameters description.
+        use the documentation of that method.
+        """
+        result = await self._storage_command(b"prepend", key, value, flags, exptime, noreply)
+
+        if not noreply and result == NOT_STORED:
+            raise NotStoredStorageCommandError()
+        elif not noreply and result != STORED:
+            raise StorageCommandError(f"Command finished with error, response returned {result}")

@@ -8,6 +8,10 @@ from ._cython import cyfastcache
 logger = logging.getLogger(__name__)
 
 
+STORED = b"STORED"
+NOT_STORED = b"NOT_STORED"
+
+
 class MemcacheAsciiProtocol(asyncio.Protocol):
     """Memcache ascii protocol communication.
 
@@ -46,6 +50,9 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         logger.warning(f"Connection lost: {exc}")
 
     def data_received(self, data: bytes) -> None:
+        if self._parser is None:
+            raise RuntimeError(f"Receiving data when no parser is conifgured {data}")
+
         self._parser.feed_data(data)
 
     def close(self):
@@ -62,19 +69,48 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         self._parser = parser
         self._transport.write(data)
         await future
-        return parser.keys(), parser.values()
+        keys, values = parser.keys(), parser.values()
+        self._parser = None
+        return keys, values
 
-    async def set_cmd(self, key: bytes, value: bytes) -> bytes:
+    async def storage_command(
+        self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool
+    ) -> Optional[bytes]:
+
+        exptime_value = str(exptime).encode()
+        flags_value = str(flags).encode()
         len_value = str(len(value)).encode()
-        data = b"set " + key + b" 0 0 " + len_value + b"\r\n"
-        data += value
-        data += b"\r\n"
-        future = self._loop.create_future()
-        parser = cyfastcache.AsciiOneLineParser(future)
-        self._parser = parser
-        self._transport.write(data)
-        await future
-        return parser.value()
+        noreply_value = b"" if not noreply else b" noreply"
+
+        data = (
+            command
+            + b" "
+            + key
+            + b" "
+            + flags_value
+            + b" "
+            + exptime_value
+            + b" "
+            + len_value
+            + noreply_value
+            + b"\r\n"
+            + value
+            + b"\r\n"
+        )
+
+        if noreply:
+            # fire and forget
+            self._transport.write(data)
+            return None
+        else:
+            future = self._loop.create_future()
+            parser = cyfastcache.AsciiOneLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            value = parser.value()
+            self._parser = None
+            return value
 
 
 async def create_protocol(host: str, port: int, *, timeout: int = None) -> MemcacheAsciiProtocol:

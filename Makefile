@@ -34,7 +34,7 @@ unit:
 test: unit acceptance
 
 coverage:
-	coverage run -m pytest -v tests/unit --junitxml=build/test.xml
+	coverage run -m pytest -v tests/ --junitxml=build/test.xml
 	coverage xml -i -o build/coverage.xml
 	coverage report
 
