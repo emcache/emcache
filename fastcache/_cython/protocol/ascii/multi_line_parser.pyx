@@ -1,15 +1,18 @@
+cimport cython
 from libc.string cimport strncmp
 
 
 cdef const char* END = "END\r\n"
 
 
+@cython.freelist(32)
 cdef class AsciiMultiLineParser:
 
     def __cinit__(self, object future):
         self.buffer_ = bytearray()
         self.values_ = []
         self.keys_ = []
+        self.flags_ = []
 
     def __init__(self, future):
         self.future = future
@@ -55,6 +58,7 @@ cdef class AsciiMultiLineParser:
             _, key, flags, size = item.split(b" ")
             value_size = int(size)
             self.keys_.append(key)
+            self.flags_.append(int(flags))
 
             # skip the CRLF
             current_pos += 2
@@ -75,3 +79,6 @@ cdef class AsciiMultiLineParser:
 
     def values(self):
         return self.values_
+
+    def flags(self):
+        return self.flags_

@@ -77,10 +77,15 @@ class Client:
             async with node.connection() as connection:
                 return await connection.storage_command(command, key, value, flags, exptime, noreply)
 
-    async def get(self, key: bytes) -> Optional[bytes]:
+    async def get(self, key: bytes, return_flags=False) -> Optional[bytes]:
         """Return the value associated with the key.
 
-        If key is not found, a `None` value will be returned.
+        If `return_flags` is set to True, a tuple with the value
+        and the flags that were saved along the value will be returned.
+
+        If key is not found, a `None` value will be returned. If
+        `return_flags` is set to True, a tuple with two `Nones` will
+        be returned.
 
         If timeout is not disabled, an `asyncio.TimeoutError` will
         be returned in case of a timed out operation.
@@ -91,12 +96,18 @@ class Client:
         node = self._cluster.pick_node(key)
         async with OpTimeout(self._timeout, self._loop):
             async with node.connection() as connection:
-                keys, values = await connection.get_cmd(key)
+                keys, values, flags = await connection.get_cmd(key)
 
         if key not in keys:
-            return None
+            if not return_flags:
+                return None
+            else:
+                return None, None
         else:
-            return values[0]
+            if not return_flags:
+                return values[0]
+            else:
+                return values[0], flags[0]
 
     async def set(self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False) -> None:
         """Set a specific value for a given key.

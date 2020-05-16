@@ -1,5 +1,3 @@
-import time
-
 import pytest
 
 from fastcache import NotStoredStorageCommandError
@@ -8,27 +6,31 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestSet:
-    async def test_set(self, client):
-        key_and_value = str(time.time()).encode()
+    async def test_set(self, client, key_generation):
+        key_and_value = next(key_generation)
         await client.set(key_and_value, key_and_value)
 
         value_retrieved = await client.get(key_and_value)
-        assert key_and_value == value_retrieved
+        assert value_retrieved == key_and_value
 
-    @pytest.mark.xfail
-    async def test_set_flags(self, client):
-        raise Exception("Implement when flags for get method is implemented")
+    async def test_set_flags(self, client, key_generation):
+        key_and_value = next(key_generation)
+        await client.set(key_and_value, key_and_value, flags=1)
 
-    async def test_set_exptime(self, client):
-        key_and_value = str(time.time()).encode()
+        value_retrieved, flags_returned = await client.get(key_and_value, return_flags=True)
+        assert value_retrieved == key_and_value
+        assert flags_returned == 1
+
+    async def test_set_exptime(self, client, key_generation):
+        key_and_value = next(key_generation)
         await client.set(key_and_value, key_and_value, exptime=-1)
 
         value_retrieved = await client.get(key_and_value)
 
         assert value_retrieved is None
 
-    async def test_set_noreply(self, client):
-        key_and_value = str(time.time()).encode()
+    async def test_set_noreply(self, client, key_generation):
+        key_and_value = next(key_generation)
         await client.set(key_and_value, key_and_value, noreply=True)
 
         value_retrieved = await client.get(key_and_value)
@@ -36,8 +38,8 @@ class TestSet:
 
 
 class TestAdd:
-    async def test_add(self, client):
-        key_and_value = str(time.time()).encode()
+    async def test_add(self, client, key_generation):
+        key_and_value = next(key_generation)
         await client.add(key_and_value, key_and_value)
         value_retrieved = await client.get(key_and_value)
         assert key_and_value == value_retrieved
@@ -46,12 +48,16 @@ class TestAdd:
         with pytest.raises(NotStoredStorageCommandError):
             await client.add(key_and_value, key_and_value)
 
-    @pytest.mark.xfail
-    async def test_add_flags(self, client):
-        raise Exception("Implement when flags for get method is implemented")
+    async def test_add_flags(self, client, key_generation):
+        key_and_value = next(key_generation)
+        await client.add(key_and_value, key_and_value, flags=1)
+        value_retrieved, flags_returned = await client.get(key_and_value, return_flags=True)
 
-    async def test_add_exptime(self, client):
-        key_and_value = str(time.time()).encode()
+        assert value_retrieved == key_and_value
+        assert flags_returned == 1
+
+    async def test_add_exptime(self, client, key_generation):
+        key_and_value = next(key_generation)
         await client.add(key_and_value, key_and_value, exptime=-1)
         value_retrieved = await client.get(key_and_value)
         assert value_retrieved is None
@@ -59,17 +65,17 @@ class TestAdd:
         # add can be done again
         await client.add(key_and_value, key_and_value)
 
-    async def test_add_noreply(self, client):
-        key_and_value = str(time.time()).encode()
+    async def test_add_noreply(self, client, key_generation):
+        key_and_value = next(key_generation)
         await client.add(key_and_value, key_and_value, noreply=True)
 
         value_retrieved = await client.get(key_and_value)
-        assert key_and_value == value_retrieved
+        assert value_retrieved == key_and_value
 
 
 class TestReplace:
-    async def test_replace(self, client):
-        key_and_value = str(time.time()).encode()
+    async def test_replace(self, client, key_generation):
+        key_and_value = next(key_generation)
 
         # replace a value for a key that does not exist must fail
         with pytest.raises(NotStoredStorageCommandError):
@@ -80,14 +86,21 @@ class TestReplace:
         await client.replace(key_and_value, b"replace")
         value_retrieved = await client.get(key_and_value)
 
-        assert b"replace" == value_retrieved
+        assert value_retrieved == b"replace"
 
-    @pytest.mark.xfail
-    async def test_replace_flags(self, client):
-        raise Exception("Implement when flags for get method is implemented")
+    async def test_replace_flags(self, client, key_generation):
+        key_and_value = next(key_generation)
 
-    async def test_replace_exptime(self, client):
-        key_and_value = str(time.time()).encode()
+        # set the new key and replace the value.
+        await client.set(key_and_value, key_and_value)
+        await client.replace(key_and_value, b"replace", flags=1)
+        value_retrieved, flags_retrieved = await client.get(key_and_value, return_flags=True)
+
+        assert value_retrieved == b"replace"
+        assert flags_retrieved == 1
+
+    async def test_replace_exptime(self, client, key_generation):
+        key_and_value = next(key_generation)
 
         # set the new key and replace the value with exptime = -1
         # for having it expired inmediatly
@@ -96,8 +109,8 @@ class TestReplace:
         value_retrieved = await client.get(key_and_value)
         assert value_retrieved is None
 
-    async def test_replace_noreply(self, client):
-        key_and_value = str(time.time()).encode()
+    async def test_replace_noreply(self, client, key_generation):
+        key_and_value = next(key_generation)
 
         # set the new key and replace the value using noreply
         await client.set(key_and_value, key_and_value)
@@ -108,8 +121,8 @@ class TestReplace:
 
 
 class TestAppend:
-    async def test_append(self, client):
-        key_and_value = str(time.time()).encode()
+    async def test_append(self, client, key_generation):
+        key_and_value = next(key_generation)
 
         # append a value for a key that does not exist must fail
         with pytest.raises(NotStoredStorageCommandError):
@@ -123,12 +136,20 @@ class TestAppend:
         assert value_retrieved == key_and_value + b"append"
 
     @pytest.mark.xfail
-    async def test_append_flags(self, client):
-        raise Exception("Implement when flags for get method is implemented")
+    async def test_append_flags(self, client, key_generation):
+        key_and_value = next(key_generation)
+
+        # set the new key and append a value.
+        await client.set(key_and_value, key_and_value)
+        await client.append(key_and_value, b"append", flags=1)
+        value_retrieved, flags_retrieved = await client.get(key_and_value, return_flags=True)
+
+        assert value_retrieved == key_and_value + b"append"
+        assert flags_retrieved == 1
 
     @pytest.mark.xfail
-    async def test_append_exptime(self, client):
-        key_and_value = str(time.time()).encode()
+    async def test_append_exptime(self, client, key_generation):
+        key_and_value = next(key_generation)
 
         # set the new key and append a value with exptime = -1
         # for having it expired inmediately
@@ -138,8 +159,8 @@ class TestAppend:
 
         assert value_retrieved is None
 
-    async def test_append_noreply(self, client):
-        key_and_value = str(time.time()).encode()
+    async def test_append_noreply(self, client, key_generation):
+        key_and_value = next(key_generation)
 
         # set the new key and append a value.
         await client.set(key_and_value, key_and_value)
@@ -150,8 +171,8 @@ class TestAppend:
 
 
 class TestPrepend:
-    async def test_prepend(self, client):
-        key_and_value = str(time.time()).encode()
+    async def test_prepend(self, client, key_generation):
+        key_and_value = next(key_generation)
 
         # prepend a value for a key that does not exist must fail
         with pytest.raises(NotStoredStorageCommandError):
@@ -165,12 +186,20 @@ class TestPrepend:
         assert value_retrieved == b"prepend" + key_and_value
 
     @pytest.mark.xfail
-    async def test_prepend_flags(self, client):
-        raise Exception("Implement when flags for get method is implemented")
+    async def test_prepend_flags(self, client, key_generation):
+        key_and_value = next(key_generation)
+
+        # set the new key and prepend a value.
+        await client.set(key_and_value, key_and_value)
+        await client.prepend(key_and_value, b"prepend", flags=1)
+        value_retrieved, flags_retrieved = await client.get(key_and_value, return_flags=True)
+
+        assert value_retrieved == b"prepend" + key_and_value
+        assert flags_retrieved == 1
 
     @pytest.mark.xfail
-    async def test_prepend_exptime(self, client):
-        key_and_value = str(time.time()).encode()
+    async def test_prepend_exptime(self, client, key_generation):
+        key_and_value = next(key_generation)
 
         # set the new key and prepend a value with exptime = -1
         # for having it epxired inmediately
@@ -180,8 +209,8 @@ class TestPrepend:
 
         assert value_retrieved is None
 
-    async def test_prepend_noreply(self, client):
-        key_and_value = str(time.time()).encode()
+    async def test_prepend_noreply(self, client, key_generation):
+        key_and_value = next(key_generation)
 
         # set the new key and prepend a value.
         await client.set(key_and_value, key_and_value)

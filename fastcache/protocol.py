@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import socket
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 from ._cython import cyfastcache
 
@@ -62,16 +62,16 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         self._closed = True
         self._transport.close()
 
-    async def get_cmd(self, key: bytes) -> List[bytes]:
+    async def get_cmd(self, key: bytes) -> Tuple[List[bytes], List[bytes], List[int]]:
         data = b"get " + key + b"\r\n"
         future = self._loop.create_future()
         parser = cyfastcache.AsciiMultiLineParser(future)
         self._parser = parser
         self._transport.write(data)
         await future
-        keys, values = parser.keys(), parser.values()
+        keys, values, flags = parser.keys(), parser.values(), parser.flags()
         self._parser = None
-        return keys, values
+        return keys, values, flags
 
     async def storage_command(
         self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool
