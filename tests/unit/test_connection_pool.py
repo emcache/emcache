@@ -247,7 +247,6 @@ class TestConnectionPool:
         async def coro(connection_context, raise_exception=False):
             async with connection_context as _:
                 if raise_exception:
-                    print("raising exception")
                     raise Exception()
 
         # Try to get a connection many times. The first one will

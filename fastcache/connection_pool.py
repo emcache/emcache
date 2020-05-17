@@ -158,12 +158,8 @@ class ConnectionPool:
         while len(unused_connections) > 0:
             connection = unused_connections.pop()
             if connection.closed() is False:
-                print("!" * 30)
-                print(connection)
                 return ConnectionContext(self, connection, None)
 
-            print("*" * 30)
-            print(connection)
             self._stats_connections_unexpectedly_closed += 1
             self._close_connection(connection)
 
