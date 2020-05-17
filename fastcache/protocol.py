@@ -45,16 +45,8 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         logger.debug("Connection made")
 
     def connection_lost(self, exc) -> None:
-        if self._closed:
-            return
-
         logger.warning(f"Connection lost: {exc}")
-
-    def data_received(self, data: bytes) -> None:
-        if self._parser is None:
-            raise RuntimeError(f"Receiving data when no parser is conifgured {data}")
-
-        self._parser.feed_data(data)
+        self.close()
 
     def close(self):
         if self._closed:
@@ -63,16 +55,30 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         self._closed = True
         self._transport.close()
 
+    def eof_received(self):
+        self.close()
+
+    def closed(self) -> bool:
+        return self._closed
+
+    def data_received(self, data: bytes) -> None:
+        if self._parser is None:
+            raise RuntimeError(f"Receiving data when no parser is conifgured {data}")
+
+        self._parser.feed_data(data)
+
     async def fetch_command(self, cmd: bytes, key: bytes) -> Tuple[List[bytes], List[bytes], List[int], List[int]]:
-        data = cmd + b" " + key + b"\r\n"
-        future = self._loop.create_future()
-        parser = cyfastcache.AsciiMultiLineParser(future)
-        self._parser = parser
-        self._transport.write(data)
-        await future
-        keys, values, flags, cas = parser.keys(), parser.values(), parser.flags(), parser.cas()
-        self._parser = None
-        return keys, values, flags, cas
+        try:
+            data = cmd + b" " + key + b"\r\n"
+            future = self._loop.create_future()
+            parser = cyfastcache.AsciiMultiLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            keys, values, flags, cas = parser.keys(), parser.values(), parser.flags(), parser.cas()
+            return keys, values, flags, cas
+        finally:
+            self._parser = None
 
     async def storage_command(
         self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool, cas: Optional[int]
@@ -108,15 +114,17 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             # fire and forget
             self._transport.write(data)
             return None
-        else:
+
+        try:
             future = self._loop.create_future()
             parser = cyfastcache.AsciiOneLineParser(future)
             self._parser = parser
             self._transport.write(data)
             await future
             result = parser.value()
-            self._parser = None
             return result
+        finally:
+            self._parser = None
 
 
 async def create_protocol(host: str, port: int, *, timeout: int = None) -> MemcacheAsciiProtocol:

@@ -64,6 +64,7 @@ class TestMemcacheAsciiProtocol:
         assert cas == [None]
 
         protocol._transport.write.assert_called_with(b"get foo\r\n")
+        assert protocol._parser is None
 
     async def test_fetch_command_with_cas(self, event_loop, protocol):
         async def coro():
@@ -82,6 +83,21 @@ class TestMemcacheAsciiProtocol:
         assert cas == [1]
 
         protocol._transport.write.assert_called_with(b"gets foo\r\n")
+
+    async def test_fetch_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.fetch_command(b"get", b"foo")
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        #  check that the protocol is yes or yes set to None
+        assert protocol._parser is None
 
     async def test_storage_command(self, event_loop, protocol):
         async def coro():
@@ -105,6 +121,20 @@ class TestMemcacheAsciiProtocol:
     async def test_storage_command_with_cas(self, event_loop, protocol):
         await protocol.storage_command(b"cas", b"foo", b"value", 0, 0, True, cas=1)
         protocol._transport.write.assert_called_with(b"cas foo 0 0 5 1 noreply\r\nvalue\r\n")
+
+    async def test_storage_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.storage_command(b"set", b"foo", b"value", 0, 0, False, cas=None)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        assert protocol._parser is None
 
 
 async def test_create_protocol(event_loop, mocker):

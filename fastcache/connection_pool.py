@@ -2,6 +2,7 @@ import asyncio
 import logging
 import time
 from collections import deque
+from random import randint
 from typing import Dict, Optional
 
 from .default_values import DEFAULT_CONNECTION_TIMEOUT, DEFAULT_MAX_CONNECTIONS, DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER
@@ -19,9 +20,11 @@ class ConnectionPool:
     _loop: asyncio.AbstractEventLoop
     _creating_connection_task: Optional[asyncio.Task]
     _create_connection_in_progress: bool
-    _connections_waited: int
+    _stats_connections_waited: int
     _connections_last_time_used: Dict[MemcacheAsciiProtocol, float]
     _purge_unused_connections_after: Optional[int]
+    _total_purged_connections: int
+    _stats_closed_connections: int
     _connection_timeout: Optional[float]
 
     def __init__(
@@ -41,6 +44,7 @@ class ConnectionPool:
         # attributes used for handling connections and waiters
         self._total_connections = 0
         self._stats_connections_waited = 0
+        self._stats_connections_unexpectedly_closed = 0
         self._max_connections = max_connections
         self._waiters = deque()
         self._unused_connections = deque(maxlen=max_connections)
@@ -62,6 +66,18 @@ class ConnectionPool:
     def __repr__(self):
         return str(self)
 
+    def _close_connection(self, connection):
+        """ Performs all of the operations needed for closing a connection. """
+        connection.close()
+
+        if connection in self._unused_connections:
+            self._unused_connections.remove(connection)
+
+        if connection in self._connections_last_time_used:
+            del self._connections_last_time_used[connection]
+
+        self._total_connections -= 1
+
     def _purge_unused_connections(self):
         """ Iterate over all of the connections and see which ones have not
         been used recently and if its the case close and remove them.
@@ -71,15 +87,7 @@ class ConnectionPool:
             if last_time_used + self._purge_unused_connections_after > now:
                 continue
 
-            # Close the connection
-            connection.close()
-
-            # Remove it from all of class attributes
-            self._unused_connections.remove(connection)
-            del self._connections_last_time_used[connection]
-
-            # update the stats
-            self._total_connections -= 1
+            self._close_connection(connection)
             self._total_purged_connections += 1
             logger.info(f"{self} Connection purged")
 
@@ -100,10 +108,14 @@ class ConnectionPool:
         else:
             self._unused_connections.append(connection)
 
-    async def _create_new_connection(self) -> None:
+    async def _create_new_connection(self, jitter=None) -> None:
         """ Creates a new connection in background, and once its ready
         adds it to the poool.
         """
+        if jitter is not None:
+            await asyncio.sleep(jitter)
+
+        connection = None
         try:
             connection = await create_protocol(self._host, self._port, timeout=self._connection_timeout)
             self._connections_last_time_used[connection] = time.monotonic()
@@ -116,6 +128,22 @@ class ConnectionPool:
             logger.warning(f"{self} new connection could not be created, an error ocurred {exc}")
         finally:
             self._creating_connection = False
+
+            if connection is None:
+                self._maybe_new_connection(jitter=randint(1, 10) / 10)
+
+    def _maybe_new_connection(self, jitter=None) -> None:
+        # We kick off another connection if the following conditions are meet
+        # - there is still room for having more connections
+        # - there is no an ongoing creation of a connection.
+        # - there are waiters
+        if (
+            self._creating_connection is False
+            and self._total_connections < self._max_connections
+            and len(self._waiters) > 0
+        ):
+            self._creating_connection = True
+            self._creating_connection_task = self._loop.create_task(self._create_new_connection(jitter=jitter))
 
     def create_connection_context(self) -> "BaseConnectionContext":
         """ Returns a connection context that might provide a connection
@@ -131,20 +159,22 @@ class ConnectionPool:
         waiter = self._loop.create_future()
         self._waiters.append(waiter)
 
-        # We kick off another connection if there is still room for having more connections
-        # in the pool and there is no an ongoing creation of a connection.
-        if self._creating_connection is False and self._total_connections < self._max_connections:
-            self._creating_connection = True
-            self._creating_connection_task = self._loop.create_task(self._create_new_connection())
+        self._maybe_new_connection()
 
         self._stats_connections_waited += 1
         return WaitingForAConnectionContext(self, None, waiter)
 
     # Below methods are used by the _BaseConnectionContext and derivated classes.
 
-    def release_connection(self, connection: MemcacheAsciiProtocol):
+    def release_connection(self, connection: MemcacheAsciiProtocol, *, exc: Exception = None):
         """ Returns back to the pool a connection."""
-        self._wakeup_next_waiter_or_append_to_unused(connection)
+        if exc or connection.closed():
+            logger.warning(f"{self} Closing connection and removing from the pool due to exception {exc}")
+            self._close_connection(connection)
+            self._stats_connections_unexpectedly_closed += 1
+            self._maybe_new_connection()
+        else:
+            self._wakeup_next_waiter_or_append_to_unused(connection)
 
     def remove_waiter(self, waiter: asyncio.Future):
         "" "Remove a specifici waiter" ""
@@ -154,6 +184,11 @@ class ConnectionPool:
     def stats_connections_waited(self) -> int:
         value = self._stats_connections_waited
         self._stats_connections_waited = 0
+        return value
+
+    def stats_connections_unexpectedly_closed(self) -> int:
+        value = self._stats_connections_unexpectedly_closed
+        self._stats_connections_unexpectedly_closed = 0
         return value
 
 
@@ -185,7 +220,7 @@ class BaseConnectionContext:
         raise NotImplementedError
 
     async def __aexit__(self, fexc_type, exc, tb) -> None:
-        self._connection_pool.release_connection(self._connection)
+        self._connection_pool.release_connection(self._connection, exc=exc)
 
 
 class ConnectionContext(BaseConnectionContext):
