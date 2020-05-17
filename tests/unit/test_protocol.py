@@ -47,35 +47,64 @@ class TestMemcacheAsciiProtocol:
 
         protocol._transport.close.assert_called_once()
 
-    async def test_get_cmd(self, event_loop, protocol):
+    async def test_fetch_command(self, event_loop, protocol):
         async def coro():
-            await protocol.get_cmd(b"foo")
+            return await protocol.fetch_command(b"get", b"foo")
 
         task = event_loop.create_task(coro())
         await asyncio.sleep(0)
 
         protocol.data_received(b"VALUE foo 0 5\r\nvalue\r\nEND\r\n")
 
-        await task
+        keys, values, flags, cas = await task
+
+        assert keys == [b"foo"]
+        assert values == [b"value"]
+        assert flags == [0]
+        assert cas == [None]
 
         protocol._transport.write.assert_called_with(b"get foo\r\n")
 
+    async def test_fetch_command_with_cas(self, event_loop, protocol):
+        async def coro():
+            return await protocol.fetch_command(b"gets", b"foo")
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"VALUE foo 0 5 1\r\nvalue\r\nEND\r\n")
+
+        keys, values, flags, cas = await task
+
+        assert keys == [b"foo"]
+        assert values == [b"value"]
+        assert flags == [0]
+        assert cas == [1]
+
+        protocol._transport.write.assert_called_with(b"gets foo\r\n")
+
     async def test_storage_command(self, event_loop, protocol):
         async def coro():
-            await protocol.storage_command(b"set", b"foo", b"value", 0, 0, False)
+            return await protocol.storage_command(b"set", b"foo", b"value", 0, 0, False, cas=None)
 
         task = event_loop.create_task(coro())
         await asyncio.sleep(0)
 
         protocol.data_received(b"STORED\r\n")
 
-        await task
+        result = await task
+
+        assert result == b"STORED"
 
         protocol._transport.write.assert_called_with(b"set foo 0 0 5\r\nvalue\r\n")
 
     async def test_storage_command_noreply(self, event_loop, protocol):
-        await protocol.storage_command(b"set", b"foo", b"value", 0, 0, True)
+        await protocol.storage_command(b"set", b"foo", b"value", 0, 0, True, cas=None)
         protocol._transport.write.assert_called_with(b"set foo 0 0 5 noreply\r\nvalue\r\n")
+
+    async def test_storage_command_with_cas(self, event_loop, protocol):
+        await protocol.storage_command(b"cas", b"foo", b"value", 0, 0, True, cas=1)
+        protocol._transport.write.assert_called_with(b"cas foo 0 0 5 1 noreply\r\nvalue\r\n")
 
 
 async def test_create_protocol(event_loop, mocker):

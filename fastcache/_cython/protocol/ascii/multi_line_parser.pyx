@@ -13,6 +13,7 @@ cdef class AsciiMultiLineParser:
         self.values_ = []
         self.keys_ = []
         self.flags_ = []
+        self.cas_ = []
 
     def __init__(self, future):
         self.future = future
@@ -39,6 +40,7 @@ cdef class AsciiMultiLineParser:
 
     cdef void _parse(self, int len_):
         cdef bytes item
+        cdef list items
         cdef bytes value
         cdef int start_line_pos = 0
         cdef int current_pos = 0
@@ -53,9 +55,20 @@ cdef class AsciiMultiLineParser:
                 continue
 
             # End of line found, item found
-
             item = <bytes> c_buffer[start_line_pos:current_pos]
-            _, key, flags, size = item.split(b" ")
+            items = item.split(b" ")
+
+            key = items[1]
+            flags = items[2]
+            size = items[3]
+
+            # Cas is provided if it exists only gets method is used
+            if len(items) == 5:
+                cas = items[4]
+                self.cas_.append(int(cas))
+            else:
+                self.cas_.append(None)
+
             value_size = int(size)
             self.keys_.append(key)
             self.flags_.append(int(flags))
@@ -82,3 +95,6 @@ cdef class AsciiMultiLineParser:
 
     def flags(self):
         return self.flags_
+
+    def cas(self):
+        return self.cas_

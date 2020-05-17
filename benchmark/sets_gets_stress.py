@@ -84,7 +84,7 @@ async def main():
     client = Client(
         "localhost",
         11211,
-        # Handle timeouts is not for free, ~20% of
+        # Handle timeouts is not for free, ~10% of
         #  degradation, for the benchmark we disable the
         # usage of timeouts.
         timeout=None,

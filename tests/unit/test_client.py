@@ -2,8 +2,10 @@ import asyncio
 from unittest.mock import ANY, Mock
 
 import pytest
+from asynctest import CoroutineMock, MagicMock as AsyncMagicMock
 
-from fastcache.client import OpTimeout
+from fastcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, Client, OpTimeout
+from fastcache.client_errors import StorageCommandError
 
 pytestmark = pytest.mark.asyncio
 
@@ -61,3 +63,36 @@ class TestOpTimeout:
                 raise Exception
 
         timer_handler.cancel.assert_called()
+
+
+class TestClient:
+    """ Only none happy path tests, happy path tests are
+    covered as acceptance test.
+    """
+
+    @pytest.fixture
+    async def client(sel, event_loop, mocker):
+        mocker.patch("fastcache.client.Cluster")
+        return Client("localhost", 11211)
+
+    async def test_max_allowed_cas_value(self, client):
+        with pytest.raises(ValueError):
+            await client.cas(b"foo", b"value", MAX_ALLOWED_CAS_VALUE + 1)
+
+    async def test_max_allowed_flag_value(self, client):
+        with pytest.raises(ValueError):
+            await client.set(b"foo", b"value", flags=MAX_ALLOWED_FLAG_VALUE + 1)
+
+    @pytest.mark.parametrize("command", ["set", "add", "replace", "append", "replace"])
+    async def test_not_stored_error_storage_command(self, client, command):
+        # patch what is necesary for returnning an error string
+        connection = CoroutineMock()
+        connection.storage_command = CoroutineMock(return_value=b"ERROR")
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        with pytest.raises(StorageCommandError):
+            f = getattr(client, command)
+            await f(b"foo", b"value")

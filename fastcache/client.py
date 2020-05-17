@@ -6,12 +6,13 @@ from ._cython import cyfastcache
 from .client_errors import NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster
 from .default_values import DEFAULT_TIMEOUT
-from .protocol import NOT_STORED, STORED
+from .protocol import EXISTS, NOT_STORED, STORED
 
 logger = logging.getLogger(__name__)
 
 
 MAX_ALLOWED_FLAG_VALUE = 2 ** 16
+MAX_ALLOWED_CAS_VALUE = 2 ** 64
 
 
 class OpTimeout:
@@ -61,11 +62,14 @@ class Client:
         self._timeout = timeout
 
     async def _storage_command(
-        self, command: bin, key: bin, value: bin, flags: int, exptime: int, noreply: bool
+        self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool, cas: int = None
     ) -> None:
-        """ Intermediate function used for all storage commands `add`, `set`,
+        """ Proxy function used for all storage commands `add`, `set`,
         `replace`, `append` and `prepend`.
         """
+        if cas is not None and cas > MAX_ALLOWED_CAS_VALUE:
+            raise ValueError(f"flags can not be higher than {MAX_ALLOWED_FLAG_VALUE}")
+
         if flags > MAX_ALLOWED_FLAG_VALUE:
             raise ValueError(f"flags can not be higher than {MAX_ALLOWED_FLAG_VALUE}")
 
@@ -75,7 +79,17 @@ class Client:
         node = self._cluster.pick_node(key)
         async with OpTimeout(self._timeout, self._loop):
             async with node.connection() as connection:
-                return await connection.storage_command(command, key, value, flags, exptime, noreply)
+                return await connection.storage_command(command, key, value, flags, exptime, noreply, cas)
+
+    async def _fetch_command(self, command: bytes, key: bytes) -> Optional[bytes]:
+        """ Proxy function used for all fetch commands `get`, `gets`. """
+        if cyfastcache.is_key_valid(key) is False:
+            raise ValueError("Key has invalid charcters")
+
+        node = self._cluster.pick_node(key)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                return await connection.fetch_command(command, key)
 
     async def get(self, key: bytes, return_flags=False) -> Optional[bytes]:
         """Return the value associated with the key.
@@ -90,13 +104,7 @@ class Client:
         If timeout is not disabled, an `asyncio.TimeoutError` will
         be returned in case of a timed out operation.
         """
-        if cyfastcache.is_key_valid(key) is False:
-            raise ValueError("Key has invalid charcters")
-
-        node = self._cluster.pick_node(key)
-        async with OpTimeout(self._timeout, self._loop):
-            async with node.connection() as connection:
-                keys, values, flags = await connection.get_cmd(key)
+        keys, values, flags, _ = await self._fetch_command(b"get", key)
 
         if key not in keys:
             if not return_flags:
@@ -108,6 +116,32 @@ class Client:
                 return values[0]
             else:
                 return values[0], flags[0]
+
+    async def gets(self, key: bytes, return_flags=False) -> Optional[bytes]:
+        """Return the value associated with the key and its cass value.
+
+        If `return_flags` is set to True, a tuple with the value
+        the cas and the flags that were saved along the value will be returned.
+
+        If key is not found, a (`None`, `None`) value will be returned. If
+        `return_flags` is set to True, a tuple with three `Nones` will
+        be returned.
+
+        If timeout is not disabled, an `asyncio.TimeoutError` will
+        be returned in case of a timed out operation.
+        """
+        keys, values, flags, cas = await self._fetch_command(b"gets", key)
+
+        if key not in keys:
+            if not return_flags:
+                return None, None
+            else:
+                return None, None, None
+        else:
+            if not return_flags:
+                return values[0], cas[0]
+            else:
+                return values[0], cas[0], flags[0]
 
     async def set(self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False) -> None:
         """Set a specific value for a given key.
@@ -218,6 +252,27 @@ class Client:
         result = await self._storage_command(b"prepend", key, value, flags, exptime, noreply)
 
         if not noreply and result == NOT_STORED:
+            raise NotStoredStorageCommandError()
+        elif not noreply and result != STORED:
+            raise StorageCommandError(f"Command finished with error, response returned {result}")
+
+    async def cas(
+        self, key: bytes, value: bytes, cas: int, *, flags: int = 0, exptime: int = 0, noreply: bool = False
+    ) -> None:
+        """Update a specific value for a given key using a cas
+        value, if cas value does not match with the server one
+        command will fail.
+
+        If command fails a `StorageCommandError` is raised, however
+        when `noreply` option is used there is no ack from the Memcached
+        server, not raising any command error.
+
+        Take a look at the `set` command for parameters description.
+        use the documentation of that method.
+        """
+        result = await self._storage_command(b"cas", key, value, flags, exptime, noreply, cas=cas)
+
+        if not noreply and result == EXISTS:
             raise NotStoredStorageCommandError()
         elif not noreply and result != STORED:
             raise StorageCommandError(f"Command finished with error, response returned {result}")

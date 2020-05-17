@@ -8,6 +8,7 @@ from ._cython import cyfastcache
 logger = logging.getLogger(__name__)
 
 
+EXISTS = b"EXISTS"
 STORED = b"STORED"
 NOT_STORED = b"NOT_STORED"
 
@@ -62,25 +63,30 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         self._closed = True
         self._transport.close()
 
-    async def get_cmd(self, key: bytes) -> Tuple[List[bytes], List[bytes], List[int]]:
-        data = b"get " + key + b"\r\n"
+    async def fetch_command(self, cmd: bytes, key: bytes) -> Tuple[List[bytes], List[bytes], List[int], List[int]]:
+        data = cmd + b" " + key + b"\r\n"
         future = self._loop.create_future()
         parser = cyfastcache.AsciiMultiLineParser(future)
         self._parser = parser
         self._transport.write(data)
         await future
-        keys, values, flags = parser.keys(), parser.values(), parser.flags()
+        keys, values, flags, cas = parser.keys(), parser.values(), parser.flags(), parser.cas()
         self._parser = None
-        return keys, values, flags
+        return keys, values, flags, cas
 
     async def storage_command(
-        self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool
+        self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool, cas: Optional[int]
     ) -> Optional[bytes]:
 
         exptime_value = str(exptime).encode()
         flags_value = str(flags).encode()
         len_value = str(len(value)).encode()
-        noreply_value = b"" if not noreply else b" noreply"
+
+        if cas:
+            cas_value = str(cas).encode()
+            extra = b" " + cas_value if not noreply else b" " + cas_value + b" noreply"
+        else:
+            extra = b"" if not noreply else b" noreply"
 
         data = (
             command
@@ -92,7 +98,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             + exptime_value
             + b" "
             + len_value
-            + noreply_value
+            + extra
             + b"\r\n"
             + value
             + b"\r\n"
@@ -108,9 +114,9 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             self._parser = parser
             self._transport.write(data)
             await future
-            value = parser.value()
+            result = parser.value()
             self._parser = None
-            return value
+            return result
 
 
 async def create_protocol(host: str, port: int, *, timeout: int = None) -> MemcacheAsciiProtocol:
