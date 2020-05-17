@@ -152,9 +152,20 @@ class ConnectionPool:
         Behind the scenes will try to make grow the pool when there
         are no connections available.
         """
-        if len(self._unused_connections) > 0:
-            connection = self._unused_connections.pop()
-            return ConnectionContext(self, connection, None)
+        # Try to get an unused and none closed connection, otherwise
+        # closed conections need to be removed.
+        unused_connections = self._unused_connections
+        while len(unused_connections) > 0:
+            connection = unused_connections.pop()
+            if connection.closed() is False:
+                print("!" * 30)
+                print(connection)
+                return ConnectionContext(self, connection, None)
+
+            print("*" * 30)
+            print(connection)
+            self._stats_connections_unexpectedly_closed += 1
+            self._close_connection(connection)
 
         waiter = self._loop.create_future()
         self._waiters.append(waiter)

@@ -180,6 +180,27 @@ class TestConnectionPool:
         # check that we have called the create_protocol just once
         create_protocol.assert_called_once()
 
+    async def test_connection_context_not_use_a_closed_connections(self, event_loop, mocker, not_closed_connection):
+        # Checks that if a connection is in closed state its not used and purged.
+        connection_closed = Mock()
+        connection_closed.closed.return_value = True
+
+        connection_pool = ConnectionPool("localhost", 11211, max_connections=2)
+
+        # we add by hand a closed connection and a none closed one to the pool
+        connection_pool._unused_connections.append(not_closed_connection)
+        connection_pool._unused_connections.append(connection_closed)
+
+        connection_context = connection_pool.create_connection_context()
+
+        async with connection_context as connection:
+            assert connection is not_closed_connection
+
+        # double check that the closed one has been removed and the none closed
+        # one is still there.
+        assert not_closed_connection in connection_pool._unused_connections
+        assert connection_closed not in connection_pool._unused_connections
+
     async def test_connection_context_create_connection_if_closed(
         self, event_loop, mocker, minimal_connection_pool, not_closed_connection
     ):
