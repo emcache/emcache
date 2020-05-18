@@ -26,7 +26,7 @@ cdef unsigned int _hash(bytes data):
     return result
 
 
-def node_selection(bytes key, list rendezvous_nodes) -> object:
+cpdef node_selection(bytes key, list rendezvous_nodes):
     """Find the node for a specific key.
 
     Follows the Rendezvou algorithm, with all of the nodes
@@ -64,3 +64,26 @@ def node_selection(bytes key, list rendezvous_nodes) -> object:
                 high_score_rdz_node = rdz_node
 
     return high_score_rdz_node.node
+
+def nodes_selection(object keys, list rendezvous_nodes) -> dict:
+    """Find the nodes for a specific list of keys.
+
+    For each key it uses the C version of `node_selection` function.
+    """
+    cdef object node
+    cdef dict result
+
+    result = {}
+
+    if len(rendezvous_nodes) == 1:
+        result[rendezvous_nodes[0].node] = list(keys)
+        return result
+
+    for key in keys:
+        node = node_selection(key, rendezvous_nodes)
+        if node in result:
+            result[node].append(key)
+        else:
+            result[node] = [key]
+
+    return result

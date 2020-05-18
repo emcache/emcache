@@ -1,6 +1,11 @@
 version: '2'
 services:
-  memcached:
+  memcached1:
     image: memcached
     ports:
       - "11211:11211"
+  memcached2:
+    image: memcached
+    command: ['-p', '11212']
+    ports:
+      - "11212:11212"

@@ -1,5 +1,5 @@
 import logging
-from typing import List, Tuple
+from typing import Dict, List, Sequence, Tuple
 
 from ._cython import cyfastcache
 from .node import Node
@@ -19,7 +19,7 @@ class Cluster:
     _nodes: List[Node]
     _rdz_nodes: List[cyfastcache.RendezvousNode]
 
-    def __init__(self, node_addresses: List[Tuple[str, int]]) -> None:
+    def __init__(self, node_addresses: Sequence[Tuple[str, int]]) -> None:
 
         # Create nodes and configure them to be used by the Rendezvous
         # hashing.
@@ -36,3 +36,16 @@ class Cluster:
         do not change.
         """
         return cyfastcache.node_selection(key, self._rdz_nodes)
+
+    def pick_nodes(self, keys: bytes) -> Dict[Node, List[bytes]]:
+        """Return the most appropiate nodes for the given keys.
+
+        Return value is a dictionary where nodes stand for keys
+        and values are the list of keys that would need to be used
+        for that node.
+
+        Nodes selected will be resolved by the Rendezvous hashing
+        algorithm, which will be idempotent when the cluster nodes
+        do not change.
+        """
+        return cyfastcache.nodes_selection(keys, self._rdz_nodes)

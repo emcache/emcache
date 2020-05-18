@@ -49,7 +49,7 @@ class TestMemcacheAsciiProtocol:
 
     async def test_fetch_command(self, event_loop, protocol):
         async def coro():
-            return await protocol.fetch_command(b"get", b"foo")
+            return await protocol.fetch_command(b"get", [b"foo"])
 
         task = event_loop.create_task(coro())
         await asyncio.sleep(0)
@@ -68,7 +68,7 @@ class TestMemcacheAsciiProtocol:
 
     async def test_fetch_command_with_cas(self, event_loop, protocol):
         async def coro():
-            return await protocol.fetch_command(b"gets", b"foo")
+            return await protocol.fetch_command(b"gets", [b"foo"])
 
         task = event_loop.create_task(coro())
         await asyncio.sleep(0)
@@ -86,7 +86,7 @@ class TestMemcacheAsciiProtocol:
 
     async def test_fetch_command_with_error(self, event_loop, protocol):
         async def coro():
-            return await protocol.fetch_command(b"get", b"foo")
+            return await protocol.fetch_command(b"get", [b"foo"])
 
         task = event_loop.create_task(coro())
         await asyncio.sleep(0)

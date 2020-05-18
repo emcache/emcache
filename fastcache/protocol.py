@@ -67,9 +67,11 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
         self._parser.feed_data(data)
 
-    async def fetch_command(self, cmd: bytes, key: bytes) -> Tuple[List[bytes], List[bytes], List[int], List[int]]:
+    async def fetch_command(
+        self, cmd: bytes, keys: Tuple[bytes]
+    ) -> Tuple[List[bytes], List[bytes], List[int], List[int]]:
         try:
-            data = cmd + b" " + key + b"\r\n"
+            data = cmd + b" " + b" ".join(keys) + b"\r\n"
             future = self._loop.create_future()
             parser = cyfastcache.AsciiMultiLineParser(future)
             self._parser = parser

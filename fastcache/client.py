@@ -1,11 +1,12 @@
 import asyncio
 import logging
-from typing import Optional
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 from ._cython import cyfastcache
 from .client_errors import NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster
 from .default_values import DEFAULT_TIMEOUT
+from .node import Node
 from .protocol import EXISTS, NOT_STORED, STORED
 
 logger = logging.getLogger(__name__)
@@ -56,9 +57,12 @@ class Client:
     _timeout: Optional[float]
     _loop: asyncio.AbstractEventLoop
 
-    def __init__(self, host: str, port: int, timeout: float = DEFAULT_TIMEOUT) -> None:
+    def __init__(self, node_addresses: Sequence[Tuple[str, int]], timeout: float = DEFAULT_TIMEOUT) -> None:
+        if not node_addresses:
+            raise ValueError("At least one memcached hosts needs to be provided")
+
         self._loop = asyncio.get_running_loop()
-        self._cluster = Cluster([(host, port)])
+        self._cluster = Cluster(node_addresses)
         self._timeout = timeout
 
     async def _storage_command(
@@ -89,7 +93,7 @@ class Client:
         node = self._cluster.pick_node(key)
         async with OpTimeout(self._timeout, self._loop):
             async with node.connection() as connection:
-                return await connection.fetch_command(command, key)
+                return await connection.fetch_command(command, (key,))
 
     async def get(self, key: bytes, return_flags=False) -> Optional[bytes]:
         """Return the value associated with the key.
@@ -142,6 +146,54 @@ class Client:
                 return values[0], cas[0]
             else:
                 return values[0], cas[0], flags[0]
+
+    async def get_many(
+        self, keys: Sequence[bytes], return_flags=False
+    ) -> Dict[bytes, Union[bytes, Tuple[bytes, bytes]]]:
+        """Return the values associated with the keys.
+
+        If a key is not found, the key won't be added to the result.
+
+        If timeout is not disabled, an `asyncio.TimeoutError` will
+        be raised in case of a timed out operation, all pending
+        and finished operations will be discarded.
+        """
+        if not keys:
+            return {}
+
+        for key in keys:
+            if cyfastcache.is_key_valid(key) is False:
+                raise ValueError("Key has invalid charcters")
+
+        async def node_operation(node: Node, keys: List[bytes]):
+            async with node.connection() as connection:
+                return await connection.fetch_command(b"get", keys)
+
+        tasks = [
+            self._loop.create_task(node_operation(node, keys)) for node, keys in self._cluster.pick_nodes(keys).items()
+        ]
+
+        async with OpTimeout(self._timeout, self._loop):
+            try:
+                await asyncio.gather(*tasks)
+            except Exception:
+                # Any exception will invalidate any ongoing
+                # task.
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                raise
+
+        results = {}
+        for task in tasks:
+            keys, values, flags, _ = task.result()
+            for idx in range(len(keys)):
+                if not return_flags:
+                    results[keys[idx]] = values[idx]
+                else:
+                    results[keys[idx]] = (values[idx], flags[idx])
+
+        return results
 
     async def set(self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False) -> None:
         """Set a specific value for a given key.

@@ -1,6 +1,11 @@
+import time
+
 import pytest
 
 pytestmark = pytest.mark.asyncio
+
+
+NUM_MANY_KEYS = 100
 
 
 class TestGet:
@@ -59,3 +64,56 @@ class TestGets:
         assert value_retrieved is None
         assert cas_retrieved is None
         assert flags_retrieved is None
+
+
+class TestGetMany:
+    async def test_get_many(self, client, key_generation):
+        keys_and_values = [next(key_generation) for _ in range(NUM_MANY_KEYS)]
+
+        for key_and_value in keys_and_values:
+            await client.set(key_and_value, key_and_value)
+
+        keys_and_values_retrieved = await client.get_many(keys_and_values)
+
+        # Check that all keys are retrieved and they have the right values
+        assert all(map(lambda k: k in keys_and_values_retrieved, keys_and_values))
+        assert all(map(lambda k: keys_and_values_retrieved[k] == k, keys_and_values))
+
+    async def test_get_return_flags(self, client, key_generation):
+        keys_and_values = [next(key_generation) for _ in range(NUM_MANY_KEYS)]
+
+        for key_and_value in keys_and_values:
+            await client.set(key_and_value, key_and_value, flags=1)
+
+        keys_and_values_retrieved = await client.get_many(keys_and_values, return_flags=True)
+
+        # Check that all keys are retrieved and they have the right values and flags
+        assert all(map(lambda k: k in keys_and_values_retrieved, keys_and_values))
+        assert all(map(lambda k: keys_and_values_retrieved[k][0] == k, keys_and_values))
+        assert all(map(lambda k: keys_and_values_retrieved[k][1] == 1, keys_and_values))
+
+    async def test_get_many_with_not_found_keys(self, client, key_generation):
+        keys_and_values = [next(key_generation) for _ in range(NUM_MANY_KEYS)]
+
+        for key_and_value in keys_and_values:
+            await client.set(key_and_value, key_and_value)
+
+        # we add two keys that should not be present, one at the beginning, one
+        # at the middle and one at the end of the list
+        not_found_key1 = str(time.time()) + "not_found_1"
+        not_found_key2 = str(time.time()) + "not_found_2"
+        not_found_key3 = str(time.time()) + "not_found_3"
+        keys = (
+            [not_found_key1.encode()]
+            + keys_and_values[: int(len(keys_and_values) / 2)]
+            + [not_found_key2.encode()]
+            + keys_and_values[int(len(keys_and_values) / 2) :]  # noqa: E203
+            + [not_found_key3.encode()]
+        )
+
+        keys_and_values_retrieved = await client.get_many(keys)
+
+        # Check that all keys are retrieved and they have the right values, not
+        # found keys should basically no appear int the result
+        assert all(map(lambda k: k in keys_and_values_retrieved, keys_and_values))
+        assert all(map(lambda k: keys_and_values_retrieved[k] == k, keys_and_values))

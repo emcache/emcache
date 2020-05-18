@@ -7,7 +7,7 @@ from fastcache import Client
 
 @pytest.fixture
 async def client(event_loop):
-    return Client("localhost", 11211)
+    return Client([("localhost", 11211), ("localhost", 11212)])
 
 
 @pytest.fixture(scope="session")

@@ -73,7 +73,11 @@ class TestClient:
     @pytest.fixture
     async def client(sel, event_loop, mocker):
         mocker.patch("fastcache.client.Cluster")
-        return Client("localhost", 11211)
+        return Client([("localhost", 11211)])
+
+    async def test_invalid_host_addresses(self):
+        with pytest.raises(ValueError):
+            Client([])
 
     async def test_max_allowed_cas_value(self, client):
         with pytest.raises(ValueError):
