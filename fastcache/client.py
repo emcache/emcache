@@ -95,6 +95,38 @@ class Client:
             async with node.connection() as connection:
                 return await connection.fetch_command(command, (key,))
 
+    async def _fetch_many_command(
+        self, command: bytes, keys: Sequence[bytes], return_flags=False
+    ) -> Tuple[bytes, bytes, bytes]:
+        """ Proxy function used for all fetch many commands `get_many`, `gets_many`. """
+        if not keys:
+            return {}
+
+        for key in keys:
+            if cyfastcache.is_key_valid(key) is False:
+                raise ValueError("Key has invalid charcters")
+
+        async def node_operation(node: Node, keys: List[bytes]):
+            async with node.connection() as connection:
+                return await connection.fetch_command(command, keys)
+
+        tasks = [
+            self._loop.create_task(node_operation(node, keys)) for node, keys in self._cluster.pick_nodes(keys).items()
+        ]
+
+        async with OpTimeout(self._timeout, self._loop):
+            try:
+                await asyncio.gather(*tasks)
+            except Exception:
+                # Any exception will invalidate any ongoing
+                # task.
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                raise
+
+        return [task.result() for task in tasks]
+
     async def get(self, key: bytes, return_flags=False) -> Optional[bytes]:
         """Return the value associated with the key.
 
@@ -154,44 +186,43 @@ class Client:
 
         If a key is not found, the key won't be added to the result.
 
-        If timeout is not disabled, an `asyncio.TimeoutError` will
-        be raised in case of a timed out operation, all pending
-        and finished operations will be discarded.
+        More than one request could be sent concurrently to different nodes,
+        where each request will be composed of one or many keys. Hashing
+        algorithm will decide how keys will be grouped by.
+
+        if any request fails due to a timeout - if it is configured - or another
+        error, all ongoing requests will be automatically canceled and the error will
+        be raised back to the caller.
         """
-        if not keys:
-            return {}
-
-        for key in keys:
-            if cyfastcache.is_key_valid(key) is False:
-                raise ValueError("Key has invalid charcters")
-
-        async def node_operation(node: Node, keys: List[bytes]):
-            async with node.connection() as connection:
-                return await connection.fetch_command(b"get", keys)
-
-        tasks = [
-            self._loop.create_task(node_operation(node, keys)) for node, keys in self._cluster.pick_nodes(keys).items()
-        ]
-
-        async with OpTimeout(self._timeout, self._loop):
-            try:
-                await asyncio.gather(*tasks)
-            except Exception:
-                # Any exception will invalidate any ongoing
-                # task.
-                for task in tasks:
-                    if not task.done():
-                        task.cancel()
-                raise
+        nodes_results = await self._fetch_many_command(b"get", keys, return_flags=return_flags)
 
         results = {}
-        for task in tasks:
-            keys, values, flags, _ = task.result()
+        for keys, values, flags, _ in nodes_results:
             for idx in range(len(keys)):
                 if not return_flags:
                     results[keys[idx]] = values[idx]
                 else:
                     results[keys[idx]] = (values[idx], flags[idx])
+
+        return results
+
+    async def gets_many(
+        self, keys: Sequence[bytes], return_flags=False
+    ) -> Dict[bytes, Union[Tuple[bytes, bytes], Tuple[bytes, bytes, bytes]]]:
+        """Return the values associated with the keys and their cas
+        values.
+
+        Take a look at the `get_many` command for parameters description.
+        """
+        nodes_results = await self._fetch_many_command(b"gets", keys, return_flags=return_flags)
+
+        results = {}
+        for keys, values, flags, cas in nodes_results:
+            for idx in range(len(keys)):
+                if not return_flags:
+                    results[keys[idx]] = (values[idx], cas[idx])
+                else:
+                    results[keys[idx]] = (values[idx], cas[idx], flags[idx])
 
         return results
 

@@ -87,7 +87,7 @@ class TestClient:
         with pytest.raises(ValueError):
             await client.set(b"foo", b"value", flags=MAX_ALLOWED_FLAG_VALUE + 1)
 
-    @pytest.mark.parametrize("command", ["set", "add", "replace", "append", "replace"])
+    @pytest.mark.parametrize("command", ["set", "add", "replace", "append", "prepend", "replace"])
     async def test_not_stored_error_storage_command(self, client, command):
         # patch what is necesary for returnning an error string
         connection = CoroutineMock()
@@ -100,3 +100,56 @@ class TestClient:
         with pytest.raises(StorageCommandError):
             f = getattr(client, command)
             await f(b"foo", b"value")
+
+    @pytest.mark.parametrize("command", ["set", "add", "replace", "append", "prepend", "replace"])
+    async def test_invalid_key(self, client, command):
+        with pytest.raises(ValueError):
+            f = getattr(client, command)
+            await f(b"\n", b"value")
+
+    async def test_cas_not_stored_error_storage_command(self, client):
+        # patch what is necesary for returnning an error string
+        connection = CoroutineMock()
+        connection.storage_command = CoroutineMock(return_value=b"ERROR")
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        with pytest.raises(StorageCommandError):
+            await client.cas(b"foo", b"value", 1)
+
+    async def test_cas_invalid_key(self, client):
+        with pytest.raises(ValueError):
+            await client.cas(b"\n", b"value", 1)
+
+    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    async def test_empty_keys(self, client, command):
+        f = getattr(client, command)
+        result = await f([])
+        assert result == {}
+
+    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    async def test_invalid_keys(self, client, command):
+        with pytest.raises(ValueError):
+            f = getattr(client, command)
+            await f([b"\n"])
+
+    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    async def test_exception_cancels_everything(self, client, command):
+        # patch what is necesary for rasing an exception for the first query and
+        # a "valid" response from the others
+        connection = CoroutineMock()
+        connection.fetch_command.side_effect = CoroutineMock(side_effect=[OSError(), b"Ok", b"Ok"])
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node1 = Mock()
+        node2 = Mock()
+        node3 = Mock()
+        node1.connection.return_value = connection_context
+        node2.connection.return_value = connection_context
+        node3.connection.return_value = connection_context
+        client._cluster.pick_nodes.return_value = {node1: [b"key1"], node2: [b"key2"], node3: [b"key3"]}
+        with pytest.raises(OSError):
+            f = getattr(client, command)
+            await f([b"key1", b"key2", b"key3"])

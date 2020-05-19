@@ -6,8 +6,18 @@ from fastcache import Client
 
 
 @pytest.fixture
-async def client(event_loop):
-    return Client([("localhost", 11211), ("localhost", 11212)])
+async def memcached_address_1():
+    return "localhost", 11211
+
+
+@pytest.fixture
+async def memcached_address_2():
+    return "localhost", 11212
+
+
+@pytest.fixture
+async def client(event_loop, memcached_address_1, memcached_address_2):
+    return Client([memcached_address_1, memcached_address_2])
 
 
 @pytest.fixture(scope="session")
