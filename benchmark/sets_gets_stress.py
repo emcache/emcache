@@ -3,6 +3,7 @@ import asyncio
 import logging
 import random
 import time
+from typing import List
 
 import uvloop
 
@@ -14,12 +15,16 @@ uvloop.install()
 MAX_NUMBER_OF_KEYS = 65536
 
 
-async def cmd_set(key: bin, client: Client) -> None:
+async def cmd_set(key: bytes, client: Client) -> None:
     await client.set(key, b"Some value")
 
 
-async def cmd_get(key: bin, client: Client) -> None:
+async def cmd_get(key: bytes, client: Client) -> None:
     await client.get(key)
+
+
+async def cmd_get_many(keys: List[bytes], client: Client) -> None:
+    await client.get_many(keys)
 
 
 async def benchmark(desc: str, coro_op, max_keys: int, client: Client, concurrency: int, duration: int) -> None:
@@ -27,18 +32,22 @@ async def benchmark(desc: str, coro_op, max_keys: int, client: Client, concurren
 
     not_finish_benchmark = True
 
-    async def incr():
+    async def run():
         nonlocal not_finish_benchmark
         times = []
         while not_finish_benchmark:
-            key = random.randint(0, max_keys)
+            key_base = random.randint(0, max_keys)
+            if desc == "GET_MANY":
+                keys = [str(key_base + i).encode() for i in range(4)]
+            else:
+                keys = str(key_base).encode()
             start = time.monotonic()
-            await coro_op(str(key).encode(), client)
+            await coro_op(keys, client)
             elapsed = time.monotonic() - start
             times.append(elapsed)
         return times
 
-    tasks = [asyncio.ensure_future(incr()) for _ in range(concurrency)]
+    tasks = [asyncio.ensure_future(run()) for _ in range(concurrency)]
 
     await asyncio.sleep(duration)
 
@@ -68,10 +77,14 @@ async def benchmark(desc: str, coro_op, max_keys: int, client: Client, concurren
 async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--memcache-address", help="Redis address, by default redis://localhost", default="127.0.0.1",
+        "--memcache-address",
+        help="Memcache address, by default 127.0.0.1. Multiple addresses can be provided using a coma seaparator",
+        default="127.0.0.1",
     )
     parser.add_argument(
-        "--memcache-port", help="Memcache port, by default 11211", default=11211,
+        "--memcache-port",
+        help="Memcache port, by default 11211. Multiple addresses can be provided using a coma seaparator",
+        default="11211",
     )
     parser.add_argument(
         "--concurrency", help="Number of concurrency clients, by default 32", type=int, default=32,
@@ -79,19 +92,32 @@ async def main():
     parser.add_argument(
         "--duration", help="Test duration in seconds, by default 60", type=int, default=60,
     )
+    parser.add_argument(
+        "--test",
+        help="Test to be executed set_get or set_get_many, by default sets and gets stress",
+        type=str,
+        default="set_get",
+    )
     args = parser.parse_args()
 
-    client = Client(
-        "localhost",
-        11211,
-        # Handle timeouts is not for free, ~10% of
-        #  degradation, for the benchmark we disable the
-        # usage of timeouts.
-        timeout=None,
-    )
+    if args.memcache_address:
+        addresses = args.memcache_address.split(",")
 
-    await benchmark("SET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
-    await benchmark("GET", cmd_get, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
+    if args.memcache_port:
+        ports = args.memcache_port.split(",")
+
+    hosts = [(host, int(port)) for host, port in zip(addresses, ports)]
+
+    client = Client(hosts, timeout=None)
+
+    if args.test == "set_get":
+        await benchmark("SET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
+        await benchmark("GET", cmd_get, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
+    elif args.test == "set_get_many":
+        await benchmark("SET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
+        await benchmark("GET_MANY", cmd_get_many, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
+    else:
+        raise ValueError("Unkown test")
 
 
 if __name__ == "__main__":
