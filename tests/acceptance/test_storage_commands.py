@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 from emcache import NotStoredStorageCommandError
@@ -29,6 +31,7 @@ class TestSet:
 
         assert value_retrieved is None
 
+    @pytest.mark.skipif(sys.platform == "darwin", reason="should be fixed in the last realease")
     async def test_set_noreply(self, client, key_generation):
         key_and_value = next(key_generation)
         await client.set(key_and_value, key_and_value, noreply=True)
@@ -65,6 +68,7 @@ class TestAdd:
         # add can be done again
         await client.add(key_and_value, key_and_value)
 
+    @pytest.mark.skipif(sys.platform == "darwin", reason="should be fixed in the last realease")
     async def test_add_noreply(self, client, key_generation):
         key_and_value = next(key_generation)
         await client.add(key_and_value, key_and_value, noreply=True)
@@ -109,6 +113,7 @@ class TestReplace:
         value_retrieved = await client.get(key_and_value)
         assert value_retrieved is None
 
+    @pytest.mark.skipif(sys.platform == "darwin", reason="should be fixed in the last realease")
     async def test_replace_noreply(self, client, key_generation):
         key_and_value = next(key_generation)
 
@@ -159,6 +164,7 @@ class TestAppend:
 
         assert value_retrieved is None
 
+    @pytest.mark.skipif(sys.platform == "darwin", reason="should be fixed in the last realease")
     async def test_append_noreply(self, client, key_generation):
         key_and_value = next(key_generation)
 
@@ -209,6 +215,7 @@ class TestPrepend:
 
         assert value_retrieved is None
 
+    @pytest.mark.skipif(sys.platform == "darwin", reason="should be fixed in the last realease")
     async def test_prepend_noreply(self, client, key_generation):
         key_and_value = next(key_generation)
 
@@ -277,6 +284,7 @@ class TestCas:
         assert value_retrieved is None
         assert flags_retrieved is None
 
+    @pytest.mark.skipif(sys.platform == "darwin", reason="should be fixed in the last realease")
     async def test_cas_noreply(self, client, key_generation):
         key_and_value = next(key_generation)
 
