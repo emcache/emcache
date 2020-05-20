@@ -36,8 +36,9 @@ dev_requires = [
 ]
 
 setup(
+    version="0.1.0b",
     name="emcache",
-    description="An asynchronous Memcached client with full batteries included",
+    description="A high performance asynchronous Python client for Memcached with full batteries included",
     url="http://github.com/pfreixes/emcache",
     author="Pau Freixes",
     author_email="pfreixes@gmail.com",
