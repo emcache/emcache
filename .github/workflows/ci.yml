@@ -38,6 +38,10 @@ jobs:
     - name: Lint with flake8
       run: |
         make lint
+    - name: Docker installation for Mac
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: |
+        brew install docker-machine docker
     - name: Docker dependencies
       run: |
         docker-compose up -d
