@@ -38,16 +38,14 @@ jobs:
     - name: Lint with flake8
       run: |
         make lint
-    - name: Docker installation for Mac
+    - name: Memcached dependencies with Mac, by hand
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
-        brew install docker-machine docker docker-compose
-        brew cask install virtualbox
-        curl -Lo ~/.docker/machine/cache/boot2docker.iso https://github.com/boot2docker/boot2docker/releases/download/v19.03.5/boot2docker.iso
-        docker-machine create --driver virtualbox default
-        docker-machine env default
-        eval "$(docker-machine env default)"
+        brew install memcached
+        memcached -d -p 11211
+        memcached -d -p 11212
     - name: Docker dependencies
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
         docker-compose up -d
     - name: Test
