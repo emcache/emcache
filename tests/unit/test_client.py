@@ -14,10 +14,10 @@ class TestOpTimeout:
     async def test_timeout(self, event_loop):
         with pytest.raises(asyncio.TimeoutError):
             async with OpTimeout(0.01, event_loop):
-                await asyncio.sleep(0.02)
+                await asyncio.sleep(1)
 
     async def test_dont_timeout(self, event_loop):
-        async with OpTimeout(0.02, event_loop):
+        async with OpTimeout(1, event_loop):
             await asyncio.sleep(0.01)
 
     async def test_cancellation_is_supported(self, event_loop):
