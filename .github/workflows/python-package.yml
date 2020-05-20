@@ -1,4 +1,4 @@
-name: Python package
+name: CI
 
 on: [push]
 
@@ -28,9 +28,12 @@ jobs:
     - name: Lint with flake8
       run: |
         make lint
+    - name: Docker dependencies
+      run: |
+        docker-compose up -d
     - name: Test
       run: |
-        make unit
+        make test
     - name: Coverage
       run: |
         make coverage
