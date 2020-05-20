@@ -2,7 +2,6 @@ import asyncio
 import time
 
 import mmh3
-
 from emcache._cython import cyemcache
 
 NUM_ITERATIONS = 1_000_000
