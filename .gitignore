@@ -1,7 +1,9 @@
 .coverage
+.install-cython
 emcache.egg-info/
 __pycache__
 build
+dist
 *.so
 *.swp
 *.c

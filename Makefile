@@ -1,20 +1,29 @@
 _default: compile
 
 clean:
-	rm -fr emcache/_cython/*.c emcache/*.so build
+	rm -fr emcache/_cython/*.c emcache/_cython/*.so build
 	find . -name '__pycache__' | xargs rm -rf
 	find . -type f -name "*.pyc" -delete
+
+.install-cython:
+	pip install Cython==0.29.18
+	touch .install-cython
+
+emcache/_cython/cyemcache.c: emcache/_cython/cyemcache.pyx
+	cython -3 -o $@ $< -I emcache
+
+cythonize: .install-cython emcache/_cython/cyemcache.c
 
 setup-build:
 	python setup.py build_ext --inplace
 
-install:
-	pip install -e .
+compile: clean cythonize setup-build
 
-install-dev:
+install-dev: compile
 	pip install -e ".[dev]"
 
-compile: clean setup-build
+install: compile
+	pip install -e .
 
 format:
 	isort --recursive .
