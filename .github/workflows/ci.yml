@@ -41,7 +41,7 @@ jobs:
     - name: Docker installation for Mac
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
-        brew install docker-machine docker
+        brew install docker-machine docker docker-compose
     - name: Docker dependencies
       run: |
         docker-compose up -d
