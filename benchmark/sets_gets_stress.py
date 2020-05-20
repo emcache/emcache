@@ -7,7 +7,7 @@ from typing import List
 
 import uvloop
 
-from fastcache import Client
+from emcache import Client
 
 uvloop.install()
 

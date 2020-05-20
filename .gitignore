@@ -1,5 +1,5 @@
 .coverage
-fastcache.egg-info/
+emcache.egg-info/
 __pycache__
 build
 *.so

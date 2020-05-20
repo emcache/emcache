@@ -1,7 +1,7 @@
 import logging
 from typing import Dict, List, Sequence, Tuple
 
-from ._cython import cyfastcache
+from ._cython import cyemcache
 from .node import Node
 
 logger = logging.getLogger(__name__)
@@ -17,14 +17,14 @@ class Cluster:
     """
 
     _nodes: List[Node]
-    _rdz_nodes: List[cyfastcache.RendezvousNode]
+    _rdz_nodes: List[cyemcache.RendezvousNode]
 
     def __init__(self, node_addresses: Sequence[Tuple[str, int]]) -> None:
 
         # Create nodes and configure them to be used by the Rendezvous
         # hashing.
         self._nodes = [Node(host, port) for host, port in node_addresses]
-        self._rdz_nodes = [cyfastcache.RendezvousNode(node.host, node.port, node) for node in self._nodes]
+        self._rdz_nodes = [cyemcache.RendezvousNode(node.host, node.port, node) for node in self._nodes]
 
         logger.debug(f"Cluster configured with {len(self._nodes)} nodes")
 
@@ -35,7 +35,7 @@ class Cluster:
         algorithm, which will be idempotent when the cluster nodes
         do not change.
         """
-        return cyfastcache.node_selection(key, self._rdz_nodes)
+        return cyemcache.node_selection(key, self._rdz_nodes)
 
     def pick_nodes(self, keys: bytes) -> Dict[Node, List[bytes]]:
         """Return the most appropiate nodes for the given keys.
@@ -48,4 +48,4 @@ class Cluster:
         algorithm, which will be idempotent when the cluster nodes
         do not change.
         """
-        return cyfastcache.nodes_selection(keys, self._rdz_nodes)
+        return cyemcache.nodes_selection(keys, self._rdz_nodes)

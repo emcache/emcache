@@ -1,7 +1,7 @@
 import asyncio
 import time
 
-from fastcache._cython import cyfastcache
+from emcache._cython import cyemcache
 
 NUM_ITERATIONS = 1_000_000
 CR = 13  # \r
@@ -40,7 +40,7 @@ async def cython_one_line_implementation():
     ev = asyncio.Event()
     start = time.time()
     for i in range(NUM_ITERATIONS):
-        parser = cyfastcache.OneLineParser(ev)
+        parser = cyemcache.OneLineParser(ev)
         parser.feed_data(b"asdfasdf\r")
         parser.feed_data(b"\n")
     elapsed = time.time() - start
@@ -51,7 +51,7 @@ async def cython_multi_line_implementation():
     ev = asyncio.Event()
     start = time.time()
     for i in range(NUM_ITERATIONS):
-        parser = cyfastcache.MultiLineParser(ev)
+        parser = cyemcache.MultiLineParser(ev)
         parser.feed_data(b"VALUE key 0 5\r\nvalue\r\n")
         parser.feed_data(b"END\r\n")
     elapsed = time.time() - start

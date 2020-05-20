@@ -2,7 +2,7 @@ import time
 
 import pytest
 
-from fastcache import Client
+from emcache import Client
 
 
 @pytest.fixture

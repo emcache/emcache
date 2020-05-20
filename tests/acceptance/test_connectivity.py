@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from fastcache import Client
+from emcache import Client
 
 pytestmark = pytest.mark.asyncio
 

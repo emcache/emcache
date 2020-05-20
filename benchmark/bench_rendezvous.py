@@ -3,7 +3,7 @@ import time
 
 import mmh3
 
-from fastcache._cython import cyfastcache
+from emcache._cython import cyemcache
 
 NUM_ITERATIONS = 1_000_000
 KEYS = [
@@ -45,11 +45,11 @@ async def mmh3_hash128(num_hashes):
 
 async def select_node(num_nodes):
     nodes = [object() for _ in range(num_nodes)]
-    rendezvous_nodes = [cyfastcache.RendezvousNode(str(i).encode(), node) for i, node in enumerate(nodes)]
+    rendezvous_nodes = [cyemcache.RendezvousNode(str(i).encode(), node) for i, node in enumerate(nodes)]
     start = time.time()
     for i in range(NUM_ITERATIONS):
         for key in KEYS:
-            cyfastcache.node_selection(key, rendezvous_nodes)
+            cyemcache.node_selection(key, rendezvous_nodes)
     elapsed = time.time() - start
     print("Node Selection with {} nodes total time {}".format(num_nodes, elapsed))
 

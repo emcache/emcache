@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import pytest
 from asynctest import CoroutineMock
 
-from fastcache.protocol import MemcacheAsciiProtocol, create_protocol
+from emcache.protocol import MemcacheAsciiProtocol, create_protocol
 
 pytestmark = pytest.mark.asyncio
 
@@ -139,7 +139,7 @@ class TestMemcacheAsciiProtocol:
 
 async def test_create_protocol(event_loop, mocker):
     loop_mock = Mock()
-    mocker.patch("fastcache.protocol.asyncio.get_running_loop", return_value=loop_mock)
+    mocker.patch("emcache.protocol.asyncio.get_running_loop", return_value=loop_mock)
 
     protocol_mock = Mock()
     loop_mock.create_connection = CoroutineMock(return_value=(None, protocol_mock))

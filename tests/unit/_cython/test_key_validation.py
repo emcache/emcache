@@ -1,12 +1,12 @@
 import pytest
 
-from fastcache._cython import cyfastcache
+from emcache._cython import cyemcache
 
 
 class TestIsKeyValid:
     @pytest.mark.parametrize("key", [b"foo", b"bar", b"foobar", b"foobarfoo", b"123foobarfoo123"])
     def test_valid_keys(self, key):
-        assert cyfastcache.is_key_valid(key) is True
+        assert cyemcache.is_key_valid(key) is True
 
     @pytest.mark.parametrize(
         "key",
@@ -22,4 +22,4 @@ class TestIsKeyValid:
         ],
     )
     def test_invalid_keys(self, key):
-        assert cyfastcache.is_key_valid(key) is False
+        assert cyemcache.is_key_valid(key) is False

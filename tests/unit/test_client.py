@@ -4,8 +4,8 @@ from unittest.mock import ANY, Mock
 import pytest
 from asynctest import CoroutineMock, MagicMock as AsyncMagicMock
 
-from fastcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, Client, OpTimeout
-from fastcache.client_errors import StorageCommandError
+from emcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, Client, OpTimeout
+from emcache.client_errors import StorageCommandError
 
 pytestmark = pytest.mark.asyncio
 
@@ -72,7 +72,7 @@ class TestClient:
 
     @pytest.fixture
     async def client(sel, event_loop, mocker):
-        mocker.patch("fastcache.client.Cluster")
+        mocker.patch("emcache.client.Cluster")
         return Client([("localhost", 11211)])
 
     async def test_invalid_host_addresses(self):

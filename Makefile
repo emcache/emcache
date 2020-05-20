@@ -1,7 +1,7 @@
 _default: compile
 
 clean:
-	rm -fr fastcache/_cython/*.c fastcache/*.so build
+	rm -fr emcache/_cython/*.c emcache/*.so build
 	find . -name '__pycache__' | xargs rm -rf
 	find . -type f -name "*.pyc" -delete
 
@@ -31,7 +31,8 @@ acceptance:
 unit:
 	pytest -sv tests/unit
 
-test: unit acceptance
+test: 
+	pytest -sv tests
 
 coverage:
 	coverage run -m pytest -v tests/ --junitxml=build/test.xml

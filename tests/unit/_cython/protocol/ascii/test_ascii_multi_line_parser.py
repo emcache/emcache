@@ -1,6 +1,6 @@
 import pytest
 
-from fastcache._cython import cyfastcache
+from emcache._cython import cyemcache
 
 pytestmark = pytest.mark.asyncio
 
@@ -48,7 +48,7 @@ class TestAsciiMultiLineParser:
     )
     async def test_feed_data_with_finish_event_set(self, event_loop, lines, keys, flags, values, cas):
         future = event_loop.create_future()
-        parser = cyfastcache.AsciiMultiLineParser(future)
+        parser = cyemcache.AsciiMultiLineParser(future)
         for line in lines[:-1]:
             parser.feed_data(line)
             assert not future.done()

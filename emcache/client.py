@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
-from ._cython import cyfastcache
+from ._cython import cyemcache
 from .client_errors import NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster
 from .default_values import DEFAULT_TIMEOUT
@@ -77,7 +77,7 @@ class Client:
         if flags > MAX_ALLOWED_FLAG_VALUE:
             raise ValueError(f"flags can not be higher than {MAX_ALLOWED_FLAG_VALUE}")
 
-        if cyfastcache.is_key_valid(key) is False:
+        if cyemcache.is_key_valid(key) is False:
             raise ValueError("Key has invalid charcters")
 
         node = self._cluster.pick_node(key)
@@ -87,7 +87,7 @@ class Client:
 
     async def _fetch_command(self, command: bytes, key: bytes) -> Optional[bytes]:
         """ Proxy function used for all fetch commands `get`, `gets`. """
-        if cyfastcache.is_key_valid(key) is False:
+        if cyemcache.is_key_valid(key) is False:
             raise ValueError("Key has invalid charcters")
 
         node = self._cluster.pick_node(key)
@@ -103,7 +103,7 @@ class Client:
             return {}
 
         for key in keys:
-            if cyfastcache.is_key_valid(key) is False:
+            if cyemcache.is_key_valid(key) is False:
                 raise ValueError("Key has invalid charcters")
 
         async def node_operation(node: Node, keys: List[bytes]):

@@ -3,7 +3,7 @@ import logging
 import socket
 from typing import List, Optional, Tuple, Union
 
-from ._cython import cyfastcache
+from ._cython import cyemcache
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
     usage of different connections.
     """
 
-    _parser: Optional[Union[cyfastcache.AsciiOneLineParser, cyfastcache.AsciiMultiLineParser]]
+    _parser: Optional[Union[cyemcache.AsciiOneLineParser, cyemcache.AsciiMultiLineParser]]
     _transport: Optional[asyncio.Transport]
     _loop: asyncio.AbstractEventLoop
     _closed: bool
@@ -73,7 +73,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         try:
             data = cmd + b" " + b" ".join(keys) + b"\r\n"
             future = self._loop.create_future()
-            parser = cyfastcache.AsciiMultiLineParser(future)
+            parser = cyemcache.AsciiMultiLineParser(future)
             self._parser = parser
             self._transport.write(data)
             await future
@@ -119,7 +119,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
         try:
             future = self._loop.create_future()
-            parser = cyfastcache.AsciiOneLineParser(future)
+            parser = cyemcache.AsciiOneLineParser(future)
             self._parser = parser
             self._transport.write(data)
             await future

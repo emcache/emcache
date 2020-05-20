@@ -1,6 +1,6 @@
 import pytest
 
-from fastcache import NotStoredStorageCommandError
+from emcache import NotStoredStorageCommandError
 
 pytestmark = pytest.mark.asyncio
 

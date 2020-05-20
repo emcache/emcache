@@ -1,13 +1,13 @@
 import pytest
 
-from fastcache.node import Node
+from emcache.node import Node
 
 pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
 def connection_pool(mocker):
-    return mocker.patch("fastcache.node.ConnectionPool")
+    return mocker.patch("emcache.node.ConnectionPool")
 
 
 class TestNode:

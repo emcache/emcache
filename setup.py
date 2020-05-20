@@ -5,18 +5,18 @@ from Cython.Build import cythonize
 from setuptools import Extension, setup
 
 if sys.platform in ("win32", "cygwin", "cli"):
-    raise RuntimeError("fastcache does not support Windows at the moment")
+    raise RuntimeError("emcache does not support Windows at the moment")
 
 vi = sys.version_info
 if vi < (3, 7):
-    raise RuntimeError("fastcache requires Python 3.7 or greater")
+    raise RuntimeError("emcache requires Python 3.7 or greater")
 
 MURMUR3_DIR = os.path.join(os.path.dirname(__file__), "vendor", "murmur3")
 
 extensions = [
     Extension(
-        "fastcache._cython.cyfastcache",
-        sources=["fastcache/_cython/cyfastcache.pyx"],
+        "emcache._cython.cyemcache",
+        sources=["emcache/_cython/cyemcache.pyx"],
         include_dirs=[MURMUR3_DIR],
         library_dirs=[MURMUR3_DIR],
         libraries=["murmur3"],
@@ -24,7 +24,7 @@ extensions = [
 ]
 
 dev_requires = [
-    "Cython==0.29.4",
+    "Cython==0.29.18",
     "pytest==5.4.1",
     "pytest-mock==3.1.0",
     "pytest-asyncio==0.11.0",
@@ -37,13 +37,13 @@ dev_requires = [
 ]
 
 setup(
-    name="fastcache",
-    description="An asynchronous MMemcache client with batteries included",
-    url="http://github.com/pfreixes/fastcache",
+    name="emcache",
+    description="An asynchronous Memcached client with full batteries included",
+    url="http://github.com/pfreixes/emcache",
     author="Pau Freixes",
     author_email="pfreixes@gmail.com",
     platforms=["*nix"],
-    packages=["fastcache"],
+    packages=["emcache"],
     ext_modules=cythonize(extensions),
     extras_require={"dev": dev_requires},
 )

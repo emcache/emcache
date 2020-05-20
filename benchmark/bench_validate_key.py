@@ -2,7 +2,7 @@ import asyncio
 import re
 import time
 
-from fastcache._cython import cyfastcache
+from emcache._cython import cyemcache
 
 NUM_ITERATIONS = 1_000_000
 KEYS = [
@@ -30,7 +30,7 @@ async def cython_version_1_implementation():
     start = time.time()
     for i in range(NUM_ITERATIONS):
         for key in KEYS:
-            cyfastcache.is_key_valid_version_1(key)
+            cyemcache.is_key_valid_version_1(key)
     elapsed = time.time() - start
     print("Vesion 1 Cython total time {}".format(elapsed))
 
@@ -39,7 +39,7 @@ async def cython_version_2_implementation():
     start = time.time()
     for i in range(NUM_ITERATIONS):
         for key in KEYS:
-            cyfastcache.is_key_valid_version_2(key)
+            cyemcache.is_key_valid_version_2(key)
     elapsed = time.time() - start
     print("Vesion 2 Cython total time {}".format(elapsed))
 

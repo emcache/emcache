@@ -5,13 +5,13 @@ from unittest.mock import Mock, call
 import pytest
 from asynctest import CoroutineMock
 
-from fastcache.connection_pool import (
+from emcache.connection_pool import (
     BaseConnectionContext,
     ConnectionContext,
     ConnectionPool,
     WaitingForAConnectionContext,
 )
-from fastcache.default_values import (
+from emcache.default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
     DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
@@ -74,7 +74,7 @@ class TestConnectionPool:
         self, event_loop, mocker, minimal_connection_pool, not_closed_connection
     ):
         create_protocol = mocker.patch(
-            "fastcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection)
+            "emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection)
         )
 
         async def coro(connection_context):
@@ -94,7 +94,7 @@ class TestConnectionPool:
 
     async def test_connection_context_waiting_connection_with_timeout(self, event_loop, mocker, not_closed_connection):
         create_protocol = mocker.patch(
-            "fastcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection)
+            "emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection)
         )
 
         connection_pool = ConnectionPool("localhost", 11211, connection_timeout=1.0)
@@ -114,14 +114,14 @@ class TestConnectionPool:
         create_protocol.assert_called_with("localhost", 11211, timeout=1.0)
 
     async def test_create_connection_with_timeout_error(self, event_loop, mocker):
-        mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(side_effect=asyncio.TimeoutError))
+        mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=asyncio.TimeoutError))
 
         connection_pool = ConnectionPool("localhost", 11211, connection_timeout=1.0)
         await connection_pool._create_new_connection()
         assert connection_pool._total_connections == 0
 
     async def test_create_connection_with_oserror(self, event_loop, mocker):
-        mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(side_effect=OSError))
+        mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=OSError))
 
         connection_pool = ConnectionPool("localhost", 11211, connection_timeout=1.0)
         await connection_pool._create_new_connection()
@@ -133,7 +133,7 @@ class TestConnectionPool:
 
         # First we return a Timeout and second try returns an usable connection
         create_protocol = mocker.patch(
-            "fastcache.connection_pool.create_protocol",
+            "emcache.connection_pool.create_protocol",
             CoroutineMock(side_effect=[asyncio.TimeoutError, not_closed_connection]),
         )
 
@@ -159,7 +159,7 @@ class TestConnectionPool:
         # Checks that while there is an ongoing connection creation, mo more connections
         # will be created if limits are reached.
         create_protocol = mocker.patch(
-            "fastcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection)
+            "emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection)
         )
 
         async def coro(connection_context):
@@ -209,7 +209,7 @@ class TestConnectionPool:
         connection_closed = Mock()
         connection_closed.closed.return_value = True
         create_protocol = mocker.patch(
-            "fastcache.connection_pool.create_protocol",
+            "emcache.connection_pool.create_protocol",
             CoroutineMock(side_effect=[connection_closed, not_closed_connection]),
         )
 
@@ -240,7 +240,7 @@ class TestConnectionPool:
     ):
         # Checks that if a connection returns with an exception, if there are waiters a new connection is created.
         create_protocol = mocker.patch(
-            "fastcache.connection_pool.create_protocol",
+            "emcache.connection_pool.create_protocol",
             CoroutineMock(side_effect=[not_closed_connection, not_closed_connection]),
         )
 
@@ -275,7 +275,7 @@ class TestConnectionPool:
     ):
         # Checks that once max connections have been reached, no more connections
         # will be created.
-        create_protocol = mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock())
+        create_protocol = mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock())
 
         # add a new connection into the pool and use it
         minimal_connection_pool.release_connection(not_closed_connection)
@@ -290,7 +290,7 @@ class TestConnectionPool:
     async def test_waiters_LIFO(self, event_loop, mocker, minimal_connection_pool, not_closed_connection):
         # Check that waiters queue are seen as LIFO queue, where we try to rescue the latency
         # of the last ones.
-        mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
+        mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
 
         waiters_woken_up = []
 
@@ -318,7 +318,7 @@ class TestConnectionPool:
         # Check that waiters that are cancelled are suported and do not break
         # the flow for wake up pending ones.
 
-        mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
+        mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
 
         waiters_woken_up = []
 
@@ -374,7 +374,7 @@ class TestConnectionPool:
         # Mock everything, we will be calling it by hand
         get_running_loop = Mock()
         call_later = Mock()
-        asyncio_patched = mocker.patch("fastcache.connection_pool.asyncio")
+        asyncio_patched = mocker.patch("emcache.connection_pool.asyncio")
         asyncio_patched.get_running_loop = get_running_loop
         get_running_loop.return_value.call_later = call_later
 
@@ -406,7 +406,7 @@ class TestConnectionPool:
     async def test_purge_connections_disabled(self, event_loop, mocker):
         get_running_loop = Mock()
         call_later = Mock()
-        asyncio_patched = mocker.patch("fastcache.connection_pool.asyncio")
+        asyncio_patched = mocker.patch("emcache.connection_pool.asyncio")
         asyncio_patched.get_running_loop = get_running_loop
         get_running_loop.return_value.call_later = call_later
 
@@ -420,7 +420,7 @@ class TestConnectionPool:
         assert not call_later.called
 
     async def test_create_and_update_connection_timestamp(self, event_loop, mocker, not_closed_connection):
-        mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
+        mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
 
         now = time.monotonic()
 
@@ -440,7 +440,7 @@ class TestConnectionPool:
 
     async def test_release_connection_with_error(self, event_loop, mocker):
         connection = Mock()
-        mocker.patch("fastcache.connection_pool.create_protocol", CoroutineMock(return_value=connection))
+        mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=connection))
 
         connection_pool = ConnectionPool("localhost", 11211, max_connections=1, purge_unused_connections_after=60)
 

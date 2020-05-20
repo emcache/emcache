@@ -1,6 +1,6 @@
 import pytest
 
-from fastcache.cluster import Cluster
+from emcache.cluster import Cluster
 
 pytestmark = pytest.mark.asyncio
 
