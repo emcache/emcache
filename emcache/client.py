@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from ._cython import cyemcache
 from .client_errors import NotStoredStorageCommandError, StorageCommandError
@@ -14,6 +15,13 @@ logger = logging.getLogger(__name__)
 
 MAX_ALLOWED_FLAG_VALUE = 2 ** 16
 MAX_ALLOWED_CAS_VALUE = 2 ** 64
+
+
+@dataclass
+class Item:
+    value: bytes
+    flags: Optional[int]
+    cas: Optional[int]
 
 
 class OpTimeout:
@@ -127,15 +135,14 @@ class Client:
 
         return [task.result() for task in tasks]
 
-    async def get(self, key: bytes, return_flags=False) -> Optional[bytes]:
-        """Return the value associated with the key.
+    async def get(self, key: bytes, return_flags=False) -> Optional[Item]:
+        """Return the value associated with the key as an `Item` instance.
 
-        If `return_flags` is set to True, a tuple with the value
-        and the flags that were saved along the value will be returned.
+        If `return_flags` is set to True, the `Item.flags` attribute will be
+        set with the value saved along the value will be returned, otherwise
+        a None value will be set.
 
-        If key is not found, a `None` value will be returned. If
-        `return_flags` is set to True, a tuple with two `Nones` will
-        be returned.
+        If key is not found, a `None` value will be returned.
 
         If timeout is not disabled, an `asyncio.TimeoutError` will
         be returned in case of a timed out operation.
@@ -143,25 +150,22 @@ class Client:
         keys, values, flags, _ = await self._fetch_command(b"get", key)
 
         if key not in keys:
-            if not return_flags:
-                return None
-            else:
-                return None, None
+            return None
+
+        if not return_flags:
+            return Item(values[0], None, None)
         else:
-            if not return_flags:
-                return values[0]
-            else:
-                return values[0], flags[0]
+            return Item(values[0], flags[0], None)
 
-    async def gets(self, key: bytes, return_flags=False) -> Optional[bytes]:
-        """Return the value associated with the key and its cass value.
+    async def gets(self, key: bytes, return_flags=False) -> Optional[Item]:
+        """Return the value associated with the key and its cass value as
+        an `Item` instance.
 
-        If `return_flags` is set to True, a tuple with the value
-        the cas and the flags that were saved along the value will be returned.
+        If `return_flags` is set to True, the `Item.flags` attribute will be
+        set with the value saved along the value will be returned, otherwise
+        a None value will be set.
 
-        If key is not found, a (`None`, `None`) value will be returned. If
-        `return_flags` is set to True, a tuple with three `Nones` will
-        be returned.
+        If key is not found, a `None` value will be returned.
 
         If timeout is not disabled, an `asyncio.TimeoutError` will
         be returned in case of a timed out operation.
@@ -169,19 +173,14 @@ class Client:
         keys, values, flags, cas = await self._fetch_command(b"gets", key)
 
         if key not in keys:
-            if not return_flags:
-                return None, None
-            else:
-                return None, None, None
-        else:
-            if not return_flags:
-                return values[0], cas[0]
-            else:
-                return values[0], cas[0], flags[0]
+            return None
 
-    async def get_many(
-        self, keys: Sequence[bytes], return_flags=False
-    ) -> Dict[bytes, Union[bytes, Tuple[bytes, bytes]]]:
+        if not return_flags:
+            return Item(values[0], None, cas[0])
+        else:
+            return Item(values[0], flags[0], cas[0])
+
+    async def get_many(self, keys: Sequence[bytes], return_flags=False) -> Dict[bytes, Item]:
         """Return the values associated with the keys.
 
         If a key is not found, the key won't be added to the result.
@@ -190,25 +189,25 @@ class Client:
         where each request will be composed of one or many keys. Hashing
         algorithm will decide how keys will be grouped by.
 
-        if any request fails due to a timeout - if it is configured - or another
+        if any request fails due to a timeout - if it is configured - or any other
         error, all ongoing requests will be automatically canceled and the error will
         be raised back to the caller.
         """
         nodes_results = await self._fetch_many_command(b"get", keys, return_flags=return_flags)
 
         results = {}
-        for keys, values, flags, _ in nodes_results:
-            for idx in range(len(keys)):
-                if not return_flags:
-                    results[keys[idx]] = values[idx]
-                else:
-                    results[keys[idx]] = (values[idx], flags[idx])
+        if not return_flags:
+            for keys, values, flags, _ in nodes_results:
+                for idx in range(len(keys)):
+                    results[keys[idx]] = Item(values[idx], None, None)
+        else:
+            for keys, values, flags, _ in nodes_results:
+                for idx in range(len(keys)):
+                    results[keys[idx]] = Item(values[idx], flags[idx], None)
 
         return results
 
-    async def gets_many(
-        self, keys: Sequence[bytes], return_flags=False
-    ) -> Dict[bytes, Union[Tuple[bytes, bytes], Tuple[bytes, bytes, bytes]]]:
+    async def gets_many(self, keys: Sequence[bytes], return_flags=False) -> Dict[bytes, Item]:
         """Return the values associated with the keys and their cas
         values.
 
@@ -217,12 +216,14 @@ class Client:
         nodes_results = await self._fetch_many_command(b"gets", keys, return_flags=return_flags)
 
         results = {}
-        for keys, values, flags, cas in nodes_results:
-            for idx in range(len(keys)):
-                if not return_flags:
-                    results[keys[idx]] = (values[idx], cas[idx])
-                else:
-                    results[keys[idx]] = (values[idx], cas[idx], flags[idx])
+        if not return_flags:
+            for keys, values, flags, cas in nodes_results:
+                for idx in range(len(keys)):
+                    results[keys[idx]] = Item(values[idx], None, cas[idx])
+        else:
+            for keys, values, flags, cas in nodes_results:
+                for idx in range(len(keys)):
+                    results[keys[idx]] = Item(values[idx], flags[idx], cas[idx])
 
         return results
 
