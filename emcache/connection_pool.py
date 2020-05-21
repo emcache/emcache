@@ -5,7 +5,6 @@ from collections import deque
 from random import randint
 from typing import Dict, Optional
 
-from .default_values import DEFAULT_CONNECTION_TIMEOUT, DEFAULT_MAX_CONNECTIONS, DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER
 from .protocol import MemcacheAsciiProtocol, create_protocol
 
 logger = logging.getLogger(__name__)
@@ -31,10 +30,9 @@ class ConnectionPool:
         self,
         host: str,
         port: int,
-        *,
-        max_connections: int = DEFAULT_MAX_CONNECTIONS,
-        purge_unused_connections_after: Optional[float] = DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
-        connection_timeout: Optional[float] = DEFAULT_CONNECTION_TIMEOUT,
+        max_connections: int,
+        purge_unused_connections_after: Optional[float],
+        connection_timeout: Optional[float],
     ):
         self._host = host
         self._port = port
