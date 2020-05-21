@@ -222,9 +222,9 @@ class TestPrepend:
         # set the new key and prepend a value.
         await client.set(key_and_value, key_and_value)
         await client.prepend(key_and_value, b"prepend", noreply=True)
-        value_retrieved = await client.get(key_and_value)
+        item = await client.get(key_and_value)
 
-        assert value_retrieved == b"prepend" + key_and_value
+        assert item.value == b"prepend" + key_and_value
 
 
 class TestCas:
