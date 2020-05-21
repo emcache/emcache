@@ -52,7 +52,7 @@ stress:
 	python benchmark/sets_gets_stress.py --duration 10 --concurrency 32
 
 install-doc:
-	pip install -e ".[doc]"
+	pip install -r docs/requirements.txt
 
 doc:
 	make -C docs/ html
