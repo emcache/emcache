@@ -35,6 +35,10 @@ dev_requires = [
     "flake8==3.7.9",
 ]
 
+doc_requires = [
+    "Sphinx==3.0.3"
+]
+
 setup(
     version="0.1.0b",
     name="emcache",
@@ -45,5 +49,5 @@ setup(
     platforms=["*nix"],
     packages=["emcache"],
     ext_modules=extensions,
-    extras_require={"dev": dev_requires},
+    extras_require={"dev": dev_requires, "doc": doc_requires},
 )
