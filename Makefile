@@ -1,7 +1,7 @@
 _default: compile
 
 clean:
-	rm -fr emcache/_cython/*.c emcache/_cython/*.so build
+	rm -fr emcache/_cython/*.c emcache/_cython/*.so build dist
 	find . -name '__pycache__' | xargs rm -rf
 	find . -type f -name "*.pyc" -delete
 
@@ -56,5 +56,8 @@ install-doc:
 
 doc:
 	make -C docs/ html
+
+release: compile test
+	python setup.py sdist bdist_wheel
 
 .PHONY: clean setup-build install install-dev compile unit test acceptance stress
