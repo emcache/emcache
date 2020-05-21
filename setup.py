@@ -35,9 +35,7 @@ dev_requires = [
     "flake8==3.7.9",
 ]
 
-doc_requires = [
-    "Sphinx==3.0.3"
-]
+doc_requires = ["Sphinx==3.0.3"]
 
 setup(
     version="0.1.0b",
