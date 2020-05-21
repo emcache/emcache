@@ -27,7 +27,7 @@ Using emcache is as simple as
     >>> import asyncio
     >>> import emcache
     >>> async def main():
-    >>>     client = emcache.Client([('localhost', 11211)])
+    >>>     client = await emcache.create_client([('localhost', 11211)])
     >>>     await client.set(b'key', b'value')
     >>>     item = await client.get(b'key')
     >>>     print(item.value)
