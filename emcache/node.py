@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from typing import Optional
 
 from .connection_pool import BaseConnectionContext, ConnectionPool
 
@@ -17,11 +18,20 @@ class Node:
     _connection_pool: ConnectionPool
     _loop: asyncio.AbstractEventLoop
 
-    def __init__(self, host: str, port: int,) -> None:
+    def __init__(
+        self,
+        host: str,
+        port: int,
+        max_connections: int,
+        purge_unused_connections_after: Optional[float],
+        connection_timeout: Optional[float],
+    ) -> None:
         self._host = host
         self._port = port
         self._loop = asyncio.get_running_loop()
-        self._connection_pool = ConnectionPool(host, port)
+        self._connection_pool = ConnectionPool(
+            host, port, max_connections, purge_unused_connections_after, connection_timeout
+        )
         logger.info(f"{self} new node created")
 
     def __str__(self) -> str:

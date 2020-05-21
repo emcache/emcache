@@ -6,7 +6,12 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from ._cython import cyemcache
 from .client_errors import NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster
-from .default_values import DEFAULT_TIMEOUT
+from .default_values import (
+    DEFAULT_CONNECTION_TIMEOUT,
+    DEFAULT_MAX_CONNECTIONS,
+    DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
+    DEFAULT_TIMEOUT,
+)
 from .node import Node
 from .protocol import EXISTS, NOT_STORED, STORED
 
@@ -65,12 +70,20 @@ class Client:
     _timeout: Optional[float]
     _loop: asyncio.AbstractEventLoop
 
-    def __init__(self, node_addresses: Sequence[Tuple[str, int]], timeout: float = DEFAULT_TIMEOUT) -> None:
+    def __init__(
+        self,
+        node_addresses: Sequence[Tuple[str, int]],
+        timeout: Optional[float],
+        max_connections: int,
+        purge_unused_connections_after: Optional[float],
+        connection_timeout: Optional[float],
+    ) -> None:
+
         if not node_addresses:
             raise ValueError("At least one memcached hosts needs to be provided")
 
         self._loop = asyncio.get_running_loop()
-        self._cluster = Cluster(node_addresses)
+        self._cluster = Cluster(node_addresses, max_connections, purge_unused_connections_after, connection_timeout)
         self._timeout = timeout
 
     async def _storage_command(
@@ -360,3 +373,29 @@ class Client:
             raise NotStoredStorageCommandError()
         elif not noreply and result != STORED:
             raise StorageCommandError(f"Command finished with error, response returned {result}")
+
+
+async def create_client(
+    node_addresses: Sequence[Tuple[str, int]],
+    *,
+    timeout: Optional[float] = DEFAULT_TIMEOUT,
+    max_connections: int = DEFAULT_MAX_CONNECTIONS,
+    purge_unused_connections_after: Optional[float] = DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
+    connection_timeout: Optional[float] = DEFAULT_CONNECTION_TIMEOUT,
+) -> None:
+    """ Factory for creating a new `emcache.Client` instance.
+
+    By deafault emcache client will be created with the following default values.
+
+    An enabled timeout per operation configured to `DEFAULT_TIMEOUT`, for disabling it pass a `None`
+    value to the `tiemout` keyword argument.
+
+    A maximum number of TCP connections per Node to `DEFAULT_MAX_CONNECTIONS`.
+
+    Purge unused TCP connections after being unused to `DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER` seconds, for
+    disabling purging pass a `None` value to the `purge_unused_connections_after` keyword argument.
+
+    Connection timeout for each new TCP connection, for disabling connection timeout pass a `None` value to the
+    `connection_timeout` keyword argument.
+    """
+    return Client(node_addresses, timeout, max_connections, purge_unused_connections_after, connection_timeout)

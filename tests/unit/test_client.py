@@ -4,8 +4,14 @@ from unittest.mock import ANY, Mock
 import pytest
 from asynctest import CoroutineMock, MagicMock as AsyncMagicMock
 
-from emcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, Client, OpTimeout
+from emcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, Client, OpTimeout, create_client
 from emcache.client_errors import StorageCommandError
+from emcache.default_values import (
+    DEFAULT_CONNECTION_TIMEOUT,
+    DEFAULT_MAX_CONNECTIONS,
+    DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
+    DEFAULT_TIMEOUT,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -71,13 +77,13 @@ class TestClient:
     """
 
     @pytest.fixture
-    async def client(sel, event_loop, mocker):
+    async def client(self, event_loop, mocker):
         mocker.patch("emcache.client.Cluster")
-        return Client([("localhost", 11211)])
+        return Client([("localhost", 11211)], None, 1, None, None)
 
     async def test_invalid_host_addresses(self):
         with pytest.raises(ValueError):
-            Client([])
+            Client([], None, 1, None, None)
 
     async def test_max_allowed_cas_value(self, client):
         with pytest.raises(ValueError):
@@ -153,3 +159,15 @@ class TestClient:
         with pytest.raises(OSError):
             f = getattr(client, command)
             await f([b"key1", b"key2", b"key3"])
+
+
+async def test_create_client_default_values(event_loop, mocker):
+    client_class = mocker.patch("emcache.client.Client")
+    await create_client([("localhost", 11211)])
+    client_class.assert_called_with(
+        [("localhost", 11211)],
+        DEFAULT_TIMEOUT,
+        DEFAULT_MAX_CONNECTIONS,
+        DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
+        DEFAULT_CONNECTION_TIMEOUT,
+    )

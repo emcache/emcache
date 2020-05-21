@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from ._cython import cyemcache
 from .node import Node
@@ -19,11 +19,20 @@ class Cluster:
     _nodes: List[Node]
     _rdz_nodes: List[cyemcache.RendezvousNode]
 
-    def __init__(self, node_addresses: Sequence[Tuple[str, int]]) -> None:
+    def __init__(
+        self,
+        node_addresses: Sequence[Tuple[str, int]],
+        max_connections: int,
+        purge_unused_connections_after: Optional[float],
+        connection_timeout: Optional[float],
+    ) -> None:
 
         # Create nodes and configure them to be used by the Rendezvous
         # hashing.
-        self._nodes = [Node(host, port) for host, port in node_addresses]
+        self._nodes = [
+            Node(host, port, max_connections, purge_unused_connections_after, connection_timeout)
+            for host, port in node_addresses
+        ]
         self._rdz_nodes = [cyemcache.RendezvousNode(node.host, node.port, node) for node in self._nodes]
 
         logger.debug(f"Cluster configured with {len(self._nodes)} nodes")
