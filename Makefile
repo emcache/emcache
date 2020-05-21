@@ -51,4 +51,10 @@ coverage:
 stress:
 	python benchmark/sets_gets_stress.py --duration 10 --concurrency 32
 
+install-doc:
+	pip install -e ".[doc]"
+
+doc:
+	make -C docs/ html
+
 .PHONY: clean setup-build install install-dev compile unit test acceptance stress
