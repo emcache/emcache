@@ -13,7 +13,6 @@
 import os
 import re
 
-
 # -- Project information -----------------------------------------------------
 
 project = "emcache"
@@ -21,16 +20,12 @@ copyright = "2020, Pau Freixes"
 author = "Pau Freixes"
 
 # The full version, including alpha/beta/rc tags
-with open(
-        os.path.join(
-            os.path.abspath(os.path.dirname(__file__)),
-            '../emcache/version.py')) as fp:
+with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "../emcache/version.py")) as fp:
     try:
-        version = re.findall(
-            r"^__version__ = \"([^']+)\"\r?$", fp.read())[0]
+        version = re.findall(r"^__version__ = \"([^']+)\"\r?$", fp.read())[0]
         release = version
     except IndexError:
-        raise RuntimeError('Unable to determine version.')
+        raise RuntimeError("Unable to determine version.")
 
 
 # -- General configuration ---------------------------------------------------

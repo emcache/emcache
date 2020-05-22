@@ -36,16 +36,13 @@ dev_requires = [
     "flake8==3.7.9",
 ]
 
+
 def get_version():
-    with open(
-            os.path.join(
-                os.path.abspath(os.path.dirname(__file__)),
-                'emcache/version.py')) as fp:
+    with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "emcache/version.py")) as fp:
         try:
-            return re.findall(
-                r"^__version__ = \"([^']+)\"\r?$", fp.read())[0]
+            return re.findall(r"^__version__ = \"([^']+)\"\r?$", fp.read())[0]
         except IndexError:
-            raise RuntimeError('Unable to determine version.')
+            raise RuntimeError("Unable to determine version.")
 
 
 setup(

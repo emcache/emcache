@@ -98,5 +98,5 @@ does not support multiple nodes.
 | emcache       |            32 |    8 |         42167 |            0.00075 |               46472 |          0.00068 |
 
 The addition of new nodes did not add almost degradation for Emcache, in the last test with 8 nodes Emcache reached 42K
-`get` ops/sec and 46K ops/sec. On the other hand, Pymemcached suffered substantial degradation making Emcache ~x5 times
+`get` ops/sec and 46K `set` ops/sec. On the other hand, Pymemcached suffered substantial degradation making Emcache ~x5 times.
 faster.
