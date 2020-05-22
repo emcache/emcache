@@ -10,9 +10,8 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import re
 
 
 # -- Project information -----------------------------------------------------
@@ -22,7 +21,16 @@ copyright = "2020, Pau Freixes"
 author = "Pau Freixes"
 
 # The full version, including alpha/beta/rc tags
-release = "0.1.0b"
+with open(
+        os.path.join(
+            os.path.abspath(os.path.dirname(__file__)),
+            '../emcache/version.py')) as fp:
+    try:
+        version = re.findall(
+            r"^__version__ = \"([^']+)\"\r?$", fp.read())[0]
+        release = version
+    except IndexError:
+        raise RuntimeError('Unable to determine version.')
 
 
 # -- General configuration ---------------------------------------------------
