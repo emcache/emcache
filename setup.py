@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 
 from setuptools import Extension, setup
@@ -35,8 +36,17 @@ dev_requires = [
     "flake8==3.7.9",
 ]
 
+
+def get_version():
+    with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "emcache/version.py")) as fp:
+        try:
+            return re.findall(r"^__version__ = \"([^']+)\"\r?$", fp.read())[0]
+        except IndexError:
+            raise RuntimeError("Unable to determine version.")
+
+
 setup(
-    version="0.1.0b",
+    version=get_version(),
     name="emcache",
     description="A high performance asynchronous Python client for Memcached with full batteries included",
     url="http://github.com/pfreixes/emcache",
