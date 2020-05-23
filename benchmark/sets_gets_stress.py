@@ -7,7 +7,7 @@ from typing import List
 
 import uvloop
 
-from emcache import Client
+from emcache import Client, create_client
 
 uvloop.install()
 
@@ -108,7 +108,7 @@ async def main():
 
     hosts = [(host, int(port)) for host, port in zip(addresses, ports)]
 
-    client = Client(hosts, timeout=None)
+    client = await create_client(hosts, timeout=None, max_connections=args.concurrency)
 
     if args.test == "set_get":
         await benchmark("SET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)

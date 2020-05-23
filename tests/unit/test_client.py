@@ -4,7 +4,7 @@ from unittest.mock import ANY, Mock
 import pytest
 from asynctest import CoroutineMock, MagicMock as AsyncMagicMock
 
-from emcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, Client, OpTimeout, create_client
+from emcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, OpTimeout, _Client, create_client
 from emcache.client_errors import StorageCommandError
 from emcache.default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
@@ -79,11 +79,11 @@ class TestClient:
     @pytest.fixture
     async def client(self, event_loop, mocker):
         mocker.patch("emcache.client.Cluster")
-        return Client([("localhost", 11211)], None, 1, None, None)
+        return _Client([("localhost", 11211)], None, 1, None, None)
 
     async def test_invalid_host_addresses(self):
         with pytest.raises(ValueError):
-            Client([], None, 1, None, None)
+            _Client([], None, 1, None, None)
 
     async def test_max_allowed_cas_value(self, client):
         with pytest.raises(ValueError):
@@ -162,7 +162,7 @@ class TestClient:
 
 
 async def test_create_client_default_values(event_loop, mocker):
-    client_class = mocker.patch("emcache.client.Client")
+    client_class = mocker.patch("emcache.client._Client")
     await create_client([("localhost", 11211)])
     client_class.assert_called_with(
         [("localhost", 11211)],
