@@ -31,7 +31,8 @@ provided by the :class:`emcache.Client` object.
     import asyncio
     import emcache
     async def main():
-        client = await emcache.create_client([('localhost', 11211)])
+        client = await emcache.create_client(
+            [emcache.MemcachedHostAddress('localhost', 11211)])
         await client.set(b'key', b'value')
         item = await client.get(b'key')
         print(item.value)
