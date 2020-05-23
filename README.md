@@ -4,8 +4,8 @@ A high performance asynchronous Python client for [Memcached](https://memcached.
 
 [![Documentation Status](https://readthedocs.org/projects/emcache/badge/?version=latest)](https://emcache.readthedocs.io/en/latest/?badge=latest)
 
-
-Emcache stands on giant's shoulders and implements most of the characteristics that are desired for a Memcached client based on the experience of other Memcached clients. It provides the following:
+Emcache stands on the giant's shoulders and implements most of the characteristics that are desired for a Memcached client based
+on the experience of other Memcached clients, providing the following main characteristics:
 
 - Support for many Memcached hosts, distributing traffic around them by using the [Rendezvous hashing](https://en.wikipedia.org/wiki/Rendezvous_hashing) algorithm.
 - Support for different commands and different flag behaviors like `noreply`, `exptime` or `flags`.
@@ -72,7 +72,7 @@ The following table shows how fast - operations per second - Emcache can be comp
 For that specific benchmark two nodes were used, one for the client and one for the Memcached server, using 32 TCP connections
 and using 32 concurrent Asyncio tasks - threads for the use case of Pymemcache.
 
-In the first part of the benchmark the client tried to run as much `set` operations it could, and in a second step the same was
+In the first part of the benchmark, the client tried to run as much `set` operations it could, and in a second step the same was
 done but using `get` operations.
 
 | Client       | Concurrency    | Sets opS/sec  | Sets latency AVG  |  Gets opS/sec      | Gets latency AVG |
@@ -88,14 +88,14 @@ benchmark was performed with different cluster sizes but using the same methodol
 operations it could and later as many `get` operations it could. For this specific use test with Aiomemcahce could not be used since it
 does not support multiple nodes.
 
-| Client       | Concurrency   | Nodes | Sets opS/sec   | Sets latency AVG  |  Gets opS/sec       | Gets latency AVG |
-| ------------- | -------------:| ----:| -------------:| ------------------:|  ------------------:| ----------------:|
-| pymemcache    |            32 |    2 |         21260 |            0.00150 |               21583 |          0.00148 |
-| emcache       |            32 |    2 |         42245 |            0.00075 |               48079 |          0.00066 |
-| pymemcache    |            32 |    4 |         15334 |            0.00208 |               15458 |          0.00207 |
-| emcache       |            32 |    4 |         39786 |            0.00080 |               47603 |          0.00067 |
-| pymemcache    |            32 |    8 |          9903 |            0.00323 |                9970 |          0.00322 |
-| emcache       |            32 |    8 |         42167 |            0.00075 |               46472 |          0.00068 |
+| Client      | Concurrency | Memcahed Nodes | Sets opS/sec  | Sets latency AVG | Gets opS/sec | Gets latency AVG |
+| ----------- | -----------:| -------------:| -------------:| ----------------:| ------------:| ----------------:|
+| pymemcache  |          32 |             2 |         21260 |          0.00150 |        21583 |          0.00148 |
+| emcache     |          32 |             2 |         42245 |          0.00075 |        48079 |          0.00066 |
+| pymemcache  |          32 |             4 |         15334 |          0.00208 |        15458 |          0.00207 |
+| emcache     |          32 |             4 |         39786 |          0.00080 |        47603 |          0.00067 |
+| pymemcache  |          32 |             8 |          9903 |          0.00323 |         9970 |          0.00322 |
+| emcache     |          32 |             8 |         42167 |          0.00075 |        46472 |          0.00068 |
 
 The addition of new nodes did not add almost degradation for Emcache, in the last test with 8 nodes Emcache reached 42K
 `get` ops/sec and 46K `set` ops/sec. On the other hand, Pymemcached suffered substantial degradation making Emcache ~x5 times.
