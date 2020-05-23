@@ -1,4 +1,5 @@
-from .client import Item, create_client
+from .base_client import Client, Item
+from .client import create_client
 from .client_errors import NotStoredStorageCommandError, StorageCommandError
 from .default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
@@ -8,6 +9,7 @@ from .default_values import (
 )
 
 __all__ = (
+    "Client",
     "create_client",
     "DEFAULT_TIMEOUT",
     "DEFAULT_CONNECTION_TIMEOUT",

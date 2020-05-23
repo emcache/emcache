@@ -1,9 +1,9 @@
 import asyncio
 import logging
-from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from ._cython import cyemcache
+from .base_client import Client, Item
 from .client_errors import NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster
 from .default_values import (
@@ -20,13 +20,6 @@ logger = logging.getLogger(__name__)
 
 MAX_ALLOWED_FLAG_VALUE = 2 ** 16
 MAX_ALLOWED_CAS_VALUE = 2 ** 64
-
-
-@dataclass
-class Item:
-    value: bytes
-    flags: Optional[int]
-    cas: Optional[int]
 
 
 class OpTimeout:
@@ -64,7 +57,7 @@ class OpTimeout:
             self._timer_handler.cancel()
 
 
-class Client:
+class _Client(Client):
 
     _cluster: Cluster
     _timeout: Optional[float]
@@ -382,7 +375,7 @@ async def create_client(
     max_connections: int = DEFAULT_MAX_CONNECTIONS,
     purge_unused_connections_after: Optional[float] = DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
     connection_timeout: Optional[float] = DEFAULT_CONNECTION_TIMEOUT,
-) -> None:
+) -> Client:
     """ Factory for creating a new `emcache.Client` instance.
 
     By deafault emcache client will be created with the following default values.
@@ -398,4 +391,4 @@ async def create_client(
     Connection timeout for each new TCP connection, for disabling connection timeout pass a `None` value to the
     `connection_timeout` keyword argument.
     """
-    return Client(node_addresses, timeout, max_connections, purge_unused_connections_after, connection_timeout)
+    return _Client(node_addresses, timeout, max_connections, purge_unused_connections_after, connection_timeout)
