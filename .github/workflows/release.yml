@@ -40,6 +40,7 @@ jobs:
         docker-compose up -d
     - name: Build release (run the tests)
       run: |
+        pip install wheel
         make release
     - name: Publish distribution to Test PyPI
       uses: pypa/gh-action-pypi-publish@master
