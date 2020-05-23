@@ -1,0 +1,48 @@
+name: PyPi release
+on:
+  push:
+    tags:
+      - v*
+jobs:
+  build:
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: [3.7, 3.8]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Compile murmur3
+      run: |
+        cd vendor/murmur3
+        make static
+    - name: Install dependencies
+      run: |
+        make install-dev
+    - name: Memcached dependencies with Mac, by hand
+      if: ${{ matrix.os == 'macos-latest' }}
+      run: |
+        brew install memcached
+        memcached -d -p 11211
+        memcached -d -p 11212
+    - name: Docker dependencies
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: |
+        docker-compose up -d
+    - name: Build release (run the tests)
+      run: |
+        make release
+    - name: Publish distribution to Test PyPI
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        password: ${{ secrets.PYPI_RELEASE_UPLOAD }}
+        repository_url: https://test.pypi.org/legacy/
