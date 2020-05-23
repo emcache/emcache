@@ -27,6 +27,7 @@ jobs:
         make static
     - name: Install dependencies
       run: |
+        python -m pip install --upgrade pip
         make install-dev
     - name: Memcached dependencies with Mac, by hand
       if: ${{ matrix.os == 'macos-latest' }}
