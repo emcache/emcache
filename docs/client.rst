@@ -12,7 +12,10 @@ For example
 .. code-block:: python
 
     client = await emcache.create_client(
-        [('localhost', 11211), ('localhost', 11212)]
+        [
+            emcache.MemcachedHostAddress('localhost', 11211),
+            emcache.MemcachedHostAddress('localhost', 11212)
+        ]
     )
 
 The previous example would return a :class:`emcache.Client` object instance that will perform the operations to two different Nodes, depending on the outcome of the hashing algorithm,
@@ -35,6 +38,9 @@ Example of a client creation that would purge unused connections
 .. code-block:: python
 
     client = await emcache.create_client(
-        [('localhost', 11211), ('localhost', 11212)],
+        [
+            emcache.MemcachedHostAddress('localhost', 11211),
+            emcache.MemcachedHostAddress('localhost', 11212)
+        ],
         purge_unused_connections_after=60.0
     )

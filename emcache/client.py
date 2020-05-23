@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from ._cython import cyemcache
 from .base_client import Client, Item
 from .client_errors import NotStoredStorageCommandError, StorageCommandError
-from .cluster import Cluster
+from .cluster import Cluster, MemcachedHostAddress
 from .default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
@@ -65,7 +65,7 @@ class _Client(Client):
 
     def __init__(
         self,
-        node_addresses: Sequence[Tuple[str, int]],
+        node_addresses: Sequence[MemcachedHostAddress],
         timeout: Optional[float],
         max_connections: int,
         purge_unused_connections_after: Optional[float],
@@ -369,7 +369,7 @@ class _Client(Client):
 
 
 async def create_client(
-    node_addresses: Sequence[Tuple[str, int]],
+    node_addresses: Sequence[MemcachedHostAddress],
     *,
     timeout: Optional[float] = DEFAULT_TIMEOUT,
     max_connections: int = DEFAULT_MAX_CONNECTIONS,

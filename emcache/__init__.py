@@ -1,6 +1,7 @@
 from .base_client import Client, Item
 from .client import create_client
 from .client_errors import NotStoredStorageCommandError, StorageCommandError
+from .cluster import MemcachedHostAddress
 from .default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
@@ -16,6 +17,7 @@ __all__ = (
     "DEFAULT_MAX_CONNECTIONS",
     "DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER",
     "Item",
-    "StorageCommandError",
+    "MemcachedHostAddress",
     "NotStoredStorageCommandError",
+    "StorageCommandError",
 )

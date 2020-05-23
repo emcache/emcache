@@ -1,10 +1,19 @@
 import logging
-from typing import Dict, List, Optional, Sequence, Tuple
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Sequence
 
 from ._cython import cyemcache
 from .node import Node
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class MemcachedHostAddress:
+    """ Data class for identifying univocally a Memcached host. """
+
+    address: str
+    port: int
 
 
 class Cluster:
@@ -21,7 +30,7 @@ class Cluster:
 
     def __init__(
         self,
-        node_addresses: Sequence[Tuple[str, int]],
+        node_addresses: Sequence[MemcachedHostAddress],
         max_connections: int,
         purge_unused_connections_after: Optional[float],
         connection_timeout: Optional[float],
@@ -30,8 +39,14 @@ class Cluster:
         # Create nodes and configure them to be used by the Rendezvous
         # hashing.
         self._nodes = [
-            Node(host, port, max_connections, purge_unused_connections_after, connection_timeout)
-            for host, port in node_addresses
+            Node(
+                memcache_host_address.address,
+                memcache_host_address.port,
+                max_connections,
+                purge_unused_connections_after,
+                connection_timeout,
+            )
+            for memcache_host_address in node_addresses
         ]
         self._rdz_nodes = [cyemcache.RendezvousNode(node.host, node.port, node) for node in self._nodes]
 

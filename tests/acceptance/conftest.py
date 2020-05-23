@@ -2,17 +2,17 @@ import time
 
 import pytest
 
-from emcache import create_client
+from emcache import MemcachedHostAddress, create_client
 
 
 @pytest.fixture
 async def memcached_address_1():
-    return "localhost", 11211
+    return MemcachedHostAddress("localhost", 11211)
 
 
 @pytest.fixture
 async def memcached_address_2():
-    return "localhost", 11212
+    return MemcachedHostAddress("localhost", 11212)
 
 
 @pytest.fixture

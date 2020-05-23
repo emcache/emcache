@@ -10,7 +10,7 @@ Following snippet shows how a :meth:`emcache.Client.set` command can be performe
 .. code-block:: python
 
     client = await emcache.create_client(
-        [('localhost', 11211)]
+        [emcache.MemcachedHostAddress('localhost', 11211)]
     )
     await client.set(b"key", b"value")
 
