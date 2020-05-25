@@ -3,6 +3,8 @@
 A high performance asynchronous Python client for [Memcached](https://memcached.org/) with ~full~ almost full batteries included
 
 [![Documentation Status](https://readthedocs.org/projects/emcache/badge/?version=latest)](https://emcache.readthedocs.io/en/latest/?badge=latest)
+[CI](https://github.com/pfreixes/emcache/workflows/CI/badge.svg)
+[PyPi Release](https://github.com/pfreixes/emcache/workflows/PyPi%20release/badge.svg)
 
 Emcache stands on the giant's shoulders and implements most of the characteristics that are desired for a Memcached client based
 on the experience of other Memcached clients, providing the following main characteristics:
@@ -68,16 +70,17 @@ For more information about usage, [read the docs](https://emcache.readthedocs.io
 ## Benchmarks
 
 The following table shows how fast - operations per second - Emcache can be compared to the other two Memcached Python clients,
-[aiomemcache](https://github.com/aio-libs/aiomcache) and [pymemcache](https://github.com/pinterest/pymemcache).
+[aiomcache](https://github.com/aio-libs/aiomcache) and [pymemcache](https://github.com/pinterest/pymemcache).
 For that specific benchmark two nodes were used, one for the client and one for the Memcached server, using 32 TCP connections
-and using 32 concurrent Asyncio tasks - threads for the use case of Pymemcache.
+and using 32 concurrent Asyncio tasks - threads for the use case of Pymemcache. For Emcache and Aiomcache
+[uvloop](https://github.com/MagicStack/uvloop) was used as a default loop.
 
 In the first part of the benchmark, the client tried to run as much `set` operations it could, and in a second step the same was
 done but using `get` operations.
 
-| Client       | Concurrency    | Sets opS/sec  | Sets latency AVG  |  Gets opS/sec      | Gets latency AVG |
+| Client        | Concurrency    | Sets opS/sec  | Sets latency AVG  |  Gets opS/sec      | Gets latency AVG |
 | ------------- | -------------:| -------------:| -----------------:|  -----------------:| ----------------:|
-| aiomemcache   |            32 |         33872 |           0.00094 |              34183 |          0.00093 |
+| aiomcache     |            32 |         33872 |           0.00094 |              34183 |          0.00093 |
 | pymemcache    |            32 |         32792 |           0.00097 |              32961 |          0.00096 |
 | emcache       |            32 |         49410 |           0.00064 |              49212 |          0.00064 |
 
