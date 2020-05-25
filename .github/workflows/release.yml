@@ -5,14 +5,13 @@ on:
       - v*
 jobs:
   build:
-
+    outputs:
+      version: ${{ steps.get_version.outputs.VERSION }}
     strategy:
       matrix:
         os: [ubuntu-latest]
         python-version: [3.7, 3.8]
-
     runs-on: ${{ matrix.os }}
-
     steps:
     - uses: actions/checkout@v2
       with:
@@ -55,12 +54,33 @@ jobs:
         pip install virtualenv
         python -m virtualenv env
         source env/bin/activate
+        rm -f ../.install-cython
+        make -C ../vendor/murmur3 static
         make -C .. install-dev
         pip install emcache-*.whl --upgrade
         make -C .. test
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+    - uses: actions/upload-artifact@v2
+      with:
+        name: ${{ steps.get_version.outputs.VERSION }}
+        path: test_wheel/emcache-*.whl
+  upload:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/upload-artifact@v2
+      with:
+        name: ${{ needs.build.outputs.version }}
+        path: wheelhouse/
+    - name: Display content
+      run: ls -R
+      working-directory: wheelhouse/
     - name: Publish distribution to Test PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
-        packages_dir: test_wheel/
+        packages_dir: wheelhouse/
         password: ${{ secrets.PYPI_TEST_RELEASE_UPLOAD }}
         repository_url: https://test.pypi.org/legacy/
