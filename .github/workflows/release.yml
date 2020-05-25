@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [maxos-latest, ubuntu-latest]
         python-version: [3.7, 3.8]
 
     runs-on: ${{ matrix.os }}
@@ -21,30 +21,43 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Compile murmur3
+    - name: Generate macos-wheel
+      if: ${{ matrix.os == 'macos-latest' }}
       run: |
         cd vendor/murmur3
         make static
-    - name: Install dependencies
-      run: |
+        cd -
         python -m pip install --upgrade pip
-        make install-dev
-    - name: Memcached dependencies with Mac, by hand
+        make compile
+        python setup.py build bdist_wheel
+    - name: Generate manylinux1-wheel
+      if: ${{ matrix.os == 'ubuntu-latest' }}
+      run: |
+        docker run -it -v `pwd`:/io -e "PYTHON_VERSION=${{python-version}}" quay.io/pypa/manylinux1_x86_64 /io/bin/build_manylinux1_wheel.sh
+    - name: Mac acceptance test dependencies
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
         brew install memcached
         memcached -d -p 11211
         memcached -d -p 11212
-    - name: Docker dependencies
+    - name: Linux acceptance test dependencies
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
         docker-compose up -d
-    - name: Build release (run the tests)
+    - name: Test generated wheel
       run: |
-        pip install wheel
-        make release
+        mkdir test_wheel
+        cp dist/emcache-*.whl test_wheel
+        cd test_wheel
+        pip install virtualenv
+        python -m virtualenv env
+        source env/bin/activate
+        make -C .. install-dev
+        pip install emcache-*.whl --upgrade
+        make -C .. test
     - name: Publish distribution to Test PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
+        packages_dir: test_wheel/
         password: ${{ secrets.PYPI_TEST_RELEASE_UPLOAD }}
         repository_url: https://test.pypi.org/legacy/

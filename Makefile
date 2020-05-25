@@ -1,3 +1,7 @@
+PYTHON ?= python
+PIP ?= pip
+CYTHON ?= cython
+
 _default: compile
 
 clean:
@@ -6,24 +10,24 @@ clean:
 	find . -type f -name "*.pyc" -delete
 
 .install-cython:
-	pip install Cython==0.29.18
+	$(PIP) install Cython==0.29.18
 	touch .install-cython
 
 emcache/_cython/cyemcache.c: emcache/_cython/cyemcache.pyx
-	cython -3 -o $@ $< -I emcache
+	$(CYTHON) -3 -o $@ $< -I emcache
 
 cythonize: .install-cython emcache/_cython/cyemcache.c
 
 setup-build:
-	python setup.py build_ext --inplace
+	$(PYTHON) setup.py build_ext --inplace
 
 compile: clean cythonize setup-build
 
 install-dev: compile
-	pip install -e ".[dev]"
+	$(PIP) install -e ".[dev]"
 
 install: compile
-	pip install -e .
+	$(PIP) install -e .
 
 format:
 	isort --recursive .
@@ -49,15 +53,13 @@ coverage:
 	coverage report
 
 stress:
-	python benchmark/sets_gets_stress.py --duration 10 --concurrency 32
+	$(PYTHON) benchmark/sets_gets_stress.py --duration 10 --concurrency 32
 
 install-doc:
-	pip install -r docs/requirements.txt
+	$(PIP) install -r docs/requirements.txt
 
 doc:
 	make -C docs/ html
 
-release: compile test
-	python setup.py sdist bdist_wheel
 
 .PHONY: clean setup-build install install-dev compile unit test acceptance stress
