@@ -33,7 +33,7 @@ jobs:
     - name: Generate manylinux1-wheel
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
-        docker run -it -v `pwd`:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux1_x86_64 /io/bin/build_manylinux1_wheel.sh
+        docker run -v `pwd`:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux1_x86_64 /io/bin/build_manylinux1_wheel.sh
     - name: Mac acceptance test dependencies
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
