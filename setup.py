@@ -28,7 +28,6 @@ dev_requires = [
     "pytest==5.4.1",
     "pytest-mock==3.1.0",
     "pytest-asyncio==0.11.0",
-    "uvloop==0.14.0",
     "asynctest==0.13.0",
     "pytest-cov==2.8.1",
     "black==19.10b0",
