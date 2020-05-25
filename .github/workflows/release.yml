@@ -36,6 +36,8 @@ jobs:
         mkdir /tmp/emcache
         cp -r . /tmp/emcache
         docker run -v /tmp/emcache:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux1_x86_64 /io/bin/build_manylinux1_wheel.sh
+        mkdir dist
+        cp /tmp/emcache/dist/emcache-*.whl dist/
     - name: Mac acceptance test dependencies
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
@@ -49,7 +51,7 @@ jobs:
     - name: Test generated wheel
       run: |
         mkdir test_wheel
-        cp /tmp/emcache/dist/emcache-*.whl test_wheel
+        cp dist/emcache-*.whl test_wheel
         cd test_wheel
         pip install virtualenv
         python -m virtualenv env
