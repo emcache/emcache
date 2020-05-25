@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [macos-latest, ubuntu-latest]
         python-version: [3.7, 3.8]
 
     runs-on: ${{ matrix.os }}
@@ -28,6 +28,7 @@ jobs:
         make static
         cd -
         python -m pip install --upgrade pip
+        pip install wheel
         make compile
         python setup.py bdist_wheel
     - name: Generate manylinux1-wheel
@@ -54,6 +55,7 @@ jobs:
         source env/bin/activate
         sudo rm -r ../build
         sudo rm -r ../dist
+        sudo rm ../.install-cython
         make -C .. install-dev
         pip install emcache-*.whl --upgrade
         make -C .. test
