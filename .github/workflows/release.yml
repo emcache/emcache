@@ -55,7 +55,6 @@ jobs:
         pip install virtualenv
         python -m virtualenv env
         source env/bin/activate
-        sudo rm ../.install-cython
         make -C .. install-dev
         pip install emcache-*.whl --upgrade
         make -C .. test
