@@ -3,8 +3,8 @@
 A high performance asynchronous Python client for [Memcached](https://memcached.org/) with ~full~ almost full batteries included
 
 [![Documentation Status](https://readthedocs.org/projects/emcache/badge/?version=latest)](https://emcache.readthedocs.io/en/latest/?badge=latest)
-[CI](https://github.com/pfreixes/emcache/workflows/CI/badge.svg)
-[PyPi Release](https://github.com/pfreixes/emcache/workflows/PyPi%20release/badge.svg)
+[![CI](https://github.com/pfreixes/emcache/workflows/CI/badge.svg)](https://github.com/pfreixes/emcache/workflows/CI/badge.svg)
+[![PyPi Release](https://github.com/pfreixes/emcache/workflows/PyPi%20release/badge.svg)](https://github.com/pfreixes/emcache/workflows/CI/badge.svg)
 
 Emcache stands on the giant's shoulders and implements most of the characteristics that are desired for a Memcached client based
 on the experience of other Memcached clients, providing the following main characteristics:
