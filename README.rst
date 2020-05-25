@@ -38,7 +38,7 @@ For installing
 
     pip install emcache
 
-The following snippet shows the minimal stuff that would be needed for creating a new :class:`emcache.Client` and saving a new key and retrieving later the value.
+The following snippet shows the minimal stuff that would be needed for creating a new client and saving a new key and retrieving later the value.
 
 .. code-block:: python
 
@@ -53,20 +53,20 @@ The following snippet shows the minimal stuff that would be needed for creating 
 
 Emcache has currently support for the following commands:
 
-- :meth:`emcache.Client.get` Used for retrieving a specific key.
-- :meth:`emcache.Client.gets` Cas version that returns also the case token of a specific key.
-- :meth:`emcache.Client.get_many` Many keys get version.
-- :meth:`emcache.Client.gets_many` Many keys + case token gets version.
-- :meth:`emcache.Client.set` Set a new key and value
-- :meth:`emcache.Client.add` Add a new key and value, if and only if it does not exist.
-- :meth:`emcache.Client.replace` Update a value of a key, if an only if the key does exist.
-- :meth:`emcache.Client.append` Append a value to the current one for a specific key, if and only if the key does exist.
-- :meth:`emcache.Client.prepend` Prepend a value to the current one for a specific key, if and only if the key does exist.
-- :meth:`emcache.Client.cas` Update a value for a key if and only if token as provided matches with the ones stored in the Memcached server.
+- **get** Used for retrieving a specific key.
+- **gets** Cas version that returns also the case token of a specific key.
+- **get_many** Many keys get version.
+- **gets_many** Many keys + case token gets version.
+- **set** Set a new key and value
+- **add** Add a new key and value, if and only if it does not exist.
+- **replace** Update a value of a key, if an only if the key does exist.
+- **append** Append a value to the current one for a specific key, if and only if the key does exist.
+- **prepend** Prepend a value to the current one for a specific key, if and only if the key does exist.
+- **cas** Update a value for a key if and only if token as provided matches with the ones stored in the Memcached server.
 
 Some of the commands have support for the following behavior flags:
 
-- ``noreply`` for storage commands like :meth:`emcache.Client.set` we do not wait for an explicit response from the Memcached server. Sacrifice the explicit ack from the Memcached server for speed.
+- ``noreply`` for storage commands like **set** we do not wait for an explicit response from the Memcached server. Sacrifice the explicit ack from the Memcached server for speed.
 - ``flags`` for storage we can save an int16 value that can be retrieved later on by fetch commands.
 - ``exptime`` for storage commands this provides a way of configuring an expiration time, once that time is reached keys will be automatically evicted by the Memcached server 
 
@@ -82,8 +82,8 @@ For that specific benchmark two nodes were used, one for the client and one for 
 and using 32 concurrent Asyncio tasks - threads for the use case of Pymemcache. For Emcache and Aiomcache
 `uvloop <https://github.com/MagicStack/uvloop>`_ was used as a default loop.
 
-In the first part of the benchmark, the client tried to run as mucha :meth:`emcache.Client.set` operations it could, and in a second step the same was
-done but using :meth:`emcache.Client.get` operations.
+In the first part of the benchmark, the client tried to run as mucha **set** operations it could, and in a second step the same was
+done but using **get** operations.
 
 +---------------+---------------+---------------+-------------------+--------------------+------------------+
 | Client        | Concurrency   | Sets opS/sec  | Sets latency AVG  |  Gets opS/sec      | Gets latency AVG |
