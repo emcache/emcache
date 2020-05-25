@@ -52,6 +52,8 @@ jobs:
         pip install virtualenv
         python -m virtualenv env
         source env/bin/activate
+        sudo rm -r ../build
+        sudo rm -r ../dist
         make -C .. install-dev
         pip install emcache-*.whl --upgrade
         make -C .. test
