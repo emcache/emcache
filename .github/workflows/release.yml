@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [ubuntu-latest]
         python-version: [3.7, 3.8]
 
     runs-on: ${{ matrix.os }}
@@ -34,7 +34,9 @@ jobs:
     - name: Generate manylinux1-wheel
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
-        docker run -v `pwd`:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux1_x86_64 /io/bin/build_manylinux1_wheel.sh
+        mkdir /tmp/emcache
+        cp -r . /tmp/emcache
+        docker run -v /tmp/emcache:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux1_x86_64 /io/bin/build_manylinux1_wheel.sh
     - name: Mac acceptance test dependencies
       if: ${{ matrix.os == 'macos-latest' }}
       run: |
@@ -48,13 +50,11 @@ jobs:
     - name: Test generated wheel
       run: |
         mkdir test_wheel
-        cp dist/emcache-*.whl test_wheel
+        cp /tmp/emcache/dist/emcache-*.whl test_wheel
         cd test_wheel
         pip install virtualenv
         python -m virtualenv env
         source env/bin/activate
-        sudo rm -r ../build
-        sudo rm -r ../dist
         sudo rm ../.install-cython
         make -C .. install-dev
         pip install emcache-*.whl --upgrade
