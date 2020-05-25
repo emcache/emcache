@@ -44,10 +44,14 @@ def get_version():
             raise RuntimeError("Unable to determine version.")
 
 
+with open(os.path.join(os.path.dirname(__file__), "README.md")) as f:
+    readme = f.read()
+
 setup(
     version=get_version(),
     name="emcache",
     description="A high performance asynchronous Python client for Memcached with full batteries included",
+    long_description=readme,
     url="http://github.com/pfreixes/emcache",
     author="Pau Freixes",
     author_email="pfreixes@gmail.com",
