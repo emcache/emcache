@@ -84,5 +84,5 @@ jobs:
       uses: pypa/gh-action-pypi-publish@master
       with:
         packages_dir: wheelhouse/
-        password: ${{ secrets.PYPI_TEST_RELEASE_UPLOAD }}
-        repository_url: https://test.pypi.org/legacy/
+        password: ${{ secrets.PYPI_RELEASE_UPLOAD }}
+        repository_url: https://pypi.org/legacy/
