@@ -22,6 +22,6 @@ cd /io
 ${PYTHON} -m pip install --upgrade pip
 ${PIP} install auditwheel
 PYTHON=${PYTHON} PIP=${PIP} CYTHON=${CYTHON} make compile
-${PYTHON} setup.py build bdist_wheel
+${PYTHON} setup.py sdist bdist_wheel
 ${AUDITWHEEL} repair dist/emcache-*.whl -w dist
 rm dist/emcache-*-linux*

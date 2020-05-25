@@ -27,8 +27,9 @@ jobs:
         cd vendor/murmur3
         make static
         cd -
+        python -m pip install --upgrade pip
         make compile
-        python setup.py build bdist_wheel
+        python setup.py sdist bdist_wheel
     - name: Generate manylinux1-wheel
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
