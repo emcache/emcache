@@ -44,7 +44,7 @@ def get_version():
             raise RuntimeError("Unable to determine version.")
 
 
-with open(os.path.join(os.path.dirname(__file__), "README.md")) as f:
+with open(os.path.join(os.path.dirname(__file__), "README.rst")) as f:
     readme = f.read()
 
 setup(
