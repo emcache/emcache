@@ -303,9 +303,7 @@ class _Client(Client):
         elif not noreply and result != STORED:
             raise StorageCommandError(f"Command finished with error, response returned {result}")
 
-    async def append(
-        self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False
-    ) -> None:
+    async def append(self, key: bytes, value: bytes, *, noreply: bool = False) -> None:
         """Append a specific value for a given key to the current value
         if and only if the key already exists.
 
@@ -317,6 +315,12 @@ class _Client(Client):
 
         Take a look at the `set` command for parameters description.
         """
+
+        # flags and exptime are not updated and are simply
+        # ignored by Memcached.
+        flags = 0
+        exptime = 0
+
         result = await self._storage_command(b"append", key, value, flags, exptime, noreply)
 
         if not noreply and result == NOT_STORED:
@@ -324,9 +328,7 @@ class _Client(Client):
         elif not noreply and result != STORED:
             raise StorageCommandError(f"Command finished with error, response returned {result}")
 
-    async def prepend(
-        self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False
-    ) -> None:
+    async def prepend(self, key: bytes, value: bytes, *, noreply: bool = False) -> None:
         """Prepend a specific value for a given key to the current value
         if and only if the key already exists.
 
@@ -339,6 +341,12 @@ class _Client(Client):
         Take a look at the `set` command for parameters description.
         use the documentation of that method.
         """
+
+        # flags and exptime are not updated and are simply
+        # ignored by Memcached.
+        flags = 0
+        exptime = 0
+
         result = await self._storage_command(b"prepend", key, value, flags, exptime, noreply)
 
         if not noreply and result == NOT_STORED:
