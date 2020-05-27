@@ -140,30 +140,6 @@ class TestAppend:
 
         assert item.value == key_and_value + b"append"
 
-    @pytest.mark.xfail
-    async def test_append_flags(self, client, key_generation):
-        key_and_value = next(key_generation)
-
-        # set the new key and append a value.
-        await client.set(key_and_value, key_and_value)
-        await client.append(key_and_value, b"append", flags=1)
-        item = await client.get(key_and_value, return_flags=True)
-
-        assert item.value == key_and_value + b"append"
-        assert item.flags == 1
-
-    @pytest.mark.xfail
-    async def test_append_exptime(self, client, key_generation):
-        key_and_value = next(key_generation)
-
-        # set the new key and append a value with exptime = -1
-        # for having it expired inmediately
-        await client.set(key_and_value, key_and_value)
-        await client.append(key_and_value, b"append", exptime=-1)
-        item = await client.get(key_and_value)
-
-        assert item is None
-
     @pytest.mark.skipif(sys.platform == "darwin", reason="https://github.com/memcached/memcached/issues/681")
     async def test_append_noreply(self, client, key_generation):
         key_and_value = next(key_generation)
@@ -190,30 +166,6 @@ class TestPrepend:
         item = await client.get(key_and_value)
 
         assert item.value == b"prepend" + key_and_value
-
-    @pytest.mark.xfail
-    async def test_prepend_flags(self, client, key_generation):
-        key_and_value = next(key_generation)
-
-        # set the new key and prepend a value.
-        await client.set(key_and_value, key_and_value)
-        await client.prepend(key_and_value, b"prepend", flags=1)
-        item = await client.get(key_and_value, return_flags=True)
-
-        assert item.value == b"prepend" + key_and_value
-        assert item.flags == 1
-
-    @pytest.mark.xfail
-    async def test_prepend_exptime(self, client, key_generation):
-        key_and_value = next(key_generation)
-
-        # set the new key and prepend a value with exptime = -1
-        # for having it epxired inmediately
-        await client.set(key_and_value, key_and_value)
-        await client.prepend(key_and_value, b"prepend", exptime=-1)
-        item = await client.get(key_and_value)
-
-        assert item.value is None
 
     @pytest.mark.skipif(sys.platform == "darwin", reason="https://github.com/memcached/memcached/issues/681")
     async def test_prepend_noreply(self, client, key_generation):

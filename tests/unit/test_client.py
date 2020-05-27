@@ -160,6 +160,23 @@ class TestClient:
             f = getattr(client, command)
             await f([b"key1", b"key2", b"key3"])
 
+    @pytest.mark.parametrize("command", ["append", "prepend"])
+    async def test_exptime_flags_disabled(self, client, command):
+        # Some storage commands do not support update the flags and neither
+        # the exptime, in these use cases the values are set to 0.
+        connection = CoroutineMock()
+        connection.storage_command = CoroutineMock(return_value=b"STORED")
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+
+        f = getattr(client, command)
+        await f(b"key", b"value")
+
+        connection.storage_command.assert_called_with(ANY, ANY, ANY, 0, 0, ANY, ANY)
+
 
 async def test_create_client_default_values(event_loop, mocker):
     client_class = mocker.patch("emcache.client._Client")
