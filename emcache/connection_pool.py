@@ -2,12 +2,13 @@ import asyncio
 import logging
 import time
 from collections import deque
-from random import randint
 from typing import Dict, Optional
 
 from .protocol import MemcacheAsciiProtocol, create_protocol
 
 logger = logging.getLogger(__name__)
+
+CREATE_CONNECTION_MAX_BACKOFF = 60.0
 
 
 class ConnectionPool:
@@ -34,6 +35,9 @@ class ConnectionPool:
         purge_unused_connections_after: Optional[float],
         connection_timeout: Optional[float],
     ):
+        if max_connections < 1:
+            raise ValueError("max_connections must be higher than 0")
+
         self._host = host
         self._port = port
         self._loop = asyncio.get_running_loop()
@@ -57,6 +61,9 @@ class ConnectionPool:
         self._total_purged_connections = 0
         if purge_unused_connections_after is not None:
             self._loop.call_later(self._purge_unused_connections_after, self._purge_unused_connections)
+
+        # At least one connection needs to be available
+        self._maybe_new_connection()
 
     def __str__(self):
         return f"<ConnectionPool host={self._host} port={self._port} total_connections={self._total_connections}>"
@@ -85,6 +92,11 @@ class ConnectionPool:
             if last_time_used + self._purge_unused_connections_after > now:
                 continue
 
+            if self._total_connections == 1:
+                # If there is only one connection we don't purgue it since
+                # the connection pool always tries to have at least one connection.
+                break
+
             self._close_connection(connection)
             self._total_purged_connections += 1
             logger.info(f"{self} Connection purged")
@@ -106,42 +118,51 @@ class ConnectionPool:
         else:
             self._unused_connections.append(connection)
 
-    async def _create_new_connection(self, jitter=None) -> None:
+    async def _create_new_connection(self, backoff=None) -> None:
         """ Creates a new connection in background, and once its ready
         adds it to the poool.
-        """
-        if jitter is not None:
-            await asyncio.sleep(jitter)
 
-        connection = None
+        If connection fails a backoff strategy is started till which will
+        a totally failure node the task will remain trying forever every
+        CREATE_CONNECTION_MAX_BACKOFF seconds.
+        """
+        error = False
         try:
             connection = await create_protocol(self._host, self._port, timeout=self._connection_timeout)
             self._connections_last_time_used[connection] = time.monotonic()
             self._total_connections += 1
             self._wakeup_next_waiter_or_append_to_unused(connection)
+            self._creating_connection = False
             logger.info(f"{self} new connection created")
         except asyncio.TimeoutError:
             logger.warning(f"{self} new connection could not be created, it timed out!")
+            error = True
         except OSError as exc:
             logger.warning(f"{self} new connection could not be created, an error ocurred {exc}")
+            error = True
         finally:
-            self._creating_connection = False
+            if error:
+                if backoff is None:
+                    backoff = 1.0
+                else:
+                    backoff = min(CREATE_CONNECTION_MAX_BACKOFF, backoff * 2)
 
-            if connection is None:
-                self._maybe_new_connection(jitter=randint(1, 10) / 10)
+                logging.info(f"{self} New connection retry in {backoff} seconds")
+                await asyncio.sleep(backoff)
+                await self._create_new_connection(backoff=backoff)
 
-    def _maybe_new_connection(self, jitter=None) -> None:
+    def _maybe_new_connection(self) -> None:
         # We kick off another connection if the following conditions are meet
         # - there is still room for having more connections
         # - there is no an ongoing creation of a connection.
-        # - there are waiters
+        # - there are waiters or there are no connections
         if (
             self._creating_connection is False
             and self._total_connections < self._max_connections
-            and len(self._waiters) > 0
+            and (len(self._waiters) > 0 or self._total_connections == 0)
         ):
             self._creating_connection = True
-            self._creating_connection_task = self._loop.create_task(self._create_new_connection(jitter=jitter))
+            self._creating_connection_task = self._loop.create_task(self._create_new_connection())
 
     def create_connection_context(self) -> "BaseConnectionContext":
         """ Returns a connection context that might provide a connection
