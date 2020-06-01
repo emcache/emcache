@@ -65,3 +65,6 @@ a single client instance:
 
 Any number beyond 32 TCP connections did not have a significant increase in the number of operations per second. By default, the connection pool comes configured with 2 maximum TCP connections,
 which should provide in a modern CPU ~20K ops/sec.
+
+Any provided number must be higher than 0, otherwise a :exc:`ValueError` will be raised. The connection pool will try to keep always at least one TCP connection opened even when there is no traffic.
+Purging will not be applied for the last and unique TCP connection available.

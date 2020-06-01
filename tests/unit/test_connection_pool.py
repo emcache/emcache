@@ -6,6 +6,7 @@ import pytest
 from asynctest import CoroutineMock
 
 from emcache.connection_pool import (
+    CREATE_CONNECTION_MAX_BACKOFF,
     BaseConnectionContext,
     ConnectionContext,
     ConnectionPool,
@@ -16,7 +17,8 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-async def minimal_connection_pool():
+async def minimal_connection_pool(mocker):
+    mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock())
     return ConnectionPool(
         "localhost",
         11211,
@@ -35,8 +37,12 @@ class TestConnectionPool:
         return connection
 
     async def test_str(self, minimal_connection_pool):
-        assert str(minimal_connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=0>"
-        assert repr(minimal_connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=0>"
+        assert str(minimal_connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=1>"
+        assert repr(minimal_connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=1>"
+
+    async def test_minimum_connections(self):
+        with pytest.raises(ValueError):
+            ConnectionPool("localhost", 11211, 0, None, None)
 
     async def test_remove_waiter(self, minimal_connection_pool):
         waiter = Mock()
@@ -44,80 +50,61 @@ class TestConnectionPool:
         minimal_connection_pool.remove_waiter(waiter)
         assert waiter not in minimal_connection_pool._waiters
 
-    async def test_connection_context_connection(self, minimal_connection_pool, not_closed_connection):
-        # add a new connection into th pool
-        minimal_connection_pool.release_connection(not_closed_connection)
+    async def test_initalizes_creating_one_connection(self, mocker, not_closed_connection):
+        ev = asyncio.Event()
 
-        # new connection should be used now
-        connection_context = minimal_connection_pool.create_connection_context()
+        def f(*args, **kwargs):
+            ev.set()
+            return not_closed_connection
+
+        create_protocol = mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=f))
+
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, None)
+
+        # wait till the create_connection has ben called and a connection has been
+        # returned.
+        await ev.wait()
+
+        create_protocol.assert_called_with("localhost", 11211, timeout=None)
+        assert connection_pool._total_connections == 1
+
+    async def test_create_connection_with_timeout(self, mocker, not_closed_connection):
+        ev = asyncio.Event()
+
+        def f(*args, **kwargs):
+            ev.set()
+            return not_closed_connection
+
+        create_protocol = mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=f))
+
+        _ = ConnectionPool("localhost", 11211, 1, None, 1.0)
+
+        # wait till the create_connection has ben called and a connection has been
+        # returned.
+        await ev.wait()
+
+        create_protocol.assert_called_with("localhost", 11211, timeout=1.0)
+
+    async def test_connection_context_connection(self, mocker, not_closed_connection):
+        mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
+
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, None)
+
+        connection_context = connection_pool.create_connection_context()
         async with connection_context as connection_from_pool:
             assert connection_from_pool is not_closed_connection
 
-    async def test_connection_context_waiting_connection(
-        self, event_loop, mocker, minimal_connection_pool, not_closed_connection
-    ):
-        create_protocol = mocker.patch(
-            "emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection)
-        )
-
-        async def coro(connection_context):
-            async with connection_context as connection_from_pool:
-                return connection_from_pool
-
-        connection_context = minimal_connection_pool.create_connection_context()
-
-        # wait for a new connection available in another task
-        task = event_loop.create_task(coro(connection_context))
-
-        connection_from_pool = await task
-        assert connection_from_pool is not_closed_connection
-
-        # check that we have called the create_protocol
-        create_protocol.assert_called_with("localhost", 11211, timeout=None)
-
-    async def test_connection_context_waiting_connection_with_timeout(self, event_loop, mocker, not_closed_connection):
-        create_protocol = mocker.patch(
-            "emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection)
-        )
-
-        connection_pool = ConnectionPool("localhost", 11211, 1, None, 1.0)
-
-        async def coro(connection_context):
-            async with connection_context as _:
-                pass
-
-        connection_context = connection_pool.create_connection_context()
-
-        # wait for a new connection available in another task
-        task = event_loop.create_task(coro(connection_context))
-
-        await task
-
-        # check that we have called the create_protocol
-        create_protocol.assert_called_with("localhost", 11211, timeout=1.0)
-
-    async def test_create_connection_with_timeout_error(self, event_loop, mocker):
-        mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=asyncio.TimeoutError))
-
-        connection_pool = ConnectionPool("localhost", 11211, 1, None, connection_timeout=1.0)
-        await connection_pool._create_new_connection()
-        assert connection_pool._total_connections == 0
-
-    async def test_create_connection_with_oserror(self, event_loop, mocker):
-        mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=OSError))
-
-        connection_pool = ConnectionPool("localhost", 11211, 1, None, connection_timeout=1.0)
-        await connection_pool._create_new_connection()
-        assert connection_pool._total_connections == 0
-
-    async def test_create_connection_tries_again_if_error(self, event_loop, mocker, not_closed_connection):
+    @pytest.mark.parametrize("exc", [asyncio.TimeoutError, OSError])
+    async def test_create_connection_tries_again_if_error(self, event_loop, mocker, not_closed_connection, exc):
         # If there is an error trying to acquire a connection and there are waiters waiting we will keep
-        #  trying to create a connection
+        # trying to create a connection
+
+        # Avoid the annoying sleep added by the backoff
+        mocker.patch("emcache.connection_pool.asyncio.sleep", CoroutineMock())
 
         # First we return a Timeout and second try returns an usable connection
         create_protocol = mocker.patch(
-            "emcache.connection_pool.create_protocol",
-            CoroutineMock(side_effect=[asyncio.TimeoutError, not_closed_connection]),
+            "emcache.connection_pool.create_protocol", CoroutineMock(side_effect=[exc, not_closed_connection]),
         )
 
         connection_pool = ConnectionPool("localhost", 11211, 1, None, 1.0)
@@ -136,32 +123,153 @@ class TestConnectionPool:
         # check that we have called twice the create_protocol
         create_protocol.assert_has_calls([call("localhost", 11211, timeout=1.0), call("localhost", 11211, timeout=1.0)])
 
-    async def test_connection_context_one_create_connection(
-        self, event_loop, mocker, minimal_connection_pool, not_closed_connection
-    ):
+    async def test_create_connection_do_not_try_again_unknown_error(self, event_loop, mocker):
+        # If there is an error trying to acquire a connection and there are waiters waiting we will keep
+        # trying to create a connection
+
+        # Avoid the annoying sleep added by the backoff
+        mocker.patch("emcache.connection_pool.asyncio.sleep", CoroutineMock())
+
+        create_protocol = mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=Exception),)
+
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, 1.0)
+
+        async def coro(connection_context):
+            async with connection_context as _:
+                pass
+
+        connection_context = connection_pool.create_connection_context()
+
+        # wait for a new connection available in another task
+        task = event_loop.create_task(coro(connection_context))
+
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(task, timeout=0.01)
+
+        # check that we have called once the create_protocol
+        create_protocol.assert_called_once_with("localhost", 11211, timeout=1.0)
+
+        assert connection_pool._total_connections == 0
+
+    async def test_create_connection_backoff(self, event_loop, mocker, not_closed_connection):
+        sleep = mocker.patch("emcache.connection_pool.asyncio.sleep", CoroutineMock())
+
+        # Simulate as many timeouts as many errors would need to happen for
+        # reaching the max backoff plus 1
+        errors = [asyncio.TimeoutError] * 8
+
+        mocker.patch(
+            "emcache.connection_pool.create_protocol", CoroutineMock(side_effect=errors + [not_closed_connection]),
+        )
+
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, 1.0)
+
+        async def coro(connection_context):
+            async with connection_context as _:
+                pass
+
+        connection_context = connection_pool.create_connection_context()
+
+        # wait for a new connection available in another task
+        task = event_loop.create_task(coro(connection_context))
+
+        await task
+
+        # check that the sleep call was called with the right values
+        sleep.assert_has_calls(
+            [
+                call(1),
+                call(2),
+                call(4),
+                call(8),
+                call(16),
+                call(32),
+                call(CREATE_CONNECTION_MAX_BACKOFF),
+                call(CREATE_CONNECTION_MAX_BACKOFF),
+            ]
+        )
+
+    async def test_connection_context_one_create_connection(self, event_loop, mocker, not_closed_connection):
         # Checks that while there is an ongoing connection creation, mo more connections
-        # will be created if limits are reached.
+        # will be created.
         create_protocol = mocker.patch(
             "emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection)
         )
+
+        connection_pool = ConnectionPool("localhost", 11211, 3, None, None)
 
         async def coro(connection_context):
             async with connection_context as _:
                 pass
 
         # Try to get a connection many times.
-        connection_context1 = minimal_connection_pool.create_connection_context()
-        connection_context2 = minimal_connection_pool.create_connection_context()
-        connection_context3 = minimal_connection_pool.create_connection_context()
+        connection_context1 = connection_pool.create_connection_context()
+        connection_context2 = connection_pool.create_connection_context()
+        connection_context3 = connection_pool.create_connection_context()
 
         task1 = event_loop.create_task(coro(connection_context1))
         task2 = event_loop.create_task(coro(connection_context2))
         task3 = event_loop.create_task(coro(connection_context3))
 
-        await asyncio.gather(*[task1, task2, task3])
+        await asyncio.gather(task1, task2, task3)
 
         # check that we have called the create_protocol just once
         create_protocol.assert_called_once()
+
+    async def test_connection_context_max_connections(self, event_loop, mocker, not_closed_connection):
+        # Checks that once max connections have been reached, no more connections
+        # will be created.
+        create_protocol = mocker.patch(
+            "emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection)
+        )
+
+        # Limit the number of maximum connection to 2
+        connection_pool = ConnectionPool("localhost", 11211, 2, None, None)
+
+        # Events used for having only at most one concurrent create_connection, otherwise
+        # we would suffer the dogpile side effect and only one connection will be created
+        # becuse connection pool does not allow to create more than one connection every time.
+        ev_1 = asyncio.Event()
+        ev_2 = asyncio.Event()
+        ev_3 = asyncio.Event()
+        ev_4 = asyncio.Event()
+
+        async def command_1():
+            async with connection_pool.create_connection_context() as _:
+                ev_1.set()
+                await ev_4.wait()
+
+        async def command_2():
+            await ev_1.wait()
+            async with connection_pool.create_connection_context() as _:
+                ev_2.set()
+                await ev_4.wait()
+
+        async def command_3():
+            await ev_1.wait()
+            await ev_2.wait()
+            ev_3.set()
+            async with connection_pool.create_connection_context() as _:
+                await ev_4.wait()
+
+        async def command_4():
+            await ev_1.wait()
+            await ev_2.wait()
+            await ev_3.wait()
+            ev_4.set()
+            async with connection_pool.create_connection_context() as _:
+                pass
+
+        task1 = event_loop.create_task(command_1())
+        task2 = event_loop.create_task(command_2())
+        task3 = event_loop.create_task(command_3())
+        task4 = event_loop.create_task(command_4())
+
+        await asyncio.gather(task1, task2, task3, task4)
+
+        # check that we have called the create_protocol only twice
+        assert create_protocol.call_count == 2
+        assert connection_pool._total_connections == 2
 
     async def test_connection_context_not_use_a_closed_connections(self, event_loop, mocker, not_closed_connection):
         # Checks that if a connection is in closed state its not used and purged.
@@ -173,6 +281,7 @@ class TestConnectionPool:
         # we add by hand a closed connection and a none closed one to the pool
         connection_pool._unused_connections.append(not_closed_connection)
         connection_pool._unused_connections.append(connection_closed)
+        connection_pool._total_connections = 2
 
         connection_context = connection_pool.create_connection_context()
 
@@ -183,10 +292,9 @@ class TestConnectionPool:
         # one is still there.
         assert not_closed_connection in connection_pool._unused_connections
         assert connection_closed not in connection_pool._unused_connections
+        assert connection_pool._total_connections == 1
 
-    async def test_connection_context_create_connection_if_closed(
-        self, event_loop, mocker, minimal_connection_pool, not_closed_connection
-    ):
+    async def test_connection_context_create_connection_if_closed(self, event_loop, mocker, not_closed_connection):
         # Checks that if a connection is returned in closed state, if there are waiters a new connection is created.
 
         connection_closed = Mock()
@@ -196,6 +304,8 @@ class TestConnectionPool:
             CoroutineMock(side_effect=[connection_closed, not_closed_connection]),
         )
 
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, None)
+
         async def coro(connection_context):
             async with connection_context as _:
                 pass
@@ -203,29 +313,32 @@ class TestConnectionPool:
         # Try to get a connection many times. The first one will
         # get and use the connection_closed, when this connection is
         # returned back to the pool, a new one will be created
-        connection_context1 = minimal_connection_pool.create_connection_context()
-        connection_context2 = minimal_connection_pool.create_connection_context()
-        connection_context3 = minimal_connection_pool.create_connection_context()
+        connection_context1 = connection_pool.create_connection_context()
+        connection_context2 = connection_pool.create_connection_context()
+        connection_context3 = connection_pool.create_connection_context()
 
         task1 = event_loop.create_task(coro(connection_context1))
         task2 = event_loop.create_task(coro(connection_context2))
         task3 = event_loop.create_task(coro(connection_context3))
 
-        await asyncio.gather(*[task1, task2, task3])
+        await asyncio.gather(task1, task2, task3)
 
         # check that we have called the create_protocol twice
         create_protocol.assert_has_calls(
             [call("localhost", 11211, timeout=None), call("localhost", 11211, timeout=None)]
         )
+        assert connection_pool._total_connections == 1
 
-    async def test_connection_context_create_connection_if_exception(
-        self, event_loop, mocker, minimal_connection_pool, not_closed_connection
+    async def test_connection_context_create_connection_if_context_returns_with_exception(
+        self, event_loop, mocker, not_closed_connection
     ):
         # Checks that if a connection returns with an exception, if there are waiters a new connection is created.
         create_protocol = mocker.patch(
             "emcache.connection_pool.create_protocol",
             CoroutineMock(side_effect=[not_closed_connection, not_closed_connection]),
         )
+
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, None)
 
         async def coro(connection_context, raise_exception=False):
             async with connection_context as _:
@@ -235,45 +348,31 @@ class TestConnectionPool:
         # Try to get a connection many times. The first one will
         # get and use the connection_closed, when this connection is
         # returned back to the pool, a new one will be created
-        connection_context1 = minimal_connection_pool.create_connection_context()
-        connection_context2 = minimal_connection_pool.create_connection_context()
-        connection_context3 = minimal_connection_pool.create_connection_context()
+        connection_context1 = connection_pool.create_connection_context()
+        connection_context2 = connection_pool.create_connection_context()
+        connection_context3 = connection_pool.create_connection_context()
 
         task1 = event_loop.create_task(coro(connection_context1))
         task2 = event_loop.create_task(coro(connection_context2))
 
         # Remember that due to the LIFO nature, we have to raise the exception using the last
-        #  pushed connection context
+        # pushed connection context
         task3 = event_loop.create_task(coro(connection_context3, raise_exception=True))
 
-        await asyncio.gather(*[task1, task2, task3], return_exceptions=True)
+        await asyncio.gather(task1, task2, task3, return_exceptions=True)
 
         # check that we have called the create_protocol twice
         create_protocol.assert_has_calls(
             [call("localhost", 11211, timeout=None), call("localhost", 11211, timeout=None)]
         )
+        assert connection_pool._total_connections == 1
 
-    async def test_connection_context_waiting_connection_max_connections(
-        self, mocker, minimal_connection_pool, not_closed_connection
-    ):
-        # Checks that once max connections have been reached, no more connections
-        # will be created.
-        create_protocol = mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock())
-
-        # add a new connection into the pool and use it
-        minimal_connection_pool.release_connection(not_closed_connection)
-        _ = minimal_connection_pool.create_connection_context()
-
-        # try to use a new one, since max_connections should be already
-        # reached, the `create_protocol` should not be called
-        _ = minimal_connection_pool.create_connection_context()
-
-        create_protocol.assert_not_called()
-
-    async def test_waiters_LIFO(self, event_loop, mocker, minimal_connection_pool, not_closed_connection):
+    async def test_waiters_LIFO(self, event_loop, mocker, not_closed_connection):
         # Check that waiters queue are seen as LIFO queue, where we try to rescue the latency
         # of the last ones.
         mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
+
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, None)
 
         waiters_woken_up = []
 
@@ -282,26 +381,26 @@ class TestConnectionPool:
                 waiters_woken_up.append(connection_context)
 
         # Try to get a connection many times.
-        connection_context1 = minimal_connection_pool.create_connection_context()
-        connection_context2 = minimal_connection_pool.create_connection_context()
-        connection_context3 = minimal_connection_pool.create_connection_context()
+        connection_context1 = connection_pool.create_connection_context()
+        connection_context2 = connection_pool.create_connection_context()
+        connection_context3 = connection_pool.create_connection_context()
 
         task1 = event_loop.create_task(coro(connection_context1))
         task2 = event_loop.create_task(coro(connection_context2))
         task3 = event_loop.create_task(coro(connection_context3))
 
-        await asyncio.gather(*[task1, task2, task3])
+        await asyncio.gather(task1, task2, task3)
 
         # check that where called in the right order
         assert waiters_woken_up == [connection_context3, connection_context2, connection_context1]
 
-    async def test_waiters_cancellation_is_supported(
-        self, event_loop, mocker, minimal_connection_pool, not_closed_connection
-    ):
+    async def test_waiters_cancellation_is_supported(self, event_loop, mocker, not_closed_connection):
         # Check that waiters that are cancelled are suported and do not break
         # the flow for wake up pending ones.
 
         mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
+
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, None)
 
         waiters_woken_up = []
 
@@ -318,9 +417,9 @@ class TestConnectionPool:
             async with connection_context as _:
                 waiters_woken_up.append(connection_context)
 
-        connection_context1 = minimal_connection_pool.create_connection_context()
-        connection_context2 = minimal_connection_pool.create_connection_context()
-        connection_context3 = minimal_connection_pool.create_connection_context()
+        connection_context1 = connection_pool.create_connection_context()
+        connection_context2 = connection_pool.create_connection_context()
+        connection_context3 = connection_pool.create_connection_context()
 
         # Because of the LIFO nature, the context 3 should be the first one
         # on having assigned the unique connection that will be available once
@@ -342,7 +441,7 @@ class TestConnectionPool:
         end.set()
 
         # wait till all tasks are finished
-        await asyncio.gather(*[task1, task2, task3], return_exceptions=True)
+        await asyncio.gather(task1, task2, task3, return_exceptions=True)
 
         # check that where called in the right order, and the one cancelled
         # does not appear here.
@@ -350,7 +449,7 @@ class TestConnectionPool:
 
         # check that there are no waiters pending, also the cancelled ones
         # was removed.
-        assert len(minimal_connection_pool._waiters) == 0
+        assert len(connection_pool._waiters) == 0
 
     async def test_purge_connections(self, event_loop, mocker):
 
@@ -376,6 +475,8 @@ class TestConnectionPool:
         connection_pool._connections_last_time_used[none_expired_connection] = time.monotonic()
         connection_pool._connections_last_time_used[expired_connection] = time.monotonic() - 61
 
+        connection_pool._total_connections = 2
+
         # Run the purge
         connection_pool._purge_unused_connections()
 
@@ -386,6 +487,35 @@ class TestConnectionPool:
         assert expired_connection not in connection_pool._connections_last_time_used
         assert none_expired_connection in connection_pool._connections_last_time_used
 
+        assert connection_pool._total_connections == 1
+
+    async def test_purge_not_the_last_connection(self, event_loop, mocker):
+
+        # Mock everything, we will be calling it by hand
+        get_running_loop = Mock()
+        call_later = Mock()
+        asyncio_patched = mocker.patch("emcache.connection_pool.asyncio")
+        asyncio_patched.get_running_loop = get_running_loop
+        get_running_loop.return_value.call_later = call_later
+
+        connection_pool = ConnectionPool("localhost", 11211, 2, 60, None)
+
+        # we add only one expired connection that must not be removed since is the
+        # last one.
+        expired_connection = Mock()
+        connection_pool._unused_connections.append(expired_connection)
+        connection_pool._connections_last_time_used[expired_connection] = time.monotonic() - 61
+        connection_pool._total_connections = 1
+
+        # Run the purge
+        connection_pool._purge_unused_connections()
+
+        # Check that the expired has not been removed
+        assert expired_connection in connection_pool._unused_connections
+        assert expired_connection in connection_pool._connections_last_time_used
+
+        assert connection_pool._total_connections == 1
+
     async def test_purge_connections_disabled(self, event_loop, mocker):
         get_running_loop = Mock()
         call_later = Mock()
@@ -393,7 +523,7 @@ class TestConnectionPool:
         asyncio_patched.get_running_loop = get_running_loop
         get_running_loop.return_value.call_later = call_later
 
-        ConnectionPool("localhost", 11211, 1, None, None)
+        _ = ConnectionPool("localhost", 11211, 1, None, None)
 
         # check that the mock wiring was done correctly by at least observing
         # the call to the `get_running_loop`
@@ -421,7 +551,7 @@ class TestConnectionPool:
         # is also upated.
         assert connection_pool._connections_last_time_used[not_closed_connection] > creation_timestamp
 
-    async def test_release_connection_with_error(self, event_loop, mocker):
+    async def test_remove_from_purge_tracking_connection_with_error(self, event_loop, mocker):
         connection = Mock()
         mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=connection))
 
