@@ -1,8 +1,8 @@
 IN PROGRESS 0.2.0b0
 ===================
-- Try to have always at least one TCP connection per host.
+- Try to have always at least one TCP connection per host. [#26](https://github.com/pfreixes/emcache/pull/26)
 - Quadratic backoff until reach the maximum of 60 seconds when an attempt for openning a connection
-  fails.
+  fails. [#26](https://github.com/pfreixes/emcache/pull/26)
 
 0.1.1b0
 =======
