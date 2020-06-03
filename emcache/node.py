@@ -65,9 +65,9 @@ class Node:
         self._healthy = healthy
 
         if self._healthy:
-            logger.info("{self} Connection pool reports a healthy status")
+            logger.info(f"{self} Connection pool reports a healthy status")
         else:
-            logger.warning("{self} Connection pool resports an unhealthy status")
+            logger.warning(f"{self} Connection pool resports an unhealthy status")
 
         self._on_healthy_status_change_cb(self, self._healthy)
 

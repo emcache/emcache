@@ -65,7 +65,7 @@ class Cluster:
         else:
             nodes = self._healthy_nodes + self._unhealthy_nodes
 
-        logger.info("{self} Nodes used for sending traffic: {nodes}")
+        logger.info(f"{self} Nodes used for sending traffic: {nodes}")
 
         self._rdz_nodes = [cyemcache.RendezvousNode(node.host, node.port, node) for node in nodes]
 
@@ -75,12 +75,12 @@ class Cluster:
             assert node in self._unhealthy_nodes, "Node was not tracked by the cluster as unhealthy!"
             self._unhealthy_nodes.remove(node)
             self._healthy_nodes.append(node)
-            logger.info("{self} Node {node} reports a healthy status")
+            logger.info(f"{self} Node {node} reports a healthy status")
         else:
             assert node in self._healthy_nodes, "Node was not tracked by the cluster as healthy!"
             self._healthy_nodes.remove(node)
             self._unhealthy_nodes.append(node)
-            logger.warning("{self} Node {node} reports an unhealthy status")
+            logger.warning(f"{self} Node {node} reports an unhealthy status")
 
         self._build_rdz_nodes()
 
