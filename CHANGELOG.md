@@ -5,9 +5,9 @@ IN PROGRESS 0.2.0b0
   fails. [#26](https://github.com/pfreixes/emcache/pull/26)
 - Support for tracking the healthiness of the nodes, by checking that always at least there is
   one TCP connection. Unhealthy nodes can be optionally removed from pool of nodes elegible for sending
-  traffic.
+  traffic. [#27](https://github.com/pfreixes/emcache/pull/27)
 - Support for cluster events for telling you in real time what signfificant events are happening,
-  for now only supports two events for telling you when a node has changed the healthy status.
+  for now only supports two events for telling you when a node has changed the healthy status. [#27](https://github.com/pfreixes/emcache/pull/27)
 
 0.1.1b0
 =======
