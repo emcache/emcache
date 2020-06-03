@@ -32,8 +32,8 @@ nodes the cluster has.
 By default the connection pool, if the default values are not overwritten, is initialized with the following characteristics:
 
 - Create a maximum of 2 TCP connections. This can be changed by providing a different value of the ``max_connections`` keyword of the :meth:`emcache.create_client` factory.
-- Not purge unused connections, meaning that connections that once created are no longer used won't be explicitly closed after a while. this can be changed
-  by providing a different value of the ``purge_unused_connections_after`` keyword of the :meth:`emcache.create_client` factory.
+- Purge unused connections, meaning that connections that once created are no longer used will be explicitly closed after 60 seconds. This can be changed
+  by providing a different value of the ``purge_unused_connections_after`` keyword of the :meth:`emcache.create_client` factory or disabling it providing a `None` value.
 - Give up by timeout after 5 seconds if a connection can't be created. This can be changed by providing a different value of the ``connection_timeout`` keyword
   of the :meth:`emcache.create_client` factory.
 
@@ -68,3 +68,60 @@ which should provide in a modern CPU ~20K ops/sec.
 
 Any provided number must be higher than 0, otherwise a :exc:`ValueError` will be raised. The connection pool will try to keep always at least one TCP connection opened even when there is no traffic.
 Purging will not be applied for the last and unique TCP connection available.
+
+Healthy and Unhealthy nodes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Emcache follows the healthy status of each node by checking that at least there is one TCP connection established to them, if a Node can't be reached after a number of retries failed would be marked as
+unhealthy. By default unhealthy hosts are still on use and for avoid sending traffic to them in further operations the ``purge_unhealthy_nodes`` of the :meth:`create_client` would need to be used, as can
+seen in the following example:
+
+.. code-block:: python
+
+    client = await emcache.create_client(
+        [
+            emcache.MemcachedHostAddress('localhost', 11211),
+            emcache.MemcachedHostAddress('localhost', 11212)
+        ],
+        purge_unhealthy_nodes=True
+    )
+
+When ``purge_unhealthy_nodes`` is used the nodes that have been marked as unhealthy will be removed from the pool of nodes used for the hashing algorithm, it would mean that they would not receive
+ traffic until they would not report a healthy staus again. This behaviour would have at least the fowllowing direct implications:
+
+- The traffic that was supposed to be send to the unhealthy nodes would suddently shifted to other nodes that are reporting a healthy status, this which might increase the total amount of traffic
+  on the other nodes in a none negligible way. Therefore, the user would need to evaluate the cost of sending that traffic to other nodes is affordable or not.
+- The hit/miss ratio might change. Since the keys that were suppose to be handled by the unhealthy nodes would be handled by other nodes, this might change in a none negligible way
+  the hit/miss ratio. Therefore, the user would need to undestand the side effects of that situation.
+
+When a node is considered unhealthy could become healthy again if and only if a new TCP connection can be stablished, the connection pool of a node will be on charge of keep trying to connect to
+a specific node.
+
+Cluster events
+^^^^^^^^^^^^^^
+
+Emcache allows you to listen for the more important events that happen at cluster level, the :meth:`create_client` method provides you a keyword argument called `cluster_events` which would need to be
+set to a class instance of :class:`ClusterEvents`. If this instance is provided, Emcache will make specific hook calls for each of the events currently supported.
+
+Following example shows how this parameter can be provided:
+
+.. code-block:: python
+
+    class ClusterEvents(emcache.ClusterEvents):
+
+        def on_node_healthy(self, memcached_host_address):
+            print(f"Node {memcached_host_address} reports a healthy status")
+
+        def on_node_unhealthy(self, memcached_host_address):
+            print(f"Node {memcached_host_address} reports an unhealthy status")
+
+    client = await emcache.create_client(
+        [
+            emcache.MemcachedHostAddress('localhost', 11211),
+            emcache.MemcachedHostAddress('localhost', 11212)
+        ],
+        cluster_events=ClusterEvents()
+    )
+
+Right now :class:`ClusterEvents` has only support for reporting events realated to changes of the node healthiness, the two hooks :meth:`on_node_healthy` and :meth:`on_node_unhealthy` would be
+called - independntly of the `purge_unhealthy_nodes` configuration - when one of the nodes of the cluster change the healthy status.

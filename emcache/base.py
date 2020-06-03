@@ -2,6 +2,8 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Optional, Sequence
 
+from .node import MemcachedHostAddress
+
 
 @dataclass
 class Item:
@@ -167,4 +169,38 @@ class Client(metaclass=ABCMeta):
 
         Take a look at the `set` command for parameters description.
         use the documentation of that method.
+        """
+
+
+class ClusterEvents(metaclass=ABCMeta):
+    """ ClusterEvents can be used for being notified about different
+    events that happen at cluster level.
+
+    Each kind of event is identified with its own function named
+    `on_<event_name>` which might be called zero, one or many times.
+    """
+
+    @abstractmethod
+    async def on_node_healthy(self, host: MemcachedHostAddress) -> None:
+        """Called when a node is marked as healthy.
+
+        A node is marked as healthy when there is at least one TCP
+        connection oppened to the host.
+        """
+
+    @abstractmethod
+    async def on_node_unhealthy(self, host: MemcachedHostAddress) -> None:
+        """Called when a new node is marked as umhealthy.
+
+        A node is marked as unhealthy when there is no TCP
+        connection oppened to the host and the last attempts for
+        oppening one have failed.
+
+        Traffic might no be longer routed to that host depending
+        on the cluster configuration, take a look to the
+        `purge_unhealthy_nodes` parameter provided during the
+        client creation.
+
+        These event will be fired in any circumstance without depending on
+        the value of the `purge_unhealthy_nodes` value.
         """

@@ -1,3 +1,11 @@
+class ClusterNoAvailableNodes(Exception):
+    """ Error raised from the cluster when there is no nodes
+    available in the cluster, because all of them are unhealthy
+    and purged or because they were removed."""
+
+    pass
+
+
 class StorageCommandError(Exception):
     """ General exception raised when a storage command finished without
     being able to store the value for a specific key."""
