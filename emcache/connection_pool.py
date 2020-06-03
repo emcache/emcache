@@ -2,13 +2,14 @@ import asyncio
 import logging
 import time
 from collections import deque
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 
 from .protocol import MemcacheAsciiProtocol, create_protocol
 
 logger = logging.getLogger(__name__)
 
 CREATE_CONNECTION_MAX_BACKOFF = 60.0
+DECLARE_UNHEALTHY_CONNECTION_POOL_AFTER_RETRIES = 3
 
 
 class ConnectionPool:
@@ -17,6 +18,8 @@ class ConnectionPool:
     _unused_connections: deque
     _total_connections: int
     _max_connections: int
+    _healthy: bool
+    _node_on_healthy_status_change_cb: Callable[[bool], None]
     _loop: asyncio.AbstractEventLoop
     _creating_connection_task: Optional[asyncio.Task]
     _create_connection_in_progress: bool
@@ -34,9 +37,14 @@ class ConnectionPool:
         max_connections: int,
         purge_unused_connections_after: Optional[float],
         connection_timeout: Optional[float],
+        on_healthy_status_change_cb: Callable[[bool], None],
     ):
         if max_connections < 1:
             raise ValueError("max_connections must be higher than 0")
+
+        # A connection pool starts always in a healthy state
+        self._healthy = True
+        self._on_healthy_status_change_cb = on_healthy_status_change_cb
 
         self._host = host
         self._port = port
@@ -118,7 +126,7 @@ class ConnectionPool:
         else:
             self._unused_connections.append(connection)
 
-    async def _create_new_connection(self, backoff=None) -> None:
+    async def _create_new_connection(self, backoff=None, retries=None) -> None:
         """ Creates a new connection in background, and once its ready
         adds it to the poool.
 
@@ -132,6 +140,10 @@ class ConnectionPool:
             self._connections_last_time_used[connection] = time.monotonic()
             self._total_connections += 1
             self._wakeup_next_waiter_or_append_to_unused(connection)
+            if not self._healthy:
+                logger.info(f"{self} healthy again")
+                self._healthy = True
+                self._on_healthy_status_change_cb(self._healthy)
             self._creating_connection = False
             logger.info(f"{self} new connection created")
         except asyncio.TimeoutError:
@@ -144,12 +156,23 @@ class ConnectionPool:
             if error:
                 if backoff is None:
                     backoff = 1.0
+                    retries = 1
                 else:
                     backoff = min(CREATE_CONNECTION_MAX_BACKOFF, backoff * 2)
+                    retries += 1
+
+                if (
+                    self._total_connections == 0
+                    and self._healthy
+                    and retries >= DECLARE_UNHEALTHY_CONNECTION_POOL_AFTER_RETRIES
+                ):
+                    logger.warning(f"{self} marked as unhealthy due to no connections availables")
+                    self._healthy = False
+                    self._on_healthy_status_change_cb(self._healthy)
 
                 logging.info(f"{self} New connection retry in {backoff} seconds")
                 await asyncio.sleep(backoff)
-                await self._create_new_connection(backoff=backoff)
+                await self._create_new_connection(backoff=backoff, retries=retries)
 
     def _maybe_new_connection(self) -> None:
         # We kick off another connection if the following conditions are meet
@@ -216,6 +239,10 @@ class ConnectionPool:
         value = self._stats_connections_unexpectedly_closed
         self._stats_connections_unexpectedly_closed = 0
         return value
+
+    @property
+    def total_connections(self):
+        return self._total_connections
 
 
 class BaseConnectionContext:

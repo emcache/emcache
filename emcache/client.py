@@ -3,12 +3,13 @@ import logging
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from ._cython import cyemcache
-from .base_client import Client, Item
+from .base import Client, ClusterEvents, Item
 from .client_errors import NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster, MemcachedHostAddress
 from .default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
+    DEFAULT_PURGE_UNHEALTHY_NODES,
     DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
     DEFAULT_TIMEOUT,
 )
@@ -70,13 +71,22 @@ class _Client(Client):
         max_connections: int,
         purge_unused_connections_after: Optional[float],
         connection_timeout: Optional[float],
+        cluster_events: Optional[ClusterEvents],
+        purge_unealthy_nodes: bool,
     ) -> None:
 
         if not node_addresses:
             raise ValueError("At least one memcached hosts needs to be provided")
 
         self._loop = asyncio.get_running_loop()
-        self._cluster = Cluster(node_addresses, max_connections, purge_unused_connections_after, connection_timeout)
+        self._cluster = Cluster(
+            node_addresses,
+            max_connections,
+            purge_unused_connections_after,
+            connection_timeout,
+            cluster_events,
+            purge_unealthy_nodes,
+        )
         self._timeout = timeout
 
     async def _storage_command(
@@ -383,6 +393,8 @@ async def create_client(
     max_connections: int = DEFAULT_MAX_CONNECTIONS,
     purge_unused_connections_after: Optional[float] = DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
     connection_timeout: Optional[float] = DEFAULT_CONNECTION_TIMEOUT,
+    cluster_events: Optional[ClusterEvents] = None,
+    purge_unhealthy_nodes: bool = DEFAULT_PURGE_UNHEALTHY_NODES,
 ) -> Client:
     """ Factory for creating a new `emcache.Client` instance.
 
@@ -398,5 +410,21 @@ async def create_client(
 
     Connection timeout for each new TCP connection, for disabling connection timeout pass a `None` value to the
     `connection_timeout` keyword argument.
+
+    For receiving cluster events you must provide a valid `ClusterEvents` instance class.
+
+    `purge_unealthy_nodes` can be used for avoid keep sending traffic to nodes that have been marked as
+    unhealhty, by default this is disabled and for enabling it you should give a `True` value. This option
+    should be enabled considering your specific use case, considering that nodes that are reported still
+    healthy might receive more traffic and the hit/miss ratio might be affected. For more information you
+    should take a look to the documentation.
     """
-    return _Client(node_addresses, timeout, max_connections, purge_unused_connections_after, connection_timeout)
+    return _Client(
+        node_addresses,
+        timeout,
+        max_connections,
+        purge_unused_connections_after,
+        connection_timeout,
+        cluster_events,
+        purge_unhealthy_nodes,
+    )

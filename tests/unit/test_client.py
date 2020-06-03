@@ -9,6 +9,7 @@ from emcache.client_errors import StorageCommandError
 from emcache.default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
+    DEFAULT_PURGE_UNHEALTHY_NODES,
     DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
     DEFAULT_TIMEOUT,
 )
@@ -79,11 +80,11 @@ class TestClient:
     @pytest.fixture
     async def client(self, event_loop, mocker):
         mocker.patch("emcache.client.Cluster")
-        return _Client([("localhost", 11211)], None, 1, None, None)
+        return _Client([("localhost", 11211)], None, 1, None, None, None, False)
 
     async def test_invalid_host_addresses(self):
         with pytest.raises(ValueError):
-            _Client([], None, 1, None, None)
+            _Client([], None, 1, None, None, None, False)
 
     async def test_max_allowed_cas_value(self, client):
         with pytest.raises(ValueError):
@@ -187,4 +188,7 @@ async def test_create_client_default_values(event_loop, mocker):
         DEFAULT_MAX_CONNECTIONS,
         DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
         DEFAULT_CONNECTION_TIMEOUT,
+        # No ClusterEVents provided
+        None,
+        DEFAULT_PURGE_UNHEALTHY_NODES,
     )
