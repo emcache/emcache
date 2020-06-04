@@ -1,4 +1,4 @@
-from .base import Client, ClusterEvents, Item
+from .base import Client, ClusterEvents, ClusterManagment, Item
 from .client import create_client
 from .client_errors import ClusterNoAvailableNodes, NotStoredStorageCommandError, StorageCommandError
 from .default_values import (
@@ -13,6 +13,7 @@ from .node import MemcachedHostAddress
 __all__ = (
     "Client",
     "ClusterEvents",
+    "ClusterManagment",
     "ClusterNoAvailableNodes",
     "create_client",
     "DEFAULT_TIMEOUT",

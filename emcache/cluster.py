@@ -2,11 +2,30 @@ import logging
 from typing import Dict, List, Optional, Sequence
 
 from ._cython import cyemcache
-from .base import ClusterEvents
+from .base import ClusterEvents, ClusterManagment
 from .client_errors import ClusterNoAvailableNodes
 from .node import MemcachedHostAddress, Node
 
 logger = logging.getLogger(__name__)
+
+
+class _ClusterManagment(ClusterManagment):
+    _cluster: "Cluster"
+
+    def __init__(self, cluster: "Cluster"):
+        self._cluster = cluster
+
+    def nodes(self) -> List[MemcachedHostAddress]:
+        """Return the nodes that belong to the cluster. """
+        return [node.memcached_host_address for node in self._cluster.nodes]
+
+    def healthy_nodes(self) -> List[MemcachedHostAddress]:
+        """Return the nodes that are considered healthy. """
+        return [node.memcached_host_address for node in self._cluster.healthy_nodes]
+
+    def unhealthy_nodes(self) -> List[MemcachedHostAddress]:
+        """Return the nodes that are considered unhealthy. """
+        return [node.memcached_host_address for node in self._cluster.unhealthy_nodes]
 
 
 class Cluster:
@@ -56,6 +75,7 @@ class Cluster:
             for memcached_host_address in memcached_hosts_address
         ]
         self._build_rdz_nodes()
+        self._cluster_managment = _ClusterManagment(self)
         logger.debug(f"Cluster configured with {len(self._healthy_nodes)} nodes")
 
     def _build_rdz_nodes(self):
@@ -118,3 +138,19 @@ class Cluster:
             raise ClusterNoAvailableNodes()
 
         return cyemcache.nodes_selection(keys, self._rdz_nodes)
+
+    @property
+    def cluster_managment(self) -> ClusterManagment:
+        return self._cluster_managment
+
+    @property
+    def nodes(self) -> List[Node]:
+        return self._healthy_nodes + self._unhealthy_nodes
+
+    @property
+    def healthy_nodes(self) -> List[Node]:
+        return self._healthy_nodes[:]
+
+    @property
+    def unhealthy_nodes(self) -> List[Node]:
+        return self._unhealthy_nodes[:]

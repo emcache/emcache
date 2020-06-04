@@ -181,7 +181,7 @@ class ClusterEvents(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    async def on_node_healthy(self, host: MemcachedHostAddress) -> None:
+    def on_node_healthy(self, host: MemcachedHostAddress) -> None:
         """Called when a node is marked as healthy.
 
         A node is marked as healthy when there is at least one TCP
@@ -189,7 +189,7 @@ class ClusterEvents(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def on_node_unhealthy(self, host: MemcachedHostAddress) -> None:
+    def on_node_unhealthy(self, host: MemcachedHostAddress) -> None:
         """Called when a new node is marked as umhealthy.
 
         A node is marked as unhealthy when there is no TCP
@@ -204,3 +204,33 @@ class ClusterEvents(metaclass=ABCMeta):
         These event will be fired in any circumstance without depending on
         the value of the `purge_unhealthy_nodes` value.
         """
+
+
+class ClusterManagment(metaclass=ABCMeta):
+    """ ClusterManagment provides you the public interface
+    for managing the cluster.
+
+    A `Client` instance proides you a way for having access
+    to an instance of `ClusterManagment` related to the cluster
+    used for that specific client, as the following example
+    shows:
+
+        >>> client = await emcache.create_client(...)
+        >>> cluster_managment = client.cluster_managment()
+        >>> print(cluster_managment.nodes())
+
+    Take a look to the different methods for knowing what operations
+    are currently supported.
+    """
+
+    @abstractmethod
+    def nodes(self) -> Sequence[MemcachedHostAddress]:
+        """Return the nodes that belong to the cluster. """
+
+    @abstractmethod
+    def healthy_nodes(self) -> Sequence[MemcachedHostAddress]:
+        """Return the nodes that are considered healthy. """
+
+    @abstractmethod
+    def unhealthy_nodes(self) -> Sequence[MemcachedHostAddress]:
+        """Return the nodes that are considered unhealthy. """

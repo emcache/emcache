@@ -4,7 +4,7 @@ import pytest
 
 from emcache.base import ClusterEvents
 from emcache.client_errors import ClusterNoAvailableNodes
-from emcache.cluster import Cluster
+from emcache.cluster import Cluster, _ClusterManagment
 from emcache.node import MemcachedHostAddress
 
 pytestmark = pytest.mark.asyncio
@@ -25,6 +25,7 @@ def node1(memcached_host_address_1):
     node1 = Mock()
     node1.host = memcached_host_address_1.address
     node1.port = memcached_host_address_1.port
+    node1.memcached_host_address = memcached_host_address_1
     return node1
 
 
@@ -33,6 +34,7 @@ def node2(memcached_host_address_2):
     node2 = Mock()
     node2.host = memcached_host_address_2.address
     node2.port = memcached_host_address_2.port
+    node2.memcached_host_address = memcached_host_address_2
     return node2
 
 
@@ -60,6 +62,26 @@ def cluster_with_two_nodes_purge_unhealthy(mocker, node1, node2, memcached_host_
     return Cluster([memcached_host_address_1, memcached_host_address_2], 1, 60, 5, None, True)
 
 
+class Test_ClusterManagment:
+    def test_nodes(self, node1, node2):
+        cluster = Mock()
+        cluster.nodes = [node1, node2]
+        cluster_managment = _ClusterManagment(cluster)
+        assert cluster_managment.nodes() == [node1.memcached_host_address, node2.memcached_host_address]
+
+    def test_healthy_nodes(self, node1, node2):
+        cluster = Mock()
+        cluster.healthy_nodes = [node1, node2]
+        cluster_managment = _ClusterManagment(cluster)
+        assert cluster_managment.healthy_nodes() == [node1.memcached_host_address, node2.memcached_host_address]
+
+    def test_unhealthy_nodes(self, node1, node2):
+        cluster = Mock()
+        cluster.unhealthy_nodes = [node1, node2]
+        cluster_managment = _ClusterManagment(cluster)
+        assert cluster_managment.unhealthy_nodes() == [node1.memcached_host_address, node2.memcached_host_address]
+
+
 class TestCluster:
     def test_invalid_number_of_nodes(self):
         with pytest.raises(ValueError):
@@ -76,6 +98,20 @@ class TestCluster:
                 call(memcached_host_address_2, 1, 60, 5, cluster._on_node_healthy_status_change_cb),
             ]
         )
+
+    async def test_cluster_managment(self, mocker, memcached_host_address_1):
+        mocker.patch("emcache.cluster.cyemcache")
+        mocker.patch("emcache.cluster.Node")
+
+        cluster_managment = Mock()
+        cluster_managment_class = mocker.patch("emcache.cluster._ClusterManagment", return_value=cluster_managment)
+        cluster = Cluster([memcached_host_address_1], 1, 60, 5, None, False)
+
+        # Check that the initialization was done using the right parameters
+        cluster_managment_class.assert_called_with(cluster)
+
+        # Check that cluster returns the instance of cluster managment that is expected
+        assert cluster.cluster_managment is cluster_managment
 
     async def test_pick_node(self, cluster_with_one_node, node1):
         node = cluster_with_one_node.pick_node(b"key")
@@ -97,6 +133,11 @@ class TestCluster:
         assert node1 in nodes
         assert node2 in nodes
 
+        # check all node properties
+        assert cluster_with_two_nodes.nodes == [node1, node2]
+        assert cluster_with_two_nodes.healthy_nodes == [node1]
+        assert cluster_with_two_nodes.unhealthy_nodes == [node2]
+
     async def test_unhealthy_purge_node(self, cluster_with_two_nodes_purge_unhealthy, node1, node2):
         # Report that node2 is unhealthy
         cluster_with_two_nodes_purge_unhealthy._on_node_healthy_status_change_cb(node2, False)
@@ -110,6 +151,11 @@ class TestCluster:
 
         # All traffic should be send to the healhty node
         assert nodes[node1] == keys
+
+        # check all node properties
+        assert cluster_with_two_nodes_purge_unhealthy.nodes == [node1, node2]
+        assert cluster_with_two_nodes_purge_unhealthy.healthy_nodes == [node1]
+        assert cluster_with_two_nodes_purge_unhealthy.unhealthy_nodes == [node2]
 
     async def test_unhealthy_pick_node_no_available_nodes(self, cluster_with_one_node_purge_unhealthy, node1):
         # Report that node_1 is unhealthy

@@ -46,4 +46,5 @@ Contents
 
   client
   operations
+  cluster_managment
   advanced_topics

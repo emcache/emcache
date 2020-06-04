@@ -3,7 +3,7 @@ import logging
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from ._cython import cyemcache
-from .base import Client, ClusterEvents, Item
+from .base import Client, ClusterEvents, ClusterManagment, Item
 from .client_errors import NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster, MemcachedHostAddress
 from .default_values import (
@@ -150,6 +150,14 @@ class _Client(Client):
                 raise
 
         return [task.result() for task in tasks]
+
+    def cluster_managment(self) -> ClusterManagment:
+        """ Returns the `ClusterMangment` instance class for managing
+        the cluster related to that client.
+
+        Same instance is returned at any call.
+        """
+        return self._cluster.cluster_managment
 
     async def get(self, key: bytes, return_flags=False) -> Optional[Item]:
         """Return the value associated with the key as an `Item` instance.
