@@ -10,6 +10,8 @@ IN PROGRESS 0.2.0b0
   for now only supports two events for telling you when a node has changed the healthy status. [#27](https://github.com/pfreixes/emcache/pull/27)
 - Support for cluster managment which provies different operations for the cluster like listing the nodes
   that are participating into the cluster, or return the ones that are healthy or unhealthy. [#29](https://github.com/pfreixes/emcache/pull/29)
+- New cluster managment function for returning the most important metrics observed at connection pool
+  level [#30](https://github.com/pfreixes/emcache/pull/30)
 
 0.1.1b0
 =======
