@@ -3,12 +3,12 @@ import logging
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-from .connection_pool import BaseConnectionContext, ConnectionPool
+from .connection_pool import BaseConnectionContext, ConnectionPool, ConnectionPoolMetrics
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True)
 class MemcachedHostAddress:
     """ Data class for identifying univocally a Memcached host. """
 
@@ -73,6 +73,9 @@ class Node:
 
     def connection(self) -> BaseConnectionContext:
         return self._connection_pool.create_connection_context()
+
+    def connection_pool_metrics(self) -> ConnectionPoolMetrics:
+        return self._connection_pool.metrics()
 
     @property
     def host(self) -> str:

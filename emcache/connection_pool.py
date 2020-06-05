@@ -2,6 +2,8 @@ import asyncio
 import logging
 import time
 from collections import deque
+from copy import copy
+from dataclasses import dataclass
 from typing import Callable, Dict, Optional
 
 from .protocol import MemcacheAsciiProtocol, create_protocol
@@ -10,6 +12,33 @@ logger = logging.getLogger(__name__)
 
 CREATE_CONNECTION_MAX_BACKOFF = 60.0
 DECLARE_UNHEALTHY_CONNECTION_POOL_AFTER_RETRIES = 3
+
+
+@dataclass
+class ConnectionPoolMetrics:
+    """ Provides basic metrics for understanding how the connection pool has
+    behaved historically and currently.
+    """
+
+    # total connections that are currently opened.
+    cur_connections: int
+
+    # historical values until for how many
+    # connections have been opened, how many of them
+    # failed, how many connections were purged and finally
+    # how many connections were closed.
+    connections_created: int
+    connections_created_with_error: int
+    connections_purged: int
+    connections_closed: int
+
+    # historical values until now for how many
+    # operations have been executed, how many of them failed
+    # with an exception, and how many of them needed to wait
+    # for an available connection
+    operations_executed: int
+    operations_executed_with_error: int
+    operations_waited: int
 
 
 class ConnectionPool:
@@ -23,12 +52,11 @@ class ConnectionPool:
     _loop: asyncio.AbstractEventLoop
     _creating_connection_task: Optional[asyncio.Task]
     _create_connection_in_progress: bool
-    _stats_connections_waited: int
     _connections_last_time_used: Dict[MemcacheAsciiProtocol, float]
     _purge_unused_connections_after: Optional[int]
     _total_purged_connections: int
-    _stats_closed_connections: int
     _connection_timeout: Optional[float]
+    _metrics: ConnectionPoolMetrics
 
     def __init__(
         self,
@@ -42,6 +70,17 @@ class ConnectionPool:
         if max_connections < 1:
             raise ValueError("max_connections must be higher than 0")
 
+        self._metrics = ConnectionPoolMetrics(
+            cur_connections=0,
+            connections_created=0,
+            connections_created_with_error=0,
+            connections_purged=0,
+            connections_closed=0,
+            operations_executed=0,
+            operations_executed_with_error=0,
+            operations_waited=0,
+        )
+
         # A connection pool starts always in a healthy state
         self._healthy = True
         self._on_healthy_status_change_cb = on_healthy_status_change_cb
@@ -53,8 +92,6 @@ class ConnectionPool:
 
         # attributes used for handling connections and waiters
         self._total_connections = 0
-        self._stats_connections_waited = 0
-        self._stats_connections_unexpectedly_closed = 0
         self._max_connections = max_connections
         self._waiters = deque()
         self._unused_connections = deque(maxlen=max_connections)
@@ -66,7 +103,6 @@ class ConnectionPool:
         # attributes used for purging connections
         self._connections_last_time_used = {}
         self._purge_unused_connections_after = purge_unused_connections_after
-        self._total_purged_connections = 0
         if purge_unused_connections_after is not None:
             self._loop.call_later(self._purge_unused_connections_after, self._purge_unused_connections)
 
@@ -82,6 +118,7 @@ class ConnectionPool:
     def _close_connection(self, connection):
         """ Performs all of the operations needed for closing a connection. """
         connection.close()
+        self._metrics.connections_closed += 1
 
         if connection in self._unused_connections:
             self._unused_connections.remove(connection)
@@ -106,7 +143,7 @@ class ConnectionPool:
                 break
 
             self._close_connection(connection)
-            self._total_purged_connections += 1
+            self._metrics.connections_purged += 1
             logger.info(f"{self} Connection purged")
 
         self._loop.call_later(self._purge_unused_connections_after, self._purge_unused_connections)
@@ -144,6 +181,7 @@ class ConnectionPool:
                 logger.info(f"{self} healthy again")
                 self._healthy = True
                 self._on_healthy_status_change_cb(self._healthy)
+            self._metrics.connections_created += 1
             self._creating_connection = False
             logger.info(f"{self} new connection created")
         except asyncio.TimeoutError:
@@ -154,6 +192,8 @@ class ConnectionPool:
             error = True
         finally:
             if error:
+                self._metrics.connections_created_with_error += 1
+
                 if backoff is None:
                     backoff = 1.0
                     retries = 1
@@ -202,7 +242,6 @@ class ConnectionPool:
             if connection.closed() is False:
                 return ConnectionContext(self, connection, None)
 
-            self._stats_connections_unexpectedly_closed += 1
             self._close_connection(connection)
 
         waiter = self._loop.create_future()
@@ -210,7 +249,7 @@ class ConnectionPool:
 
         self._maybe_new_connection()
 
-        self._stats_connections_waited += 1
+        self._metrics.operations_waited += 1
         return WaitingForAConnectionContext(self, None, waiter)
 
     # Below methods are used by the _BaseConnectionContext and derivated classes.
@@ -220,25 +259,21 @@ class ConnectionPool:
         if exc or connection.closed():
             logger.warning(f"{self} Closing connection and removing from the pool due to exception {exc}")
             self._close_connection(connection)
-            self._stats_connections_unexpectedly_closed += 1
             self._maybe_new_connection()
+            self._metrics.operations_executed_with_error += 1
         else:
             self._wakeup_next_waiter_or_append_to_unused(connection)
+            self._metrics.operations_executed += 1
 
     def remove_waiter(self, waiter: asyncio.Future):
         "" "Remove a specifici waiter" ""
         self._waiters.remove(waiter)
 
-    # stats methods
-    def stats_connections_waited(self) -> int:
-        value = self._stats_connections_waited
-        self._stats_connections_waited = 0
-        return value
-
-    def stats_connections_unexpectedly_closed(self) -> int:
-        value = self._stats_connections_unexpectedly_closed
-        self._stats_connections_unexpectedly_closed = 0
-        return value
+    def metrics(self) -> ConnectionPoolMetrics:
+        metrics = copy(self._metrics)
+        # current values are updated at read time
+        metrics.cur_connections = self.total_connections
+        return metrics
 
     @property
     def total_connections(self):

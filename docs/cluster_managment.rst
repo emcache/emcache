@@ -39,4 +39,23 @@ We might be interested on provide an intermediate factory for creating a client 
   the advanced options chapter and more specifically at the Healty and Unhealthy nodes for understanding what node healthiness means.
 - :meth:`emcache.ClusterManagment.unhealthy_nodes` Returns the list of nodes that belong to the cluster that are considered unhealthy, where each node is a :class:`emcache.MemcachedHostAddress`. Take a look to
   the advanced options chapter and more specifically at the Healty and Unhealthy nodes for understanding what node healthiness means.
--
+- :meth:`emcache.ClusterManagment.connection_pool_metrics` Returns the most important metrics that have been observed per each connection pool, take a look to the following section for understanding what
+  metrics are being reported.
+
+Connection pool metrics
+^^^^^^^^^^^^^^^^^^^^^^^
+
+The :meth:`emcache.ClusterManagment.connection_pool_metrics` method returns the main metrics observed by each connection pool of each of the cluster nodes. A dictionary having as
+a key the :class:`emcache.MemcachedHostAddress` class instances representing each node, and as a value an instance of :class:`emcache.ConnectionPoolMetrics`. The metrics that are
+returned as attributes of this class are:
+
+- **curr_connections** Tells you how many connections are oppened at that specific moment.
+- **connections_created** Tells you how many connections have been created until now.
+- **connections_created_with_error** Tells you how many connections have been created but ended up by having an exception during the creation time.
+- **connections_purged** Tells you how many connections have been purged.
+- **connections_closed** Tells you how many connections have been closed.
+- **operations_executed** Tells you how many operations have been executed.
+- **operations_executed_with_error** Tells you how many operations have been executed but ended up by having an exception during the execution.
+- **operations_waited** Tells you how many operations were delayed becausew they had to wait for an available connection.
+
+These metrics can be push to a time series database for monitoring the execution of the Emcache driver, the user will need to take care of calculating the deltas, if the user is intereseted on them, of each historical value since historical values are accumulated values.
