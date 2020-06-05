@@ -11,6 +11,7 @@ from emcache.connection_pool import (
     BaseConnectionContext,
     ConnectionContext,
     ConnectionPool,
+    ConnectionPoolMetrics,
     WaitingForAConnectionContext,
 )
 
@@ -46,6 +47,14 @@ class TestConnectionPool:
         with pytest.raises(ValueError):
             ConnectionPool("localhost", 11211, 0, None, None, lambda _: _)
 
+    async def test_metrics(self):
+        # Just test that the type returned is the right one and there is a method
+        # published. Specific attribute value are tested in the other tests which are
+        # not specific to metrics but they are simulating most of the situations that
+        # are needed for incrementing the counters.
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, None, lambda _: _)
+        assert isinstance(connection_pool.metrics(), ConnectionPoolMetrics)
+
     async def test_remove_waiter(self, minimal_connection_pool):
         waiter = Mock()
         minimal_connection_pool._waiters.append(waiter)
@@ -68,7 +77,11 @@ class TestConnectionPool:
         await ev.wait()
 
         create_protocol.assert_called_with("localhost", 11211, timeout=None)
-        assert connection_pool._total_connections == 1
+        assert connection_pool.total_connections == 1
+
+        # test specific atributes of the metrics
+        assert connection_pool.metrics().cur_connections == 1
+        assert connection_pool.metrics().connections_created == 1
 
     async def test_create_connection_with_timeout(self, mocker, not_closed_connection):
         ev = asyncio.Event()
@@ -125,6 +138,11 @@ class TestConnectionPool:
         # check that we have called twice the create_protocol
         create_protocol.assert_has_calls([call("localhost", 11211, timeout=1.0), call("localhost", 11211, timeout=1.0)])
 
+        # test specific atributes of the metrics
+        assert connection_pool.metrics().cur_connections == 1
+        assert connection_pool.metrics().connections_created == 1
+        assert connection_pool.metrics().connections_created_with_error == 1
+
     async def test_create_connection_do_not_try_again_unknown_error(self, event_loop, mocker):
         # If there is an error trying to acquire a connection and there are waiters waiting we will keep
         # trying to create a connection
@@ -151,7 +169,7 @@ class TestConnectionPool:
         # check that we have called once the create_protocol
         create_protocol.assert_called_once_with("localhost", 11211, timeout=1.0)
 
-        assert connection_pool._total_connections == 0
+        assert connection_pool.total_connections == 0
 
     async def test_create_connection_backoff(self, event_loop, mocker, not_closed_connection):
         sleep = mocker.patch("emcache.connection_pool.asyncio.sleep", CoroutineMock())
@@ -271,7 +289,7 @@ class TestConnectionPool:
 
         # check that we have called the create_protocol only twice
         assert create_protocol.call_count == 2
-        assert connection_pool._total_connections == 2
+        assert connection_pool.total_connections == 2
 
     async def test_connection_context_not_use_a_closed_connections(self, event_loop, mocker, not_closed_connection):
         # Checks that if a connection is in closed state its not used and purged.
@@ -294,7 +312,10 @@ class TestConnectionPool:
         # one is still there.
         assert not_closed_connection in connection_pool._unused_connections
         assert connection_closed not in connection_pool._unused_connections
-        assert connection_pool._total_connections == 1
+        assert connection_pool.total_connections == 1
+
+        # test specific atributes of the metrics
+        assert connection_pool.metrics().connections_closed == 1
 
     async def test_connection_context_create_connection_if_closed(self, event_loop, mocker, not_closed_connection):
         # Checks that if a connection is returned in closed state, if there are waiters a new connection is created.
@@ -329,7 +350,10 @@ class TestConnectionPool:
         create_protocol.assert_has_calls(
             [call("localhost", 11211, timeout=None), call("localhost", 11211, timeout=None)]
         )
-        assert connection_pool._total_connections == 1
+        assert connection_pool.total_connections == 1
+
+        # test specific atributes of the metrics
+        assert connection_pool.metrics().connections_closed == 1
 
     async def test_connection_context_create_connection_if_context_returns_with_exception(
         self, event_loop, mocker, not_closed_connection
@@ -367,7 +391,12 @@ class TestConnectionPool:
         create_protocol.assert_has_calls(
             [call("localhost", 11211, timeout=None), call("localhost", 11211, timeout=None)]
         )
-        assert connection_pool._total_connections == 1
+        assert connection_pool.total_connections == 1
+
+        # test specific atributes of the metrics
+        assert connection_pool.metrics().connections_closed == 1
+        assert connection_pool.metrics().operations_executed_with_error == 1
+        assert connection_pool.metrics().operations_executed == 2
 
     async def test_waiters_LIFO(self, event_loop, mocker, not_closed_connection):
         # Check that waiters queue are seen as LIFO queue, where we try to rescue the latency
@@ -395,6 +424,9 @@ class TestConnectionPool:
 
         # check that where called in the right order
         assert waiters_woken_up == [connection_context3, connection_context2, connection_context1]
+
+        # test specific atributes of the metrics
+        assert connection_pool.metrics().operations_waited == 3
 
     async def test_waiters_cancellation_is_supported(self, event_loop, mocker, not_closed_connection):
         # Check that waiters that are cancelled are suported and do not break
@@ -489,7 +521,11 @@ class TestConnectionPool:
         assert expired_connection not in connection_pool._connections_last_time_used
         assert none_expired_connection in connection_pool._connections_last_time_used
 
-        assert connection_pool._total_connections == 1
+        assert connection_pool.total_connections == 1
+
+        # test specific atributes of the metrics
+        assert connection_pool.metrics().cur_connections == 1
+        assert connection_pool.metrics().connections_purged == 1
 
     async def test_purge_not_the_last_connection(self, event_loop, mocker):
 
@@ -516,7 +552,11 @@ class TestConnectionPool:
         assert expired_connection in connection_pool._unused_connections
         assert expired_connection in connection_pool._connections_last_time_used
 
-        assert connection_pool._total_connections == 1
+        assert connection_pool.total_connections == 1
+
+        # test specific atributes of the metrics
+        assert connection_pool.metrics().cur_connections == 1
+        assert connection_pool.metrics().connections_purged == 0
 
     async def test_purge_connections_disabled(self, event_loop, mocker):
         get_running_loop = Mock()

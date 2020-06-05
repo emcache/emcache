@@ -1,9 +1,10 @@
 import logging
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Mapping, Optional, Sequence
 
 from ._cython import cyemcache
 from .base import ClusterEvents, ClusterManagment
 from .client_errors import ClusterNoAvailableNodes
+from .connection_pool import ConnectionPoolMetrics
 from .node import MemcachedHostAddress, Node
 
 logger = logging.getLogger(__name__)
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 class _ClusterManagment(ClusterManagment):
     _cluster: "Cluster"
 
-    def __init__(self, cluster: "Cluster"):
+    def __init__(self, cluster: "Cluster") -> None:
         self._cluster = cluster
 
     def nodes(self) -> List[MemcachedHostAddress]:
@@ -26,6 +27,15 @@ class _ClusterManagment(ClusterManagment):
     def unhealthy_nodes(self) -> List[MemcachedHostAddress]:
         """Return the nodes that are considered unhealthy. """
         return [node.memcached_host_address for node in self._cluster.unhealthy_nodes]
+
+    def connection_pool_metrics(self) -> Mapping[MemcachedHostAddress, ConnectionPoolMetrics]:
+        """Return metrics gathered at emcache driver side for each of the
+        cluster nodes for its connection pool.
+
+        For more information about what metrics are being returned take a look
+        to the `ConnectionPoolMetrics`.
+        """
+        return {node.memcached_host_address: node.connection_pool_metrics() for node in self._cluster.nodes}
 
 
 class Cluster:
