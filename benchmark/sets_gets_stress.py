@@ -7,7 +7,7 @@ from typing import List
 
 import uvloop
 
-from emcache import Client, create_client
+from emcache import Client, create_client, MemcachedHostAddress
 
 uvloop.install()
 
@@ -106,7 +106,7 @@ async def main():
     if args.memcache_port:
         ports = args.memcache_port.split(",")
 
-    hosts = [(host, int(port)) for host, port in zip(addresses, ports)]
+    hosts = [MemcachedHostAddress(host, int(port)) for host, port in zip(addresses, ports)]
 
     client = await create_client(hosts, timeout=None, max_connections=args.concurrency)
 
