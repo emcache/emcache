@@ -109,10 +109,10 @@ Following example shows how this parameter can be provided:
 
     class ClusterEvents(emcache.ClusterEvents):
 
-        def on_node_healthy(self, memcached_host_address):
+        async def on_node_healthy(self, cluster_managment, memcached_host_address):
             print(f"Node {memcached_host_address} reports a healthy status")
 
-        def on_node_unhealthy(self, memcached_host_address):
+        async def on_node_unhealthy(self, cluster_managment, memcached_host_address):
             print(f"Node {memcached_host_address} reports an unhealthy status")
 
     client = await emcache.create_client(
@@ -124,4 +124,7 @@ Following example shows how this parameter can be provided:
     )
 
 Right now :class:`ClusterEvents` has only support for reporting events realated to changes of the node healthiness, the two hooks :meth:`on_node_healthy` and :meth:`on_node_unhealthy` would be
-called - independntly of the `purge_unhealthy_nodes` configuration - when one of the nodes of the cluster change the healthy status.
+called - independntly of the `purge_unhealthy_nodes` configuration - when one of the nodes of the cluster change the healthy status. Besides of the argument for identifying univocally the node that is related
+to a specifice event, as a first argument the :class:`ClusterManagment` instance will be provided which might be used for retrieving more information about the cluster and its nodes.
+
+Events are dispatched in serie, meaning that behind the scenes Emcache will be calling one and only one hook at any moment, and order of the events will be guaranteed. The hook, due to the asynchronous nature might decide to run asynchronous operations, this might delay the delivery of pending messages. 
