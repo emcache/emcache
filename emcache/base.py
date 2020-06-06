@@ -181,7 +181,7 @@ class ClusterEvents(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def on_node_healthy(self, host: MemcachedHostAddress) -> None:
+    async def on_node_healthy(self, cluster_managment: "ClusterManagment", host: MemcachedHostAddress) -> None:
         """Called when a node is marked as healthy.
 
         A node is marked as healthy when there is at least one TCP
@@ -189,7 +189,7 @@ class ClusterEvents(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def on_node_unhealthy(self, host: MemcachedHostAddress) -> None:
+    async def on_node_unhealthy(self, cluster_managment: "ClusterManagment", host: MemcachedHostAddress) -> None:
         """Called when a new node is marked as umhealthy.
 
         A node is marked as unhealthy when there is no TCP

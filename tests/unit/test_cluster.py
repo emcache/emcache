@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import Mock, call
 
 import pytest
@@ -39,25 +40,27 @@ def node2(memcached_host_address_2):
 
 
 @pytest.fixture
-def cluster_with_one_node(mocker, node1, memcached_host_address_1):
+async def cluster_with_one_node(mocker, node1, memcached_host_address_1):
     mocker.patch("emcache.cluster.Node", return_value=node1)
     return Cluster([memcached_host_address_1], 1, 60, 5, None, False)
 
 
 @pytest.fixture
-def cluster_with_two_nodes(mocker, node1, node2, memcached_host_address_1, memcached_host_address_2):
+async def cluster_with_two_nodes(mocker, node1, node2, memcached_host_address_1, memcached_host_address_2):
     mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
     return Cluster([memcached_host_address_1, memcached_host_address_2], 1, 60, 5, None, False)
 
 
 @pytest.fixture
-def cluster_with_one_node_purge_unhealthy(mocker, node1, memcached_host_address_1):
+async def cluster_with_one_node_purge_unhealthy(mocker, node1, memcached_host_address_1):
     mocker.patch("emcache.cluster.Node", return_value=node1)
     return Cluster([memcached_host_address_1], 1, 60, 5, None, True)
 
 
 @pytest.fixture
-def cluster_with_two_nodes_purge_unhealthy(mocker, node1, node2, memcached_host_address_1, memcached_host_address_2):
+async def cluster_with_two_nodes_purge_unhealthy(
+    mocker, node1, node2, memcached_host_address_1, memcached_host_address_2
+):
     mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
     return Cluster([memcached_host_address_1, memcached_host_address_2], 1, 60, 5, None, True)
 
@@ -87,7 +90,7 @@ class TestCluster:
         with pytest.raises(ValueError):
             Cluster([], 1, 60, 5, None, False)
 
-    async def test_node_initialization(self, event_loop, mocker, memcached_host_address_1, memcached_host_address_2):
+    async def test_node_initialization(self, mocker, memcached_host_address_1, memcached_host_address_2):
         mocker.patch("emcache.cluster.cyemcache")
         node_class = mocker.patch("emcache.cluster.Node")
         cluster = Cluster([memcached_host_address_1, memcached_host_address_2], 1, 60, 5, None, False)
@@ -172,18 +175,23 @@ class TestCluster:
             cluster_with_one_node_purge_unhealthy.pick_nodes([b"key", b"key2"])
 
     async def test_cluster_events(self, mocker, memcached_host_address_1):
+        ev_cb_on_healthy_node = asyncio.Event()
+        ev_cb_on_unhealthy_node = asyncio.Event()
+
         class MyClusterEvents(ClusterEvents):
             def __init__(self):
-                self.on_healhty_node_called = 0
-                self.on_unhealhty_node_called = 0
+                self.cluster_managment_on_healhty = None
+                self.cluster_managment_on_unhealhty = None
 
-            def on_node_healthy(self, memcached_host_address):
+            async def on_node_healthy(self, cluster_managment, memcached_host_address):
                 assert memcached_host_address == memcached_host_address_1
-                self.on_healhty_node_called += 1
+                self.cluster_managment_on_healhty = cluster_managment
+                ev_cb_on_healthy_node.set()
 
-            def on_node_unhealthy(self, memcached_host_address):
+            async def on_node_unhealthy(self, cluster_managment, memcached_host_address):
                 assert memcached_host_address == memcached_host_address_1
-                self.on_unhealhty_node_called += 1
+                self.cluster_managment_on_unhealhty = cluster_managment
+                ev_cb_on_unhealthy_node.set()
 
         cluster_events = MyClusterEvents()
 
@@ -198,6 +206,37 @@ class TestCluster:
         cluster._on_node_healthy_status_change_cb(node1, False)
         cluster._on_node_healthy_status_change_cb(node1, True)
 
-        # Check that hooks were called
-        assert cluster_events.on_healhty_node_called == 1
-        assert cluster_events.on_unhealhty_node_called == 1
+        # Check that hooks were called by just waiting for the events
+        await asyncio.wait({ev_cb_on_healthy_node.wait(), ev_cb_on_unhealthy_node.wait()})
+
+        # Check that the instance of the cluster managment was the right one
+        assert cluster_events.cluster_managment_on_healhty is cluster.cluster_managment
+        assert cluster_events.cluster_managment_on_unhealhty is cluster.cluster_managment
+
+    async def test_cluster_events_hook_raises_exception(self, mocker, memcached_host_address_1):
+        # the raising of an exception should not stop the dipatcher behind the scenes
+        ev_cb_on_healthy_node = asyncio.Event()
+
+        class MyClusterEvents(ClusterEvents):
+            async def on_node_healthy(self, cluster_managment, memcached_host_address):
+                ev_cb_on_healthy_node.set()
+
+            async def on_node_unhealthy(self, cluster_managment, memcached_host_address):
+                raise Exception()
+
+        cluster_events = MyClusterEvents()
+
+        node1 = Mock()
+        node1.host = memcached_host_address_1.address
+        node1.port = memcached_host_address_1.port
+        node1.memcached_host_address = memcached_host_address_1
+        mocker.patch("emcache.cluster.Node", return_value=node1)
+        cluster = Cluster([memcached_host_address_1], 1, 60, 5, cluster_events, False)
+
+        # Set the node unhealhty and healthy again
+        cluster._on_node_healthy_status_change_cb(node1, False)
+        cluster._on_node_healthy_status_change_cb(node1, True)
+
+        # Check that the hook for the healthy one is called, the exception should
+        # not break the flow for sending hooks.
+        await asyncio.wait({ev_cb_on_healthy_node.wait()})

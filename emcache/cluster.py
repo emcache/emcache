@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Dict, List, Mapping, Optional, Sequence
 
@@ -8,6 +9,8 @@ from .connection_pool import ConnectionPoolMetrics
 from .node import MemcachedHostAddress, Node
 
 logger = logging.getLogger(__name__)
+
+MAX_EVENTS = 1000
 
 
 class _ClusterManagment(ClusterManagment):
@@ -52,6 +55,8 @@ class Cluster:
     _healthy_nodes: List[Node]
     _unhelathy_nodes: List[Node]
     _rdz_nodes: List[cyemcache.RendezvousNode]
+    _events_dispatcher_task: asyncio.Task
+    _events: asyncio.Queue
 
     def __init__(
         self,
@@ -86,7 +91,21 @@ class Cluster:
         ]
         self._build_rdz_nodes()
         self._cluster_managment = _ClusterManagment(self)
+        self._events = asyncio.Queue(maxsize=MAX_EVENTS)
+        self._events_dispatcher_task = asyncio.get_running_loop().create_task(self._events_dispatcher())
         logger.debug(f"Cluster configured with {len(self._healthy_nodes)} nodes")
+
+    async def _events_dispatcher(self):
+        while True:
+            coro = await self._events.get()
+            try:
+                await coro
+            except asyncio.CancelledError:
+                # if a cancellation is received we stop processing
+                # messages
+                break
+            except Exception:
+                logger.exception(f"Hook {coro} raised an exception, continuing processing events")
 
     def _build_rdz_nodes(self):
         """ Builds the list of rdz nodes using the nodes that claim to be healhty."""
@@ -116,10 +135,17 @@ class Cluster:
 
         # trigger cluster events if they were provided
         if self._cluster_events:
-            if healthy:
-                self._cluster_events.on_node_healthy(node.memcached_host_address)
-            else:
-                self._cluster_events.on_node_unhealthy(node.memcached_host_address)
+            try:
+                if healthy:
+                    self._events.put_nowait(
+                        self._cluster_events.on_node_healthy(self._cluster_managment, node.memcached_host_address)
+                    )
+                else:
+                    self._events.put_nowait(
+                        self._cluster_events.on_node_unhealthy(self._cluster_managment, node.memcached_host_address)
+                    )
+            except asyncio.QueueFull:
+                logger.warning("Events can't be dispathed, queue full")
 
     def pick_node(self, key: bytes) -> Node:
         """Return the most appropiate node for the given key.

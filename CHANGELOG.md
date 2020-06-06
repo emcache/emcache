@@ -7,7 +7,7 @@ IN PROGRESS 0.2.0b0
   one TCP connection. Unhealthy nodes can be optionally removed from pool of nodes elegible for sending
   traffic. [#27](https://github.com/pfreixes/emcache/pull/27)
 - Support for cluster events for telling you in real time what signfificant events are happening,
-  for now only supports two events for telling you when a node has changed the healthy status. [#27](https://github.com/pfreixes/emcache/pull/27)
+  for now only supports two events for telling you when a node has changed the healthy status. [#27](https://github.com/pfreixes/emcache/pull/27)[#32](https://github.com/pfreixes/emcache/pull/32)
 - Support for cluster managment which provies different operations for the cluster like listing the nodes
   that are participating into the cluster, or return the ones that are healthy or unhealthy. [#29](https://github.com/pfreixes/emcache/pull/29)
 - New cluster managment function for returning the most important metrics observed at connection pool
