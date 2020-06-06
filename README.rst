@@ -15,9 +15,12 @@ A high performance asynchronous Python client for `Memcached <https://memcached.
 Emcache stands on the giant's shoulders and implements most of the characteristics that are desired for a Memcached client based
 on the experience of other Memcached clients, providing the following main characteristics:
 
-- Support for many Memcached hosts, distributing traffic around them by using the `Rendezvous hashing <https://en.wikipedia.org/wiki/Rendezvous_hashing>`_ algorithm.
+- Support for many Memcached hosts, distributing traffic around them by using the `Rendezvous hashing <https://emcache.readthedocs.io/en/latest/advanced_topics.html#hashing-algorithm>`_ algorithm.
 - Support for different commands and different flag behaviors like ``noreply``, ``exptime`` or ``flags``.
-- Adaptative connection pool, which increases the number of connections per Memcache host depending on the traffic.
+- Adaptative `connection pool <https://emcache.readthedocs.io/en/latest/advanced_topics.html#connection-pool>`_, which increases the number of connections per Memcache host depending on the traffic.
+- `Node healthiness <https://emcache.readthedocs.io/en/latest/advanced_topics.html#healthy-and-unhealthy-nodes>`_ traceability and an optional flag for disabling unhealthy for participating in the commands.
+- Metrics for `operations and connections <https://emcache.readthedocs.io/en/latest/cluster_managment.html#connection-pool-metrics>`_, send them to your favourite TS database for knowing how the Emcache driver is behaving.
+- Listen to the most significant `cluster events <https://emcache.readthedocs.io/en/latest/advanced_topics.html#cluster-events>`_, for example for knowing when a node has been marked as unhealthy.
 - Speed, Emcache is fast. See the benchmark section.
 
 Emcache is still on beta and has not bet yet tested in production but early feedback is wanted from the community to make it ready for production.
@@ -26,8 +29,6 @@ Full batteries must be finally provided in the following releases, the following
 
 - Support for other commands, like ``touch``, ``delete``, etc.
 - A public interface for managing the nodes of the cluster, allowing, for example, the addition or deletion of Memcached nodes at run time.
-- Node healthiness support which would allow, optionable, removing nodes that are not responding.
-- Cluster and node observability for retrieving stats or listening for significant events.
 
 Usage
 ==========
