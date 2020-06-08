@@ -1,4 +1,4 @@
-0.2.0b1
+0.2.1b0
 =======
 - Add new close method at Client class level for releasing any underlying resource used. [#34](https://github.com/pfreixes/emcache/pull/34)
 
