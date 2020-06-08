@@ -15,6 +15,7 @@ Following example shows how an instance of :class:`emcache.ClusterManagment` can
         ]
     )
     client.cluster_managment().nodes()
+    await client.close()
 
 
 We might be interested on provide an intermediate factory for creating a client cache that will retrieve the cluster managment instance for using it later, for example:

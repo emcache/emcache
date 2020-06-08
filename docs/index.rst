@@ -36,6 +36,7 @@ provided by the :class:`emcache.Client` object.
         await client.set(b'key', b'value')
         item = await client.get(b'key')
         print(item.value)
+        await client.close()
     asyncio.run(main())
     b'value'
 

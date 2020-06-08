@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
 import pytest
+from asynctest import CoroutineMock
 
 from emcache.node import MemcachedHostAddress, Node
 
@@ -33,8 +34,8 @@ class TestNode:
 
     async def test_str(self, connection_pool, memcached_host_address):
         node = Node(memcached_host_address, 1, 60, 5, lambda _: _)
-        assert str(node) == "<Node host=localhost port=11211>"
-        assert repr(node) == "<Node host=localhost port=11211>"
+        assert str(node) == "<Node host=localhost port=11211 closed=False>"
+        assert repr(node) == "<Node host=localhost port=11211 closed=False>"
 
     async def test_connection_pool(self, connection_pool, memcached_host_address):
         node = Node(memcached_host_address, 1, 60, 5, lambda _: _)
@@ -46,6 +47,14 @@ class TestNode:
             5,
             node._on_connection_pool_healthy_status_change_cb,
         )
+
+    async def test_close(self, mocker, memcached_host_address):
+        connection_pool = Mock()
+        connection_pool.close = CoroutineMock()
+        mocker.patch("emcache.node.ConnectionPool", return_value=connection_pool)
+        node = Node(memcached_host_address, 1, 60, 5, lambda _: _)
+        await node.close()
+        connection_pool.close.assert_called()
 
     async def test_connection_pool_healthiness_propagation(self, connection_pool, memcached_host_address):
         cb_mock = Mock()

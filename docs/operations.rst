@@ -13,6 +13,7 @@ Following snippet shows how a :meth:`emcache.Client.set` command can be performe
         [emcache.MemcachedHostAddress('localhost', 11211)]
     )
     await client.set(b"key", b"value")
+    await client.close()
 
 By default the :class:`emcache.Client` instance provided by the :meth:`emcache.create_client` factory comes configured with a default timeout, so if it is not disabled
 explicitly any operation might end up raising an :exc:`asyncio.TimeoutError`. As the following snippet

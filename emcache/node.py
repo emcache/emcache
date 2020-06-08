@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Callable, Optional
@@ -26,7 +25,7 @@ class Node:
     _healthy: bool
     _on_healthy_status_change_cb: Callable[[bool], None]
     _connection_pool: ConnectionPool
-    _loop: asyncio.AbstractEventLoop
+    _closed: bool
 
     def __init__(
         self,
@@ -42,7 +41,6 @@ class Node:
         self._on_healthy_status_change_cb = on_healthy_status_change_cb
 
         self._memcached_host_address = memcached_host_address
-        self._loop = asyncio.get_running_loop()
         self._connection_pool = ConnectionPool(
             self.host,
             self.port,
@@ -51,10 +49,11 @@ class Node:
             connection_timeout,
             self._on_connection_pool_healthy_status_change_cb,
         )
+        self._closed = False
         logger.debug(f"{self} new node created")
 
     def __str__(self) -> str:
-        return f"<Node host={self.host} port={self.port}>"
+        return f"<Node host={self.host} port={self.port} closed={self._closed}>"
 
     def __repr__(self) -> str:
         return str(self)
@@ -70,6 +69,15 @@ class Node:
             logger.warning(f"{self} Connection pool resports an unhealthy status")
 
         self._on_healthy_status_change_cb(self, self._healthy)
+
+    async def close(self):
+        """ Close any active background task and close the connection pool """
+        # Theoretically as it is being implemented, the client must guard that
+        # the node close method is only called once yes or yes.
+        assert self._closed is False
+
+        self._closed = True
+        await self._connection_pool.close()
 
     def connection(self) -> BaseConnectionContext:
         return self._connection_pool.create_connection_context()
