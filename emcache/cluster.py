@@ -57,6 +57,7 @@ class Cluster:
     _rdz_nodes: List[cyemcache.RendezvousNode]
     _events_dispatcher_task: asyncio.Task
     _events: asyncio.Queue
+    _closed: bool
 
     def __init__(
         self,
@@ -93,19 +94,22 @@ class Cluster:
         self._cluster_managment = _ClusterManagment(self)
         self._events = asyncio.Queue(maxsize=MAX_EVENTS)
         self._events_dispatcher_task = asyncio.get_running_loop().create_task(self._events_dispatcher())
-        logger.debug(f"Cluster configured with {len(self._healthy_nodes)} nodes")
+        self._closed = False
+        logger.debug(f"Cluster configured with {len(self.nodes)} nodes")
 
     async def _events_dispatcher(self):
+        logger.debug(f"Events dispatcher started")
         while True:
-            coro = await self._events.get()
             try:
+                coro = await self._events.get()
                 await coro
             except asyncio.CancelledError:
-                # if a cancellation is received we stop processing
-                # messages
+                # if a cancellation is received we stop processing events
                 break
             except Exception:
-                logger.exception(f"Hook {coro} raised an exception, continuing processing events")
+                logger.exception(f"Hook raised an exception, continuing processing events")
+
+        logger.debug("Events dispatcher stopped")
 
     def _build_rdz_nodes(self):
         """ Builds the list of rdz nodes using the nodes that claim to be healhty."""
@@ -114,22 +118,27 @@ class Cluster:
         else:
             nodes = self._healthy_nodes + self._unhealthy_nodes
 
-        logger.info(f"{self} Nodes used for sending traffic: {nodes}")
+        logger.info(f"Nodes used for sending traffic: {nodes}")
 
         self._rdz_nodes = [cyemcache.RendezvousNode(node.host, node.port, node) for node in nodes]
 
     def _on_node_healthy_status_change_cb(self, node: Node, healthy: bool):
-        """ Called by the node for telling that the healthy status has changed. """
+        """ CalleClose any active background task and close all TCP
+        connections.
+
+        It does not implement any gracefull close at operation level,
+        if there are active operations the outcome is not predictabled
+        by the node for telling that the healthy status has changed. """
         if healthy:
             assert node in self._unhealthy_nodes, "Node was not tracked by the cluster as unhealthy!"
             self._unhealthy_nodes.remove(node)
             self._healthy_nodes.append(node)
-            logger.info(f"{self} Node {node} reports a healthy status")
+            logger.info(f"Node {node} reports a healthy status")
         else:
             assert node in self._healthy_nodes, "Node was not tracked by the cluster as healthy!"
             self._healthy_nodes.remove(node)
             self._unhealthy_nodes.append(node)
-            logger.warning(f"{self} Node {node} reports an unhealthy status")
+            logger.warning(f"Node {node} reports an unhealthy status")
 
         self._build_rdz_nodes()
 
@@ -146,6 +155,25 @@ class Cluster:
                     )
             except asyncio.QueueFull:
                 logger.warning("Events can't be dispathed, queue full")
+
+    async def close(self):
+        """ Close any active background task and close all nodes """
+        # Theoretically as it is being implemented, the client must guard that
+        # the cluster close method is only called once yes or yes.
+        assert self._closed is False
+
+        self._closed = True
+
+        if not self._events_dispatcher_task.done():
+            self._events_dispatcher_task.cancel()
+
+            try:
+                await self._events_dispatcher_task
+            except asyncio.CancelledError:
+                pass
+
+        for node in self.nodes:
+            await node.close()
 
     def pick_node(self, key: bytes) -> Node:
         """Return the most appropiate node for the given key.

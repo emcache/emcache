@@ -63,6 +63,7 @@ class _Client(Client):
     _cluster: Cluster
     _timeout: Optional[float]
     _loop: asyncio.AbstractEventLoop
+    _closed: bool
 
     def __init__(
         self,
@@ -88,6 +89,7 @@ class _Client(Client):
             purge_unealthy_nodes,
         )
         self._timeout = timeout
+        self._closed = False
 
     async def _storage_command(
         self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool, cas: int = None
@@ -95,6 +97,9 @@ class _Client(Client):
         """ Proxy function used for all storage commands `add`, `set`,
         `replace`, `append` and `prepend`.
         """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
         if cas is not None and cas > MAX_ALLOWED_CAS_VALUE:
             raise ValueError(f"flags can not be higher than {MAX_ALLOWED_FLAG_VALUE}")
 
@@ -111,6 +116,9 @@ class _Client(Client):
 
     async def _fetch_command(self, command: bytes, key: bytes) -> Optional[bytes]:
         """ Proxy function used for all fetch commands `get`, `gets`. """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
         if cyemcache.is_key_valid(key) is False:
             raise ValueError("Key has invalid charcters")
 
@@ -123,6 +131,9 @@ class _Client(Client):
         self, command: bytes, keys: Sequence[bytes], return_flags=False
     ) -> Tuple[bytes, bytes, bytes]:
         """ Proxy function used for all fetch many commands `get_many`, `gets_many`. """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
         if not keys:
             return {}
 
@@ -150,6 +161,19 @@ class _Client(Client):
                 raise
 
         return [task.result() for task in tasks]
+
+    async def close(self) -> None:
+        """ Close any active background task and close all TCP
+        connections.
+
+        It does not implement any gracefull close at operation level,
+        if there are active operations the outcome is not predictable.
+        """
+        if self._closed:
+            return
+
+        self._closed = True
+        await self._cluster.close()
 
     def cluster_managment(self) -> ClusterManagment:
         """ Returns the `ClusterMangment` instance class for managing
@@ -333,7 +357,6 @@ class _Client(Client):
 
         Take a look at the `set` command for parameters description.
         """
-
         # flags and exptime are not updated and are simply
         # ignored by Memcached.
         flags = 0
@@ -359,7 +382,6 @@ class _Client(Client):
         Take a look at the `set` command for parameters description.
         use the documentation of that method.
         """
-
         # flags and exptime are not updated and are simply
         # ignored by Memcached.
         flags = 0

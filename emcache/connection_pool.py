@@ -55,8 +55,10 @@ class ConnectionPool:
     _connections_last_time_used: Dict[MemcacheAsciiProtocol, float]
     _purge_unused_connections_after: Optional[int]
     _total_purged_connections: int
+    _purge_timer_handler: Optional[asyncio.TimerHandle]
     _connection_timeout: Optional[float]
     _metrics: ConnectionPoolMetrics
+    _closed: bool
 
     def __init__(
         self,
@@ -69,6 +71,8 @@ class ConnectionPool:
     ):
         if max_connections < 1:
             raise ValueError("max_connections must be higher than 0")
+
+        self._closed = False
 
         self._metrics = ConnectionPoolMetrics(
             cur_connections=0,
@@ -104,13 +108,20 @@ class ConnectionPool:
         self._connections_last_time_used = {}
         self._purge_unused_connections_after = purge_unused_connections_after
         if purge_unused_connections_after is not None:
-            self._loop.call_later(self._purge_unused_connections_after, self._purge_unused_connections)
+            self._purge_timer_handler = self._loop.call_later(
+                self._purge_unused_connections_after, self._purge_unused_connections
+            )
+        else:
+            self._purge_timer_handler = None
 
         # At least one connection needs to be available
         self._maybe_new_connection()
 
     def __str__(self):
-        return f"<ConnectionPool host={self._host} port={self._port} total_connections={self._total_connections}>"
+        return (
+            f"<ConnectionPool host={self._host} port={self._port}"
+            + f" total_connections={self._total_connections} closed={self._closed}>"
+        )
 
     def __repr__(self):
         return str(self)
@@ -190,6 +201,8 @@ class ConnectionPool:
         except OSError as exc:
             logger.warning(f"{self} new connection could not be created, an error ocurred {exc}")
             error = True
+        except asyncio.CancelledError:
+            logger.info(f"{self} create connection stopped, connection pool is closing")
         finally:
             if error:
                 self._metrics.connections_created_with_error += 1
@@ -227,6 +240,29 @@ class ConnectionPool:
             self._creating_connection = True
             self._creating_connection_task = self._loop.create_task(self._create_new_connection())
 
+    async def close(self):
+        """ Close any active background task and close all connections """
+        # Theoretically as it is being implemented, the client must guard that
+        # the connection pool close method is only called once yes or yes.
+        assert self._closed is False
+
+        self._closed = True
+
+        if self._purge_timer_handler:
+            self._purge_timer_handler.cancel()
+
+        if self._creating_connection_task:
+            self._creating_connection_task.cancel()
+
+            try:
+                await self._creating_connection_task
+            except asyncio.CancelledError:
+                pass
+
+        while self._unused_connections:
+            connection = self._unused_connections.pop()
+            self._close_connection(connection)
+
     def create_connection_context(self) -> "BaseConnectionContext":
         """ Returns a connection context that might provide a connection
         ready to be used, or a future connection ready to be used.
@@ -256,7 +292,10 @@ class ConnectionPool:
 
     def release_connection(self, connection: MemcacheAsciiProtocol, *, exc: Exception = None):
         """ Returns back to the pool a connection."""
-        if exc or connection.closed():
+        if self._closed:
+            logger.debug(f"{self} Closing connection")
+            self._close_connection(connection)
+        elif exc or connection.closed():
             logger.warning(f"{self} Closing connection and removing from the pool due to exception {exc}")
             self._close_connection(connection)
             self._maybe_new_connection()

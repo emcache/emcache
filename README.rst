@@ -50,6 +50,7 @@ The following snippet shows the minimal stuff that would be needed for creating 
         await client.set(b'key', b'value')
         item = await client.get(b'key')
         print(item.value)
+        await client.close()
     asyncio.run(main())
 
 Emcache has currently support for the following commands:

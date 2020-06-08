@@ -14,6 +14,16 @@ class Item:
 
 class Client(metaclass=ABCMeta):
     @abstractmethod
+    async def close(self) -> None:
+        """ Closes any active background task and close all TCP
+        connections.
+
+        It does not implement any gracefull close at operation level,
+        if there are active operations the outcome of these operations
+        is not predictable.
+        """
+
+    @abstractmethod
     async def get(self, key: bytes, return_flags=False) -> Optional[Item]:
         """Return the value associated with the key as an `Item` instance.
 

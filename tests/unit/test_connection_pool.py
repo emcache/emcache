@@ -40,12 +40,39 @@ class TestConnectionPool:
         return connection
 
     async def test_str(self, minimal_connection_pool):
-        assert str(minimal_connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=1>"
-        assert repr(minimal_connection_pool) == "<ConnectionPool host=localhost port=11211 total_connections=1>"
+        assert (
+            str(minimal_connection_pool)
+            == "<ConnectionPool host=localhost port=11211 total_connections=1 closed=False>"
+        )
+        assert (
+            repr(minimal_connection_pool)
+            == "<ConnectionPool host=localhost port=11211 total_connections=1 closed=False>"
+        )
 
     async def test_minimum_connections(self):
         with pytest.raises(ValueError):
             ConnectionPool("localhost", 11211, 0, None, None, lambda _: _)
+
+    async def test_close(self, mocker):
+        connection = Mock()
+        ev = asyncio.Event()
+
+        def f(*args, **kwargs):
+            ev.set()
+            return connection
+
+        _ = mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=f))
+
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, None, lambda _: _)
+
+        # wait till the create_connection has ben called and a connection has been
+        # returned.
+        await ev.wait()
+
+        await connection_pool.close()
+
+        # test that the connection has been closed
+        connection.close.assert_called()
 
     async def test_metrics(self):
         # Just test that the type returned is the right one and there is a method

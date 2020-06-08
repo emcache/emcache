@@ -78,21 +78,27 @@ class TestClient:
     """
 
     @pytest.fixture
-    async def client(self, event_loop, mocker):
-        mocker.patch("emcache.client.Cluster")
+    async def cluster(self):
+        cluster = Mock()
+        cluster.close = CoroutineMock()
+        return cluster
+
+    @pytest.fixture
+    async def client(self, event_loop, mocker, cluster):
+        mocker.patch("emcache.client.Cluster", return_value=cluster)
         return _Client([("localhost", 11211)], None, 1, None, None, None, False)
 
     async def test_invalid_host_addresses(self):
         with pytest.raises(ValueError):
             _Client([], None, 1, None, None, None, False)
 
-    async def test_max_allowed_cas_value(self, client):
-        with pytest.raises(ValueError):
-            await client.cas(b"foo", b"value", MAX_ALLOWED_CAS_VALUE + 1)
+    async def test_close(self, client, cluster):
+        await client.close()
+        await client.close()
 
-    async def test_max_allowed_flag_value(self, client):
-        with pytest.raises(ValueError):
-            await client.set(b"foo", b"value", flags=MAX_ALLOWED_FLAG_VALUE + 1)
+        # under the hood cluster close method should be
+        # called only once.
+        cluster.close.assert_called_once()
 
     @pytest.mark.parametrize("command", ["set", "add", "replace", "append", "prepend", "replace"])
     async def test_not_stored_error_storage_command(self, client, command):
@@ -109,10 +115,17 @@ class TestClient:
             await f(b"foo", b"value")
 
     @pytest.mark.parametrize("command", ["set", "add", "replace", "append", "prepend", "replace"])
-    async def test_invalid_key(self, client, command):
+    async def test_storage_command_invalid_key(self, client, command):
         with pytest.raises(ValueError):
             f = getattr(client, command)
             await f(b"\n", b"value")
+
+    @pytest.mark.parametrize("command", ["set", "add", "replace", "append", "prepend", "replace"])
+    async def test_storage_command_client_closed(self, client, command):
+        await client.close()
+        with pytest.raises(RuntimeError):
+            f = getattr(client, command)
+            await f(b"key", b"value")
 
     async def test_cas_not_stored_error_storage_command(self, client):
         # patch what is necesary for returnning an error string
@@ -130,17 +143,45 @@ class TestClient:
         with pytest.raises(ValueError):
             await client.cas(b"\n", b"value", 1)
 
+    async def test_cas_max_allowed_cas_value(self, client):
+        with pytest.raises(ValueError):
+            await client.cas(b"foo", b"value", MAX_ALLOWED_CAS_VALUE + 1)
+
+    async def test_cas_max_allowed_flag_value(self, client):
+        with pytest.raises(ValueError):
+            await client.set(b"foo", b"value", flags=MAX_ALLOWED_FLAG_VALUE + 1)
+
+    @pytest.mark.parametrize("command", ["get", "gets"])
+    async def test_fetch_command_invalid_key(self, client, command):
+        with pytest.raises(ValueError):
+            f = getattr(client, command)
+            await f(b"\n")
+
+    @pytest.mark.parametrize("command", ["get", "gets"])
+    async def test_fetch_command_client_closed(self, client, command):
+        await client.close()
+        with pytest.raises(RuntimeError):
+            f = getattr(client, command)
+            await f(b"key")
+
     @pytest.mark.parametrize("command", ["get_many", "gets_many"])
-    async def test_empty_keys(self, client, command):
+    async def test_fetch_many_command_empty_keys(self, client, command):
         f = getattr(client, command)
         result = await f([])
         assert result == {}
 
     @pytest.mark.parametrize("command", ["get_many", "gets_many"])
-    async def test_invalid_keys(self, client, command):
+    async def test_fetch_many_command_invalid_keys(self, client, command):
         with pytest.raises(ValueError):
             f = getattr(client, command)
             await f([b"\n"])
+
+    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    async def test_fetch_many_command_client_closed(self, client, command):
+        await client.close()
+        with pytest.raises(RuntimeError):
+            f = getattr(client, command)
+            await f([b"key"])
 
     @pytest.mark.parametrize("command", ["get_many", "gets_many"])
     async def test_exception_cancels_everything(self, client, command):
