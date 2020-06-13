@@ -124,3 +124,12 @@ the :class:`emcache.Item` of each key. For example:
 
 Both methods might end up sending different commands to different nodes, depending on the outcome of the hashing algorithm. If this is the case,
 the operation will give up completely in case of any error, raising an exception with the error and canceling the ongoing requests.
+
+Other commands
+^^^^^^^^^^^^^^
+
+Emcache has also support for the following other commands:
+
+- :meth:`emcache.Client.increment` Increases an already existing key by a value.
+- :meth:`emcache.Client.decrement` Decreases an already existing key by a value.
+-

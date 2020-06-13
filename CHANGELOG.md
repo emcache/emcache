@@ -1,3 +1,7 @@
+(IN PROGRESS) 0.3.0b0
+=====================
+- Add support for the `increment` and `decrement` commands [#36](https://github.com/pfreixes/emcache/pull/36)
+
 0.2.1b0
 =======
 - Add new close method at Client class level for releasing any underlying resource used. [#34](https://github.com/pfreixes/emcache/pull/34)
