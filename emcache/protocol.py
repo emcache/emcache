@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 EXISTS = b"EXISTS"
 STORED = b"STORED"
 NOT_STORED = b"NOT_STORED"
+NOT_FOUND = b"NOT_FOUND"
 
 
 class MemcacheAsciiProtocol(asyncio.Protocol):
@@ -111,6 +112,30 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             + value
             + b"\r\n"
         )
+
+        if noreply:
+            # fire and forget
+            self._transport.write(data)
+            return None
+
+        try:
+            future = self._loop.create_future()
+            parser = cyemcache.AsciiOneLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            result = parser.value()
+            return result
+        finally:
+            self._parser = None
+
+    async def incr_decr_command(self, command: bytes, key: bytes, value: int, noreply: bool) -> Optional[bytes]:
+        if noreply:
+            noreply = b" noreply"
+        else:
+            noreply = b""
+
+        data = command + b" " + key + b" " + str(value).encode() + noreply + b"\r\n"
 
         if noreply:
             # fire and forget

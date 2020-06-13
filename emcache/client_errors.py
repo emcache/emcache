@@ -6,7 +6,11 @@ class ClusterNoAvailableNodes(Exception):
     pass
 
 
-class StorageCommandError(Exception):
+class CommandError(Exception):
+    pass
+
+
+class StorageCommandError(CommandError):
     """ General exception raised when a storage command finished without
     being able to store the value for a specific key."""
 
@@ -18,6 +22,14 @@ class NotStoredStorageCommandError(StorageCommandError):
     is typically raised when conditions are not meet for the `add`,
     `replace` and other storage commands that they need the presense
     or abscence of a key.
+    """
+
+    pass
+
+
+class NotFoundIncrDecrCommandError(CommandError):
+    """ When a key does not exist incr and decr can not perform
+    the operation and this exception is raised.
     """
 
     pass

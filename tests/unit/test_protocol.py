@@ -136,6 +136,25 @@ class TestMemcacheAsciiProtocol:
 
         assert protocol._parser is None
 
+    async def test_incr_decr_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.incr_decr_command(b"incr", b"foo", 1, False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"2\r\n")
+
+        result = await task
+
+        assert result == b"2"
+
+        protocol._transport.write.assert_called_with(b"incr foo 1\r\n")
+
+    async def test_incr_decr_command_noreply(self, event_loop, protocol):
+        await protocol.incr_decr_command(b"incr", b"foo", 1, True)
+        protocol._transport.write.assert_called_with(b"incr foo 1 noreply\r\n")
+
 
 async def test_create_protocol(event_loop, mocker):
     loop_mock = Mock()

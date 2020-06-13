@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from ._cython import cyemcache
 from .base import Client, ClusterEvents, ClusterManagment, Item
-from .client_errors import NotStoredStorageCommandError, StorageCommandError
+from .client_errors import NotFoundIncrDecrCommandError, NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster, MemcachedHostAddress
 from .default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
@@ -14,7 +14,7 @@ from .default_values import (
     DEFAULT_TIMEOUT,
 )
 from .node import Node
-from .protocol import EXISTS, NOT_STORED, STORED
+from .protocol import EXISTS, NOT_FOUND, NOT_STORED, STORED
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +113,22 @@ class _Client(Client):
         async with OpTimeout(self._timeout, self._loop):
             async with node.connection() as connection:
                 return await connection.storage_command(command, key, value, flags, exptime, noreply, cas)
+
+    async def _incr_decr_command(self, command: bytes, key: bytes, value: int, noreply: bool) -> None:
+        """ Proxy function used for incr and decr. """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        if value < 0:
+            raise ValueError("Incr or Decr by a positive value number expected")
+
+        if cyemcache.is_key_valid(key) is False:
+            raise ValueError("Key has invalid charcters")
+
+        node = self._cluster.pick_node(key)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                return await connection.incr_decr_command(command, key, value, noreply)
 
     async def _fetch_command(self, command: bytes, key: bytes) -> Optional[bytes]:
         """ Proxy function used for all fetch commands `get`, `gets`. """
@@ -414,6 +430,46 @@ class _Client(Client):
             raise NotStoredStorageCommandError()
         elif not noreply and result != STORED:
             raise StorageCommandError(f"Command finished with error, response returned {result}")
+
+    async def increment(self, key: bytes, value: int, *, noreply: bool = False) -> Optional[int]:
+        """Increment a specific integer stored with a key by a given `value`, the key
+        must exist.
+
+        If `noreply` is not used and the key exists the new value will be returned, othewise
+        a None is returned.
+
+        If the command fails because the key was not found a
+        `NotFoundIncrDecrCommandError` exception is raised.
+        """
+        result = await self._incr_decr_command(b"incr", key, value, noreply)
+
+        if noreply:
+            return
+
+        if result == NOT_FOUND:
+            raise NotFoundIncrDecrCommandError()
+
+        return int(result)
+
+    async def decrement(self, key: bytes, value: int, *, noreply: bool = False) -> Optional[int]:
+        """Decrement a specific integer stored with a key by a given `value`, the key
+        must exist.
+
+        If `noreply` is not used and the key exists the new value will be returned, othewise
+        a None is returned.
+
+        If the command fails because the key was not found a
+        `NotFoundIncrDecrCommandError` exception is raised.
+        """
+        result = await self._incr_decr_command(b"decr", key, value, noreply)
+
+        if noreply:
+            return
+
+        if result == NOT_FOUND:
+            raise NotFoundIncrDecrCommandError()
+
+        return int(result)
 
 
 async def create_client(

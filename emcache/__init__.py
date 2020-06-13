@@ -1,6 +1,12 @@
 from .base import Client, ClusterEvents, ClusterManagment, Item
 from .client import create_client
-from .client_errors import ClusterNoAvailableNodes, NotStoredStorageCommandError, StorageCommandError
+from .client_errors import (
+    ClusterNoAvailableNodes,
+    CommandError,
+    NotFoundIncrDecrCommandError,
+    NotStoredStorageCommandError,
+    StorageCommandError,
+)
 from .connection_pool import ConnectionPoolMetrics
 from .default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
@@ -25,6 +31,8 @@ __all__ = (
     "DEFAULT_PURGE_UNHEALTHY_NODES",
     "Item",
     "MemcachedHostAddress",
+    "CommandError",
+    "NotFoundIncrDecrCommandError",
     "NotStoredStorageCommandError",
     "StorageCommandError",
 )

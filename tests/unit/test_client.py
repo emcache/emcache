@@ -183,6 +183,25 @@ class TestClient:
             f = getattr(client, command)
             await f([b"key"])
 
+    @pytest.mark.parametrize("command", ["increment", "decrement"])
+    async def test_incr_decr_invalid_key(self, client, command):
+        with pytest.raises(ValueError):
+            f = getattr(client, command)
+            await f(b"\n", 1)
+
+    @pytest.mark.parametrize("command", ["increment", "decrement"])
+    async def test_incr_decr_invalid_value(self, client, command):
+        with pytest.raises(ValueError):
+            f = getattr(client, command)
+            await f(b"\n", -1)
+
+    @pytest.mark.parametrize("command", ["increment", "decrement"])
+    async def test_incr_decr_client_closed(self, client, command):
+        await client.close()
+        with pytest.raises(RuntimeError):
+            f = getattr(client, command)
+            await f(b"key", 1)
+
     @pytest.mark.parametrize("command", ["get_many", "gets_many"])
     async def test_exception_cancels_everything(self, client, command):
         # patch what is necesary for rasing an exception for the first query and
