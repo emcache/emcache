@@ -53,7 +53,7 @@ The following snippet shows the minimal stuff that would be needed for creating 
         await client.close()
     asyncio.run(main())
 
-Emcache has currently support for the following commands:
+Emcache has currently support, among many of them, for the following commands:
 
 - **get** Used for retrieving a specific key.
 - **gets** Cas version that returns also the case token of a specific key.
@@ -65,6 +65,8 @@ Emcache has currently support for the following commands:
 - **append** Append a value to the current one for a specific key, if and only if the key does exist.
 - **prepend** Prepend a value to the current one for a specific key, if and only if the key does exist.
 - **cas** Update a value for a key if and only if token as provided matches with the ones stored in the Memcached server.
+
+Take a look at the documentation for getting a list of all of the `operations <https://emcache.readthedocs.io/en/latest/operations.html>`_ that are currently supported.
 
 Some of the commands have support for the following behavior flags:
 
