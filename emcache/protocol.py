@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 EXISTS = b"EXISTS"
 STORED = b"STORED"
 TOUCHED = b"TOUCHED"
+OK = b"OK"
 NOT_STORED = b"NOT_STORED"
 NOT_FOUND = b"NOT_FOUND"
 
@@ -161,6 +162,30 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             noreply = b""
 
         data = b"touch " + key + b" " + str(exptime).encode() + noreply + b"\r\n"
+
+        if noreply:
+            # fire and forget
+            self._transport.write(data)
+            return None
+
+        try:
+            future = self._loop.create_future()
+            parser = cyemcache.AsciiOneLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            result = parser.value()
+            return result
+        finally:
+            self._parser = None
+
+    async def flush_all_command(self, delay: int, noreply: bool) -> Optional[bytes]:
+        if noreply:
+            noreply = b" noreply"
+        else:
+            noreply = b""
+
+        data = b"flush_all " + str(delay).encode() + noreply + b"\r\n"
 
         if noreply:
             # fire and forget

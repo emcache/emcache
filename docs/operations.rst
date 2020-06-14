@@ -117,6 +117,7 @@ For having access to the flags, the ``return_flags`` keyword would need to be se
 
 The :meth:`emcache.Client.gets_many` and :meth:`emcache.Client.get_many` operations return a dictionary of the keys found, having as a value
 the :class:`emcache.Item` of each key. For example:
+
 .. code-block:: python
 
     await for key, item in client.get_many([b"key", b"key2"]).items():
@@ -133,4 +134,22 @@ Emcache has also support for the following other commands:
 - :meth:`emcache.Client.increment` Increases an already existing key by a value.
 - :meth:`emcache.Client.decrement` Decreases an already existing key by a value.
 - :meth:`emcache.Client.touch` Overrides the expiration time of an already existing key.
--
+- :meth:`emcache.Client.flush_all` Flush all keys from an existing node, see notes below.
+
+The :meth:`emcache.Client.flush_all` method targets a specific node, so the parameter expected is the :meth:`emcache.MemcachedHostAddress` which
+identifies univocally a memcached host within the cluster. Also, a parameter called ``delay`` is supported for telling to the Memcached server that the
+expiration of all of the keys should be done after a specific period of time. This option allows for example to delay the expiration of the keys
+for each node in a different moment of time, which should help you on the way for mitigating the likely load that underlying resources might get because
+of the increase of misses.
+
+As an example, the following snippet shows how :meth:`emcache.Client.flush_all` can be used:
+
+.. code-block:: python
+
+    hosts = [
+        emcache.MemcachedHostAddress('localhost', 11211),
+        emcache.MemcachedHostAddress('localhost', 11212)
+    ]
+
+    for idx, host in enum(hosts):
+        await client.flush_all(host, delay=10 + (10*idx))

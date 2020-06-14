@@ -155,6 +155,14 @@ class TestCluster:
         assert list(nodes.keys())[0] == node1
         assert list(nodes.values())[0] == [b"key", b"key2"]
 
+    async def test_node(self, cluster_with_one_node, node1, memcached_host_address_1):
+        node = cluster_with_one_node.node(memcached_host_address_1)
+        assert node == node1
+
+    async def test_node_invalid_host(self, cluster_with_one_node):
+        with pytest.raises(ValueError):
+            cluster_with_one_node.node(MemcachedHostAddress(address="foo", port=1))
+
     async def test_unhealthy_not_purge_node(self, cluster_with_two_nodes, node1, node2):
         # Report that node2 is unhealthy
         cluster_with_two_nodes._on_node_healthy_status_change_cb(node2, False)
