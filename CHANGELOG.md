@@ -3,7 +3,7 @@
 - Add support for the `increment` and `decrement` commands [#36](https://github.com/pfreixes/emcache/pull/36)
 - Add support for the `touch` command [#37](https://github.com/pfreixes/emcache/pull/37)
 - Add support for `flush_all` command [#38](https://github.com/pfreixes/emcache/pull/38)
-- Add support for `delete` command
+- Add support for `delete` command [#39](https://github.com/pfreixes/emcache/pull/39)
 
 0.2.1b0
 =======
