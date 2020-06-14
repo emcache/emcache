@@ -174,6 +174,25 @@ class TestMemcacheAsciiProtocol:
         await protocol.touch_command(b"foo", 1, True)
         protocol._transport.write.assert_called_with(b"touch foo 1 noreply\r\n")
 
+    async def test_delete_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.delete_command(b"foo", False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"DELETED\r\n")
+
+        result = await task
+
+        assert result == b"DELETED"
+
+        protocol._transport.write.assert_called_with(b"delete foo\r\n")
+
+    async def test_delete_command_noreply(self, event_loop, protocol):
+        await protocol.delete_command(b"foo", True)
+        protocol._transport.write.assert_called_with(b"delete foo noreply\r\n")
+
 
 async def test_create_protocol(event_loop, mocker):
     loop_mock = Mock()

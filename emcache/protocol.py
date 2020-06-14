@@ -12,6 +12,7 @@ EXISTS = b"EXISTS"
 STORED = b"STORED"
 TOUCHED = b"TOUCHED"
 OK = b"OK"
+DELETED = b"DELETED"
 NOT_STORED = b"NOT_STORED"
 NOT_FOUND = b"NOT_FOUND"
 
@@ -186,6 +187,30 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             noreply = b""
 
         data = b"flush_all " + str(delay).encode() + noreply + b"\r\n"
+
+        if noreply:
+            # fire and forget
+            self._transport.write(data)
+            return None
+
+        try:
+            future = self._loop.create_future()
+            parser = cyemcache.AsciiOneLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            result = parser.value()
+            return result
+        finally:
+            self._parser = None
+
+    async def delete_command(self, key: bytes, noreply: bool) -> Optional[bytes]:
+        if noreply:
+            noreply = b" noreply"
+        else:
+            noreply = b""
+
+        data = b"delete " + key + noreply + b"\r\n"
 
         if noreply:
             # fire and forget

@@ -134,6 +134,7 @@ Emcache has also support for the following other commands:
 - :meth:`emcache.Client.increment` Increases an already existing key by a value.
 - :meth:`emcache.Client.decrement` Decreases an already existing key by a value.
 - :meth:`emcache.Client.touch` Overrides the expiration time of an already existing key.
+- :meth:`emcache.Client.delete` Deletes an existing key.
 - :meth:`emcache.Client.flush_all` Flush all keys from an existing node, see notes below.
 
 The :meth:`emcache.Client.flush_all` method targets a specific node, so the parameter expected is the :meth:`emcache.MemcachedHostAddress` which

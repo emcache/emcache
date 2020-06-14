@@ -14,7 +14,7 @@ from .default_values import (
     DEFAULT_TIMEOUT,
 )
 from .node import Node
-from .protocol import EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED
+from .protocol import DELETED, EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED
 
 logger = logging.getLogger(__name__)
 
@@ -496,6 +496,35 @@ class _Client(Client):
         if result == NOT_FOUND:
             raise NotFoundCommandError()
         elif result != TOUCHED:
+            raise CommandError(f"Command finished with error, response returned {result}")
+
+        return
+
+    async def delete(self, key: bytes, *, noreply: bool = False) -> None:
+        """Delete an exixting key.
+
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised. Other errors
+        raised by the memcached server which implys that the item was
+        not touched raises a generic `CommandError` exception.
+        """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        if cyemcache.is_key_valid(key) is False:
+            raise ValueError("Key has invalid charcters")
+
+        node = self._cluster.pick_node(key)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                result = await connection.delete_command(key, noreply)
+
+        if noreply:
+            return
+
+        if result == NOT_FOUND:
+            raise NotFoundCommandError()
+        elif result != DELETED:
             raise CommandError(f"Command finished with error, response returned {result}")
 
         return
