@@ -95,6 +95,33 @@ class TestTouch:
         assert item is None
 
 
+class TestDelete:
+    async def test_delete(self, client, key_generation):
+        key_and_value = next(key_generation)
+
+        # delete a key that does not exist must fail
+        with pytest.raises(NotFoundCommandError):
+            await client.delete(key_and_value)
+
+        # set the new key and delete it.
+        await client.set(key_and_value, key_and_value)
+        await client.delete(key_and_value)
+
+        item = await client.get(key_and_value)
+        assert item is None
+
+    @pytest.mark.skipif(sys.platform == "darwin", reason="https://github.com/memcached/memcached/issues/681")
+    async def test_delete_noreply(self, client, key_generation):
+        key_and_value = next(key_generation)
+
+        # set the new key and delete it.
+        await client.set(key_and_value, key_and_value)
+        await client.delete(key_and_value, noreply=True)
+
+        item = await client.get(key_and_value)
+        assert item is None
+
+
 class TestFlushAll:
     @pytest.mark.skipif(sys.platform == "darwin", reason="https://github.com/memcached/memcached/issues/681")
     @pytest.mark.parametrize("noreply", [False, True])

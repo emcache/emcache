@@ -1,7 +1,7 @@
 emcache
 #######
 
-A high performance asynchronous Python client for `Memcached <https://memcached.org/>`_ with almost full batteries included
+A high performance asynchronous Python client for `Memcached <https://memcached.org/>`_ with full batteries included
 
 .. image:: https://readthedocs.org/projects/emcache/badge/?version=latest
   :target: https://emcache.readthedocs.io/en/latest/?badge=latest
@@ -23,12 +23,7 @@ on the experience of other Memcached clients, providing the following main chara
 - Listen to the most significant `cluster events <https://emcache.readthedocs.io/en/latest/advanced_topics.html#cluster-events>`_, for example for knowing when a node has been marked as unhealthy.
 - Speed, Emcache is fast. See the benchmark section.
 
-Emcache is still on beta and has not bet yet tested in production but early feedback is wanted from the community to make it ready for production.
-
-Full batteries must be finally provided in the following releases, the following characteristics will be added:
-
-- Support for other commands, like ``touch``, ``delete``, etc.
-- A public interface for managing the nodes of the cluster, allowing, for example, the addition or deletion of Memcached nodes at run time.
+Emcache is still considered on beta and has not bet yet tested in production but early feedback is wanted from the community to make it ready for production.
 
 Usage
 ==========

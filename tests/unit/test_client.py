@@ -228,6 +228,27 @@ class TestClient:
         with pytest.raises(CommandError):
             await client.touch(b"foo", 1)
 
+    async def test_delete_invalid_key(self, client):
+        with pytest.raises(ValueError):
+            await client.delete(b"\n")
+
+    async def test_delete_client_closed(self, client):
+        await client.close()
+        with pytest.raises(RuntimeError):
+            await client.delete(b"key")
+
+    async def test_delete_error_command(self, client):
+        # patch what is necesary for returnning an error string
+        connection = CoroutineMock()
+        connection.delete_command = CoroutineMock(return_value=b"ERROR")
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        with pytest.raises(CommandError):
+            await client.delete(b"foo")
+
     async def test_flush_all_client_closed(self, client, memcached_host_address):
         await client.close()
         with pytest.raises(RuntimeError):
