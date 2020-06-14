@@ -203,6 +203,14 @@ class Cluster:
 
         return cyemcache.nodes_selection(keys, self._rdz_nodes)
 
+    def node(self, memcached_host_address: MemcachedHostAddress) -> Node:
+        """Return the emcache Node that matches with a memcached_host_address."""
+        for node in self.nodes:
+            if node.memcached_host_address == memcached_host_address:
+                return node
+
+        raise ValueError(f"{memcached_host_address} can not be found")
+
     @property
     def cluster_managment(self) -> ClusterManagment:
         return self._cluster_managment

@@ -13,6 +13,7 @@ from emcache.default_values import (
     DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
     DEFAULT_TIMEOUT,
 )
+from emcache.node import MemcachedHostAddress
 
 pytestmark = pytest.mark.asyncio
 
@@ -84,7 +85,11 @@ class TestClient:
         return cluster
 
     @pytest.fixture
-    async def client(self, event_loop, mocker, cluster):
+    async def memcached_host_address(self):
+        return MemcachedHostAddress(address="localhost", port=11211)
+
+    @pytest.fixture
+    async def client(self, event_loop, mocker, cluster, memcached_host_address):
         mocker.patch("emcache.client.Cluster", return_value=cluster)
         return _Client([("localhost", 11211)], None, 1, None, None, None, False)
 
@@ -222,6 +227,23 @@ class TestClient:
         client._cluster.pick_node.return_value = node
         with pytest.raises(CommandError):
             await client.touch(b"foo", 1)
+
+    async def test_flush_all_client_closed(self, client, memcached_host_address):
+        await client.close()
+        with pytest.raises(RuntimeError):
+            await client.flush_all(memcached_host_address)
+
+    async def test_flush_all_error_command(self, client, memcached_host_address):
+        # patch what is necesary for returnning an error string
+        connection = CoroutineMock()
+        connection.flush_all_command = CoroutineMock(return_value=b"ERROR")
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.node.return_value = node
+        with pytest.raises(CommandError):
+            await client.flush_all(memcached_host_address)
 
     @pytest.mark.parametrize("command", ["get_many", "gets_many"])
     async def test_exception_cancels_everything(self, client, command):

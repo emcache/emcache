@@ -14,7 +14,7 @@ from .default_values import (
     DEFAULT_TIMEOUT,
 )
 from .node import Node
-from .protocol import EXISTS, NOT_FOUND, NOT_STORED, STORED, TOUCHED
+from .protocol import EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED
 
 logger = logging.getLogger(__name__)
 
@@ -496,6 +496,32 @@ class _Client(Client):
         if result == NOT_FOUND:
             raise NotFoundCommandError()
         elif result != TOUCHED:
+            raise CommandError(f"Command finished with error, response returned {result}")
+
+        return
+
+    async def flush_all(
+        self, memcached_host_address: MemcachedHostAddress, delay: int = 0, *, noreply: bool = False
+    ) -> None:
+        """Flush all keys in an specific memcahed host address.
+
+        Flush can be deferred at memcached server side for a specific time by
+        using the `delay` option, otherwise the flush will happen immediately.
+
+        If the command fails a `CommandError` exception will be raised.
+        """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        node = self._cluster.node(memcached_host_address)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                result = await connection.flush_all_command(delay, noreply)
+
+        if noreply:
+            return
+
+        if result != OK:
             raise CommandError(f"Command finished with error, response returned {result}")
 
         return
