@@ -132,4 +132,5 @@ Emcache has also support for the following other commands:
 
 - :meth:`emcache.Client.increment` Increases an already existing key by a value.
 - :meth:`emcache.Client.decrement` Decreases an already existing key by a value.
+- :meth:`emcache.Client.touch` Overrides the expiration time of an already existing key.
 -

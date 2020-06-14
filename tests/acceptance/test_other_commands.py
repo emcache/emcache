@@ -2,7 +2,7 @@ import sys
 
 import pytest
 
-from emcache import NotFoundIncrDecrCommandError
+from emcache import NotFoundCommandError
 
 pytestmark = pytest.mark.asyncio
 
@@ -12,7 +12,7 @@ class TestIncr:
         key = next(key_generation)
 
         # incr a value for a key that does not exist must fail
-        with pytest.raises(NotFoundIncrDecrCommandError):
+        with pytest.raises(NotFoundCommandError):
             await client.increment(key, 1)
 
         # set the new key and increment the value.
@@ -42,7 +42,7 @@ class TestDecr:
         key = next(key_generation)
 
         # decr a value for a key that does not exist must fail
-        with pytest.raises(NotFoundIncrDecrCommandError):
+        with pytest.raises(NotFoundCommandError):
             await client.decrement(key, 1)
 
         # set the new key and decrement the value.
@@ -65,3 +65,30 @@ class TestDecr:
         item = await client.get(key)
 
         assert item.value == b"1"
+
+
+class TestTouch:
+    async def test_touch(self, client, key_generation):
+        key_and_value = next(key_generation)
+
+        # touch a key that does not exist must fail
+        with pytest.raises(NotFoundCommandError):
+            await client.touch(key_and_value, -1)
+
+        # set the new key and make it expire using touch.
+        await client.set(key_and_value, key_and_value)
+        await client.touch(key_and_value, -1)
+
+        item = await client.get(key_and_value)
+        assert item is None
+
+    @pytest.mark.skipif(sys.platform == "darwin", reason="https://github.com/memcached/memcached/issues/681")
+    async def test_touch_noreply(self, client, key_generation):
+        key_and_value = next(key_generation)
+
+        # set the new key and make it expire using touch.
+        await client.set(key_and_value, key_and_value)
+        await client.touch(key_and_value, -1, noreply=True)
+
+        item = await client.get(key_and_value)
+        assert item is None

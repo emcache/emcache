@@ -3,7 +3,7 @@ from .client import create_client
 from .client_errors import (
     ClusterNoAvailableNodes,
     CommandError,
-    NotFoundIncrDecrCommandError,
+    NotFoundCommandError,
     NotStoredStorageCommandError,
     StorageCommandError,
 )
@@ -32,7 +32,7 @@ __all__ = (
     "Item",
     "MemcachedHostAddress",
     "CommandError",
-    "NotFoundIncrDecrCommandError",
+    "NotFoundCommandError",
     "NotStoredStorageCommandError",
     "StorageCommandError",
 )
