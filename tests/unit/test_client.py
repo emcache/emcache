@@ -5,7 +5,7 @@ import pytest
 from asynctest import CoroutineMock, MagicMock as AsyncMagicMock
 
 from emcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, OpTimeout, _Client, create_client
-from emcache.client_errors import StorageCommandError
+from emcache.client_errors import CommandError, StorageCommandError
 from emcache.default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
@@ -201,6 +201,27 @@ class TestClient:
         with pytest.raises(RuntimeError):
             f = getattr(client, command)
             await f(b"key", 1)
+
+    async def test_touch_invalid_key(self, client):
+        with pytest.raises(ValueError):
+            await client.touch(b"\n", 1)
+
+    async def test_touch_client_closed(self, client):
+        await client.close()
+        with pytest.raises(RuntimeError):
+            await client.touch(b"key", 1)
+
+    async def test_touch_error_command(self, client):
+        # patch what is necesary for returnning an error string
+        connection = CoroutineMock()
+        connection.touch_command = CoroutineMock(return_value=b"ERROR")
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        with pytest.raises(CommandError):
+            await client.touch(b"foo", 1)
 
     @pytest.mark.parametrize("command", ["get_many", "gets_many"])
     async def test_exception_cancels_everything(self, client, command):

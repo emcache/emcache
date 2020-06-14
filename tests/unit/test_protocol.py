@@ -155,6 +155,25 @@ class TestMemcacheAsciiProtocol:
         await protocol.incr_decr_command(b"incr", b"foo", 1, True)
         protocol._transport.write.assert_called_with(b"incr foo 1 noreply\r\n")
 
+    async def test_touch_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.touch_command(b"foo", 1, False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"TOUCHED\r\n")
+
+        result = await task
+
+        assert result == b"TOUCHED"
+
+        protocol._transport.write.assert_called_with(b"touch foo 1\r\n")
+
+    async def test_touch_command_noreply(self, event_loop, protocol):
+        await protocol.touch_command(b"foo", 1, True)
+        protocol._transport.write.assert_called_with(b"touch foo 1 noreply\r\n")
+
 
 async def test_create_protocol(event_loop, mocker):
     loop_mock = Mock()

@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from ._cython import cyemcache
 from .base import Client, ClusterEvents, ClusterManagment, Item
-from .client_errors import NotFoundIncrDecrCommandError, NotStoredStorageCommandError, StorageCommandError
+from .client_errors import CommandError, NotFoundCommandError, NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster, MemcachedHostAddress
 from .default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
@@ -14,7 +14,7 @@ from .default_values import (
     DEFAULT_TIMEOUT,
 )
 from .node import Node
-from .protocol import EXISTS, NOT_FOUND, NOT_STORED, STORED
+from .protocol import EXISTS, NOT_FOUND, NOT_STORED, STORED, TOUCHED
 
 logger = logging.getLogger(__name__)
 
@@ -439,7 +439,7 @@ class _Client(Client):
         a None is returned.
 
         If the command fails because the key was not found a
-        `NotFoundIncrDecrCommandError` exception is raised.
+        `NotFoundCommandError` exception is raised.
         """
         result = await self._incr_decr_command(b"incr", key, value, noreply)
 
@@ -447,7 +447,7 @@ class _Client(Client):
             return
 
         if result == NOT_FOUND:
-            raise NotFoundIncrDecrCommandError()
+            raise NotFoundCommandError()
 
         return int(result)
 
@@ -459,7 +459,7 @@ class _Client(Client):
         a None is returned.
 
         If the command fails because the key was not found a
-        `NotFoundIncrDecrCommandError` exception is raised.
+        `NotFoundCommandError` exception is raised.
         """
         result = await self._incr_decr_command(b"decr", key, value, noreply)
 
@@ -467,9 +467,38 @@ class _Client(Client):
             return
 
         if result == NOT_FOUND:
-            raise NotFoundIncrDecrCommandError()
+            raise NotFoundCommandError()
 
         return int(result)
+
+    async def touch(self, key: bytes, exptime: int, *, noreply: bool = False) -> None:
+        """Set and override, if its the case, the expitme for an exixting key.
+
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised. Other errors
+        raised by the memcached server which implys that the item was
+        not touched raises a generic `CommandError` exception.
+        """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        if cyemcache.is_key_valid(key) is False:
+            raise ValueError("Key has invalid charcters")
+
+        node = self._cluster.pick_node(key)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                result = await connection.touch_command(key, exptime, noreply)
+
+        if noreply:
+            return
+
+        if result == NOT_FOUND:
+            raise NotFoundCommandError()
+        elif result != TOUCHED:
+            raise CommandError(f"Command finished with error, response returned {result}")
+
+        return
 
 
 async def create_client(

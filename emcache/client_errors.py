@@ -27,8 +27,8 @@ class NotStoredStorageCommandError(StorageCommandError):
     pass
 
 
-class NotFoundIncrDecrCommandError(CommandError):
-    """ When a key does not exist incr and decr can not perform
+class NotFoundCommandError(CommandError):
+    """ When a key does not exist some commands can not perform
     the operation and this exception is raised.
     """
 
