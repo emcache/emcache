@@ -5,7 +5,7 @@ import pytest
 from asynctest import CoroutineMock, MagicMock as AsyncMagicMock
 
 from emcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, OpTimeout, _Client, create_client
-from emcache.client_errors import CommandError, StorageCommandError
+from emcache.client_errors import CommandError, NotFoundCommandError, StorageCommandError
 from emcache.default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
@@ -14,6 +14,7 @@ from emcache.default_values import (
     DEFAULT_TIMEOUT,
 )
 from emcache.node import MemcachedHostAddress
+from emcache.protocol import DELETED, NOT_FOUND, STORED, TOUCHED
 
 pytestmark = pytest.mark.asyncio
 
@@ -91,11 +92,38 @@ class TestClient:
     @pytest.fixture
     async def client(self, event_loop, mocker, cluster, memcached_host_address):
         mocker.patch("emcache.client.Cluster", return_value=cluster)
-        return _Client([("localhost", 11211)], None, 1, None, None, None, False)
+        return _Client([memcached_host_address], None, 1, None, None, None, False)
 
     async def test_invalid_host_addresses(self):
         with pytest.raises(ValueError):
             _Client([], None, 1, None, None, None, False)
+
+    async def test_cluster_initialization(self, event_loop, mocker, memcached_host_address):
+        node_addresses = [memcached_host_address]
+        timeout = 1
+        max_connections = 1
+        purge_unused_connections_after = 60.0
+        connection_timeout = 1.0
+        cluster_events = Mock()
+        purge_unhealthy_nodes = True
+        cluster_class = mocker.patch("emcache.client.Cluster")
+        _Client(
+            node_addresses,
+            timeout,
+            max_connections,
+            purge_unused_connections_after,
+            connection_timeout,
+            cluster_events,
+            purge_unhealthy_nodes,
+        )
+        cluster_class.assert_called_with(
+            node_addresses,
+            max_connections,
+            purge_unused_connections_after,
+            connection_timeout,
+            cluster_events,
+            purge_unhealthy_nodes,
+        )
 
     async def test_close(self, client, cluster):
         await client.close()
@@ -104,6 +132,24 @@ class TestClient:
         # under the hood cluster close method should be
         # called only once.
         cluster.close.assert_called_once()
+
+    async def test_timeout_value_used(self, event_loop, mocker, memcached_host_address):
+        mocker.patch("emcache.client.Cluster")
+
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+        timeout = 2.0
+        client = _Client([memcached_host_address], timeout, 1, None, None, None, False,)
+        connection = CoroutineMock(return_value=b"")
+        connection.storage_command = CoroutineMock(return_value=b"STORED")
+        node = Mock()
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+
+        await client.set(b"key", b"value")
+
+        optimeout_class.assert_called_with(timeout, ANY)
 
     @pytest.mark.parametrize("command", ["set", "add", "replace", "append", "prepend", "replace"])
     async def test_not_stored_error_storage_command(self, client, command):
@@ -132,6 +178,22 @@ class TestClient:
             f = getattr(client, command)
             await f(b"key", b"value")
 
+    @pytest.mark.parametrize("command", ["set", "add", "replace", "append", "prepend", "replace"])
+    async def test_storage_command_use_timeout(self, client, command, mocker):
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+
+        connection = CoroutineMock()
+        connection.storage_command = CoroutineMock(return_value=STORED)
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        f = getattr(client, command)
+        await f(b"foo", b"value")
+
+        optimeout_class.assert_called()
+
     async def test_cas_not_stored_error_storage_command(self, client):
         # patch what is necesary for returnning an error string
         connection = CoroutineMock()
@@ -143,6 +205,20 @@ class TestClient:
         client._cluster.pick_node.return_value = node
         with pytest.raises(StorageCommandError):
             await client.cas(b"foo", b"value", 1)
+
+    async def test_cas_use_timeout(self, client, mocker):
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+
+        connection = CoroutineMock()
+        connection.storage_command = CoroutineMock(return_value=STORED)
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        await client.cas(b"foo", b"value", 1)
+
+        optimeout_class.assert_called()
 
     async def test_cas_invalid_key(self, client):
         with pytest.raises(ValueError):
@@ -157,6 +233,22 @@ class TestClient:
             await client.set(b"foo", b"value", flags=MAX_ALLOWED_FLAG_VALUE + 1)
 
     @pytest.mark.parametrize("command", ["get", "gets"])
+    async def test_fetch_command_use_timeout(self, client, command, mocker):
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+
+        connection = CoroutineMock()
+        connection.fetch_command = CoroutineMock(return_value=([b"foo"], [b"value"], [0], [0]))
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        f = getattr(client, command)
+        await f(b"foo")
+
+        optimeout_class.assert_called()
+
+    @pytest.mark.parametrize("command", ["get", "gets"])
     async def test_fetch_command_invalid_key(self, client, command):
         with pytest.raises(ValueError):
             f = getattr(client, command)
@@ -168,6 +260,22 @@ class TestClient:
         with pytest.raises(RuntimeError):
             f = getattr(client, command)
             await f(b"key")
+
+    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    async def test_fetch_many_command_use_timeout(self, client, command, mocker):
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+
+        connection = CoroutineMock()
+        connection.fetch_command = CoroutineMock(return_value=([b"foo"], [b"value"], [0], [0]))
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_nodes.return_value = {node: [b"foo"]}
+        f = getattr(client, command)
+        await f([b"foo"])
+
+        optimeout_class.assert_called()
 
     @pytest.mark.parametrize("command", ["get_many", "gets_many"])
     async def test_fetch_many_command_empty_keys(self, client, command):
@@ -187,6 +295,22 @@ class TestClient:
         with pytest.raises(RuntimeError):
             f = getattr(client, command)
             await f([b"key"])
+
+    @pytest.mark.parametrize("command", ["increment", "decrement"])
+    async def test_incr_decr_use_timeout(self, client, command, mocker):
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+
+        connection = CoroutineMock()
+        connection.incr_decr_command = CoroutineMock(return_value=1)
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        f = getattr(client, command)
+        await f(b"foo", 1)
+
+        optimeout_class.assert_called()
 
     @pytest.mark.parametrize("command", ["increment", "decrement"])
     async def test_incr_decr_invalid_key(self, client, command):
@@ -228,6 +352,20 @@ class TestClient:
         with pytest.raises(CommandError):
             await client.touch(b"foo", 1)
 
+    async def test_touch_use_timeout(self, client, mocker):
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+
+        connection = CoroutineMock()
+        connection.touch_command = CoroutineMock(return_value=TOUCHED)
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        await client.touch(b"foo", 1)
+
+        optimeout_class.assert_called()
+
     async def test_delete_invalid_key(self, client):
         with pytest.raises(ValueError):
             await client.delete(b"\n")
@@ -248,6 +386,32 @@ class TestClient:
         client._cluster.pick_node.return_value = node
         with pytest.raises(CommandError):
             await client.delete(b"foo")
+
+    async def test_delete_error_not_found(self, client):
+        # patch what is necesary for returnning an error string
+        connection = CoroutineMock()
+        connection.delete_command = CoroutineMock(return_value=NOT_FOUND)
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        with pytest.raises(NotFoundCommandError):
+            await client.delete(b"foo")
+
+    async def test_delete_use_timeout(self, client, mocker):
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+
+        connection = CoroutineMock()
+        connection.delete_command = CoroutineMock(return_value=DELETED)
+        connection_context = AsyncMagicMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        await client.delete(b"foo")
+
+        optimeout_class.assert_called()
 
     async def test_flush_all_client_closed(self, client, memcached_host_address):
         await client.close()
