@@ -306,7 +306,11 @@ class ConnectionPool:
 
     def remove_waiter(self, waiter: asyncio.Future):
         "" "Remove a specifici waiter" ""
-        self._waiters.remove(waiter)
+        try:
+            self._waiters.remove(waiter)
+        except ValueError:
+            # waiter is no longer in the queue
+            pass
 
     def metrics(self) -> ConnectionPoolMetrics:
         metrics = copy(self._metrics)
