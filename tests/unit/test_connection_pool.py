@@ -87,6 +87,8 @@ class TestConnectionPool:
         minimal_connection_pool._waiters.append(waiter)
         minimal_connection_pool.remove_waiter(waiter)
         assert waiter not in minimal_connection_pool._waiters
+        # removing an unexisting waiter should not fail
+        minimal_connection_pool.remove_waiter(Mock())
 
     async def test_initalizes_creating_one_connection(self, mocker, not_closed_connection):
         ev = asyncio.Event()
