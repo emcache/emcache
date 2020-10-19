@@ -67,7 +67,7 @@ Some of the commands have support for the following behavior flags:
 
 - ``noreply`` for storage commands like **set** we do not wait for an explicit response from the Memcached server. Sacrifice the explicit ack from the Memcached server for speed.
 - ``flags`` for storage we can save an int16 value that can be retrieved later on by fetch commands.
-- ``exptime`` for storage commands this provides a way of configuring an expiration time, once that time is reached keys will be automatically evicted by the Memcached server 
+- ``exptime`` for storage commands this provides a way of configuring an expiration time, once that time is reached keys will be automatically evicted by the Memcached server
 
 For more information about usage, `read the docs <https://emcache.readthedocs.io/en/latest/>`_.
 
@@ -120,3 +120,27 @@ does not support multiple nodes.
 The addition of new nodes did not add almost degradation for Emcache, in the last test with 8 nodes Emcache reached 42K
 get ops/sec and 46K set ops/sec. On the other hand, Pymemcached suffered substantial degradation making Emcache ~x5 times.
 faster.
+
+
+Development
+===========
+
+Clone the repository and its murmur3 submodule
+
+.. code-block:: bash
+
+    git clone --recursive git@github.com:pfreixes/emcache
+
+Compile murmur3
+
+.. code-block:: bash
+
+    pushd vendor/murmur3
+    make static
+    popd
+
+Install emcache with dev dependencies
+
+.. code-block:: bash
+
+    make install-dev
