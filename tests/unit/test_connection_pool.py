@@ -742,7 +742,7 @@ class TestConnectionContext:
 
 
 class TestWaitingForAConnectionContext:
-    async def tes_wait_for_a_connection(self, event_loop):
+    async def test_wait_for_a_connection(self, event_loop):
 
         connection = Mock()
         connection_pool = Mock()
@@ -756,3 +756,31 @@ class TestWaitingForAConnectionContext:
         task = event_loop.create_task(coro())
         waiter.set_result(None)
         await task
+
+    async def test_wait_for_a_connection_and_cancelled_right_after_connetion_is_set(self, event_loop):
+        connection = Mock()
+        connection_pool = Mock()
+        waiter = event_loop.create_future()
+
+        class MyContext(WaitingForAConnectionContext):
+            def __init__(self, *args, **kw):
+                super().__init__(*args, **kw)
+                self.aexit_called = False
+
+            async def __aexit__(self, *args, **kw):
+                await super().__aexit__(*args, **kw)
+                self.aexit_called = True
+
+        waiting_context = MyContext(connection_pool, None, waiter)
+
+        async def coro():
+            async with waiting_context:
+                raise asyncio.CancelledError()
+
+        task = event_loop.create_task(coro())
+        waiter.set_result(connection)
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        assert waiting_context.aexit_called is True
