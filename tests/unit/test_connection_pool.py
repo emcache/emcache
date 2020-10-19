@@ -775,10 +775,17 @@ class TestWaitingForAConnectionContext:
 
         async def coro():
             async with waiting_context:
+                # Raising a CancelledError here is equivalent as when the
                 raise asyncio.CancelledError()
 
         task = event_loop.create_task(coro())
-        waiter.set_result(connection)
+
+        async def set_result_and_cancel(waiter, seconds, task):
+            await asyncio.sleep(seconds)
+            waiter.set_result(connection)
+            task.cancel()
+
+        await set_result_and_cancel(waiter, 1, task)
 
         with pytest.raises(asyncio.CancelledError):
             await task
