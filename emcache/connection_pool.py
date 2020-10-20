@@ -372,11 +372,13 @@ class WaitingForAConnectionContext(BaseConnectionContext):
             else:
                 try:
                     connection = self._waiter.result()
-                except Exception:
-                    # Waiter finished with an exception, we need to
-                    # remove it
+                except asyncio.CancelledError:
+                    # Waiter was cancelled before he could get a
+                    # connection, we need to remove it
                     self._connection_pool.remove_waiter(self._waiter)
                 else:
+                    # Waiter was cancelled right after wakeup. We need
+                    # to release the connection.
                     self._connection_pool.release_connection(connection, exc=exc)
             raise
         return self._connection
