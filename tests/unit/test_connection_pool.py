@@ -455,6 +455,36 @@ class TestConnectionPool:
         # test specific atributes of the metrics
         assert connection_pool.metrics().operations_waited == 3
 
+    async def test_connections_are_released_if_waiter_is_cancelled_just_after_wakeup(
+        self, event_loop, mocker, not_closed_connection
+    ):
+        async def never_return_connection(*args, **kwargs):
+            await asyncio.sleep(1e10)
+
+        mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=never_return_connection))
+
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, None, lambda _: _)
+
+        async def coro(connection_context):
+            async with connection_context as _:
+                pass
+
+        connection_context1 = connection_pool.create_connection_context()
+        task1 = event_loop.create_task(coro(connection_context1))
+
+        # wait till all tasks are waiting
+        await asyncio.sleep(0.1)
+
+        with pytest.raises(asyncio.CancelledError):
+            # Force waiter to be waken up
+            connection_pool._wakeup_next_waiter_or_append_to_unused(not_closed_connection)
+            # Cancel task immediately after
+            task1.cancel()
+            await task1
+
+        # Waiter should have been removed too
+        assert len(connection_pool._waiters) == 0
+
     async def test_waiters_cancellation_is_supported(self, event_loop, mocker, not_closed_connection):
         # Check that waiters that are cancelled are suported and do not break
         # the flow for wake up pending ones.
@@ -740,7 +770,7 @@ class TestConnectionContext:
 
 
 class TestWaitingForAConnectionContext:
-    async def tes_wait_for_a_connection(self, event_loop):
+    async def test_wait_for_a_connection(self, event_loop):
 
         connection = Mock()
         connection_pool = Mock()
@@ -752,5 +782,5 @@ class TestWaitingForAConnectionContext:
                 assert connection_returned is connection
 
         task = event_loop.create_task(coro())
-        waiter.set_result(None)
+        waiter.set_result(connection)
         await task

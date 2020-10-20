@@ -366,7 +366,17 @@ class WaitingForAConnectionContext(BaseConnectionContext):
         try:
             self._connection = await self._waiter
         except asyncio.CancelledError:
-            self._connection_pool.remove_waiter(self._waiter)
+            try:
+                connection = self._waiter.result()
+            except asyncio.CancelledError:
+                # Waiter was cancelled before he could get a
+                # connection, we need to remove it
+                self._connection_pool.remove_waiter(self._waiter)
+            else:
+                # Waiter was cancelled right after wakeup. We need to
+                # release the connection.  Since this is a client-side
+                # cancellation, we can safely set exc=None for the
+                # connetion to be reused
+                self._connection_pool.release_connection(connection, exc=None)
             raise
-
         return self._connection

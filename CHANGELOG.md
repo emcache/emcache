@@ -1,3 +1,7 @@
+Unreleased
+==========
+- Fix bug: release connection when waiter is cancelled after wakeup
+
 0.3.0b0
 =======
 - Add support for the `increment` and `decrement` commands [#36](https://github.com/pfreixes/emcache/pull/36)
