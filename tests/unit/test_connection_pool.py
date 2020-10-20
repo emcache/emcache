@@ -457,6 +457,35 @@ class TestConnectionPool:
         # test specific atributes of the metrics
         assert connection_pool.metrics().operations_waited == 3
 
+    async def test_connections_are_released_if_waiter_is_cancelled_just_after_wakeup(self, event_loop, mocker, not_closed_connection):
+
+        async def never_return_connection(*args, **kwargs):
+            await asyncio.sleep(1e10)
+
+        mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=never_return_connection))
+
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, None, lambda _: _)
+
+        async def coro(connection_context):
+            async with connection_context as _:
+                pass
+
+        connection_context1 = connection_pool.create_connection_context()
+        task1 = event_loop.create_task(coro(connection_context1))
+
+        # wait till all tasks are waiting
+        await asyncio.sleep(0.1)
+
+        with pytest.raises(asyncio.CancelledError):
+            # Force waiter to be waken up
+            connection_pool._wakeup_next_waiter_or_append_to_unused(not_closed_connection)
+            # Cancel task immediately after
+            task1.cancel()
+            await task1
+
+        # Waiter should have been removed too
+        assert len(connection_pool._waiters) == 0
+
     async def test_waiters_cancellation_is_supported(self, event_loop, mocker, not_closed_connection):
         # Check that waiters that are cancelled are suported and do not break
         # the flow for wake up pending ones.
@@ -756,38 +785,3 @@ class TestWaitingForAConnectionContext:
         task = event_loop.create_task(coro())
         waiter.set_result(None)
         await task
-
-    async def test_wait_for_a_connection_and_cancelled_right_after_connetion_is_set(self, event_loop):
-        connection = Mock()
-        connection_pool = Mock()
-        waiter = event_loop.create_future()
-
-        class MyContext(WaitingForAConnectionContext):
-            def __init__(self, *args, **kw):
-                super().__init__(*args, **kw)
-                self.aexit_called = False
-
-            async def __aexit__(self, *args, **kw):
-                await super().__aexit__(*args, **kw)
-                self.aexit_called = True
-
-        waiting_context = MyContext(connection_pool, None, waiter)
-
-        async def coro():
-            async with waiting_context:
-                # Raising a CancelledError here is equivalent as when the
-                raise asyncio.CancelledError()
-
-        task = event_loop.create_task(coro())
-
-        async def set_result_and_cancel(waiter, seconds, task):
-            await asyncio.sleep(seconds)
-            waiter.set_result(connection)
-            task.cancel()
-
-        await set_result_and_cancel(waiter, 1, task)
-
-        with pytest.raises(asyncio.CancelledError):
-            await task
-
-        assert waiting_context.aexit_called is True

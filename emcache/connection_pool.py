@@ -306,11 +306,7 @@ class ConnectionPool:
 
     def remove_waiter(self, waiter: asyncio.Future):
         "" "Remove a specifici waiter" ""
-        try:
-            self._waiters.remove(waiter)
-        except ValueError:
-            # waiter is no longer in the queue
-            pass
+        self._waiters.remove(waiter)
 
     def metrics(self) -> ConnectionPoolMetrics:
         metrics = copy(self._metrics)
@@ -369,8 +365,18 @@ class WaitingForAConnectionContext(BaseConnectionContext):
     async def __aenter__(self) -> MemcacheAsciiProtocol:
         try:
             self._connection = await self._waiter
-        except asyncio.CancelledError:
-            self._connection_pool.remove_waiter(self._waiter)
+        except asyncio.CancelledError as exc:
+            if not self._waiter.done():
+                # waiter didn't get a connection yet
+                self._connection_pool.remove_waiter(self._waiter)
+            else:
+                try:
+                    connection = self._waiter.result()
+                except Exception:
+                    # Waiter finished with an exception, we need to
+                    # remove it
+                    self._connection_pool.remove_waiter(self._waiter)
+                else:
+                    self._connection_pool.release_connection(connection, exc=exc)
             raise
-
         return self._connection
