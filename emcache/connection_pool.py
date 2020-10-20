@@ -365,7 +365,7 @@ class WaitingForAConnectionContext(BaseConnectionContext):
     async def __aenter__(self) -> MemcacheAsciiProtocol:
         try:
             self._connection = await self._waiter
-        except asyncio.CancelledError as exc:
+        except asyncio.CancelledError:
             try:
                 connection = self._waiter.result()
             except asyncio.CancelledError:
