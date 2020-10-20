@@ -457,8 +457,9 @@ class TestConnectionPool:
         # test specific atributes of the metrics
         assert connection_pool.metrics().operations_waited == 3
 
-    async def test_connections_are_released_if_waiter_is_cancelled_just_after_wakeup(self, event_loop, mocker, not_closed_connection):
-
+    async def test_connections_are_released_if_waiter_is_cancelled_just_after_wakeup(
+        self, event_loop, mocker, not_closed_connection
+    ):
         async def never_return_connection(*args, **kwargs):
             await asyncio.sleep(1e10)
 
