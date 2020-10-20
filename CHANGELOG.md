@@ -1,6 +1,6 @@
-Unreleased
+0.3.1b0
 ==========
-- Fix bug: release connection when waiter is cancelled after wakeup
+- Fix bug: release connection when waiter is cancelled after wakeup [#48](https://github.com/pfreixes/emcache/issues/48)
 
 0.3.0b0
 =======
