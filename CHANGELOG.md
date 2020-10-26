@@ -1,6 +1,6 @@
 0.3.2b0
 ==========
-- Support for Python 3.9 [#48](https://github.com/pfreixes/emcache/issues/48)
+- Support for Python 3.9 [#52](https://github.com/pfreixes/emcache/pull/52)
 
 0.3.1b0
 ==========
