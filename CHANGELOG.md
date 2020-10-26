@@ -1,3 +1,7 @@
+0.3.2b0
+==========
+- Support for Python 3.9 [#48](https://github.com/pfreixes/emcache/issues/48)
+
 0.3.1b0
 ==========
 - Fix bug: release connection when waiter is cancelled after wakeup [#48](https://github.com/pfreixes/emcache/issues/48)
