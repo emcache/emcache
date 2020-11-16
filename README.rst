@@ -23,8 +23,6 @@ on the experience of other Memcached clients, providing the following main chara
 - Listen to the most significant `cluster events <https://emcache.readthedocs.io/en/latest/advanced_topics.html#cluster-events>`_, for example for knowing when a node has been marked as unhealthy.
 - Speed, Emcache is fast. See the benchmark section.
 
-Emcache is still considered on beta and has not bet yet tested in production but early feedback is wanted from the community to make it ready for production.
-
 Usage
 ==========
 

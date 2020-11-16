@@ -1,3 +1,7 @@
+0.4.0
+==========
+- Stable version
+
 0.3.2b0
 ==========
 - Support for Python 3.9 [#52](https://github.com/pfreixes/emcache/pull/52)
