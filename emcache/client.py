@@ -9,6 +9,7 @@ from .cluster import Cluster, MemcachedHostAddress
 from .default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
+    DEFAULT_MIN_CONNECTIONS,
     DEFAULT_PURGE_UNHEALTHY_NODES,
     DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
     DEFAULT_TIMEOUT,
@@ -70,6 +71,7 @@ class _Client(Client):
         node_addresses: Sequence[MemcachedHostAddress],
         timeout: Optional[float],
         max_connections: int,
+        min_connections: Optional[int],
         purge_unused_connections_after: Optional[float],
         connection_timeout: Optional[float],
         cluster_events: Optional[ClusterEvents],
@@ -83,6 +85,7 @@ class _Client(Client):
         self._cluster = Cluster(
             node_addresses,
             max_connections,
+            min_connections,
             purge_unused_connections_after,
             connection_timeout,
             cluster_events,
@@ -561,6 +564,7 @@ async def create_client(
     *,
     timeout: Optional[float] = DEFAULT_TIMEOUT,
     max_connections: int = DEFAULT_MAX_CONNECTIONS,
+    min_connections: Optional[int] = DEFAULT_MIN_CONNECTIONS,
     purge_unused_connections_after: Optional[float] = DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
     connection_timeout: Optional[float] = DEFAULT_CONNECTION_TIMEOUT,
     cluster_events: Optional[ClusterEvents] = None,
@@ -574,6 +578,9 @@ async def create_client(
     value to the `tiemout` keyword argument.
 
     A maximum number of TCP connections per Node to `DEFAULT_MAX_CONNECTIONS`.
+
+    A minimum number of TCP connections per Node to `DEFAULT_MIN_CONNECTIONS`. The number of opened
+    connections should fluctuate in normal circumstances between `min_connections` and `max_connections`.
 
     Purge unused TCP connections after being unused to `DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER` seconds, for
     disabling purging pass a `None` value to the `purge_unused_connections_after` keyword argument.
@@ -593,6 +600,7 @@ async def create_client(
         node_addresses,
         timeout,
         max_connections,
+        min_connections,
         purge_unused_connections_after,
         connection_timeout,
         cluster_events,

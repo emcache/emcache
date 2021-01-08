@@ -76,12 +76,17 @@ class ConnectionPool:
         host: str,
         port: int,
         max_connections: int,
+        min_connections: int,
         purge_unused_connections_after: Optional[float],
         connection_timeout: Optional[float],
         on_healthy_status_change_cb: Callable[[bool], None],
     ):
         if max_connections < 1:
             raise ValueError("max_connections must be higher than 0")
+        if min_connections < 0:
+            raise ValueError("min_connections must be higher or equal than 0")
+        if min_connections > max_connections:
+            raise ValueError("min_connections must be lower or equal than max_connections")
 
         self._closed = False
 
@@ -112,6 +117,7 @@ class ConnectionPool:
         # attributes used for handling connections and waiters
         self._total_connections = 0
         self._max_connections = max_connections
+        self._min_connections = min_connections
         self._waiters = deque()
         self._unused_connections = deque(maxlen=max_connections)
 
@@ -130,13 +136,14 @@ class ConnectionPool:
         else:
             self._purge_timer_handler = None
 
-        # At least one connection needs to be available
-        self._maybe_new_connection()
+        self._maybe_new_connection_if_current_is_lower_than_min()
 
     def __str__(self):
         return (
             f"<ConnectionPool host={self._host} port={self._port}"
-            + f" total_connections={self._total_connections} closed={self._closed}>"
+            + f" total_connections={self._total_connections}"
+            + f" min_connections={self._min_connections}"
+            + f" max_connections={self._max_connections} closed={self._closed}>"
         )
 
     def __repr__(self):
@@ -164,9 +171,9 @@ class ConnectionPool:
             if last_time_used + self._purge_unused_connections_after > now:
                 continue
 
-            if self._total_connections == 1:
-                # If there is only one connection we don't purgue it since
-                # the connection pool always tries to have at least one connection.
+            if self._total_connections <= self._min_connections:
+                # Once we reach the minimum number of connections or even lower we
+                # anymore.
                 break
 
             self._close_connection(connection)
@@ -252,18 +259,19 @@ class ConnectionPool:
                 await asyncio.sleep(backoff)
                 await self._create_new_connection(backoff=backoff, retries=retries)
 
+    def _maybe_new_connection_if_current_is_lower_than_min(self):
+        if self._total_connections < self._min_connections:
+            self._maybe_new_connection()
+
     def _maybe_new_connection(self) -> None:
-        # We kick off another connection if the following conditions are meet
-        # - there is still room for having more connections
-        # - there is no an ongoing creation of a connection.
-        # - there are waiters or there are no connections
-        if (
-            self._creating_connection is False
-            and self._total_connections < self._max_connections
-            and (len(self._waiters) > 0 or self._total_connections == 0)
-        ):
+        if self._creating_connection is False and self._total_connections < self._max_connections:
+
+            def _keep_checking(fut: asyncio.Future):
+                self._maybe_new_connection_if_current_is_lower_than_min()
+
             self._creating_connection = True
             self._creating_connection_task = self._loop.create_task(self._create_new_connection())
+            self._creating_connection_task.add_done_callback(_keep_checking)
 
     async def close(self):
         """ Close any active background task and close all connections """
@@ -323,7 +331,7 @@ class ConnectionPool:
         elif exc or connection.closed():
             logger.warning(f"{self} Closing connection and removing from the pool due to exception {exc}")
             self._close_connection(connection)
-            self._maybe_new_connection()
+            self._maybe_new_connection_if_current_is_lower_than_min()
             self._metrics.operations_executed_with_error += 1
         else:
             self._wakeup_next_waiter_or_append_to_unused(connection)

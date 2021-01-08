@@ -1,6 +1,7 @@
 NOT RELEASED YET
 =================
 - Add create connection latencies metrics [#54](https://github.com/pfreixes/emcache/pull/54)
+- Add new `min_connections` parameter [#55](https://github.com/pfreixes/emcache/pull/55)
 
 0.4.0
 ==========

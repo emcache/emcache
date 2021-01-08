@@ -32,6 +32,7 @@ nodes the cluster has.
 By default the connection pool, if the default values are not overwritten, is initialized with the following characteristics:
 
 - Create a maximum of 2 TCP connections. This can be changed by providing a different value of the ``max_connections`` keyword of the :meth:`emcache.create_client` factory.
+- Keeps ideally always 1 TCP connection. This can be changed by providing a different value of the ``min_connections`` keyword of the :meth:`emcache.create_client` factory.
 - Purge unused connections, meaning that connections that once created are no longer used will be explicitly closed after 60 seconds. This can be changed
   by providing a different value of the ``purge_unused_connections_after`` keyword of the :meth:`emcache.create_client` factory or disabling it providing a `None` value.
 - Give up by timeout after 5 seconds if a connection can't be created. This can be changed by providing a different value of the ``connection_timeout`` keyword
