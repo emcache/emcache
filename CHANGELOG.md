@@ -1,3 +1,7 @@
+NOT RELEASED YET
+=================
+- Add create connection latencies metrics
+
 0.4.0
 ==========
 - Stable version

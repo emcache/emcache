@@ -58,5 +58,9 @@ returned as attributes of this class are:
 - **operations_executed** Tells you how many operations have been executed.
 - **operations_executed_with_error** Tells you how many operations have been executed but ended up by having an exception during the execution.
 - **operations_waited** Tells you how many operations were delayed becausew they had to wait for an available connection.
+- **create_connection_avg** Tells you what's the average time that creating a connection took, using the last 100 observed values.
+- **create_connection_p50** Tells you what's the percentil 50 time for creating a connection, using the last 100 observed values.
+- **create_connection_p99** Tells you what's the percentil 99 time for creating a connection, using the last 100 observed values.
+- **create_connection_upper** Tells you what's the worst time that creating a connection took, using the last 100 observed values.
 
 These metrics can be push to a time series database for monitoring the execution of the Emcache driver, the user will need to take care of calculating the deltas, if the user is intereseted on them, of each historical value since historical values are accumulated values.
