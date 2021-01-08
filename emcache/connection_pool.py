@@ -44,7 +44,7 @@ class ConnectionPoolMetrics:
     operations_waited: int
 
     # Create connection latencies measured from the last,
-    # if there are, 1K observed values.
+    # if there are, 100 observed values.
     create_connection_avg: Optional[float]
     create_connection_p50: Optional[float]
     create_connection_p99: Optional[float]
