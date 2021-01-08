@@ -1,5 +1,5 @@
-NOT RELEASED YET
-=================
+0.4.1
+======
 - Add create connection latencies metrics [#54](https://github.com/pfreixes/emcache/pull/54)
 - Add new `min_connections` parameter [#55](https://github.com/pfreixes/emcache/pull/55)
 - Purge only one connection per loop iteration [#56](https://github.com/pfreixes/emcache/pull/56)
