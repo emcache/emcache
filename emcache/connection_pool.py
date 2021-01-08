@@ -340,8 +340,8 @@ class ConnectionPool:
         metrics.cur_connections = self.total_connections
 
         # calculate the create connection latencies only if there
-        # there are latencies observed, otherwise default value which
-        # is None.
+        # are latencies observed, otherwise leave the default value
+        # which should be None.
         if self._create_connection_latencies:
             latencies = sorted(self._create_connection_latencies)
             metrics.create_connection_avg = sum(latencies) / len(latencies)
