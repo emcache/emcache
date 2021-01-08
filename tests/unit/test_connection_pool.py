@@ -6,6 +6,7 @@ import pytest
 from asynctest import CoroutineMock
 
 from emcache.connection_pool import (
+    _MAX_CREATE_CONNECTION_LATENCIES_OBSERVED,
     CREATE_CONNECTION_MAX_BACKOFF,
     DECLARE_UNHEALTHY_CONNECTION_POOL_AFTER_RETRIES,
     BaseConnectionContext,
@@ -82,6 +83,27 @@ class TestConnectionPool:
         connection_pool = ConnectionPool("localhost", 11211, 1, None, None, lambda _: _)
         assert isinstance(connection_pool.metrics(), ConnectionPoolMetrics)
 
+        # checks that without latencies create connection times are None values
+        assert connection_pool.metrics().create_connection_avg is None
+        assert connection_pool.metrics().create_connection_p50 is None
+        assert connection_pool.metrics().create_connection_p99 is None
+        assert connection_pool.metrics().create_connection_upper is None
+
+        await connection_pool.close()
+
+    async def test_metrics_create_connection_latencies(self):
+        # Check that the latencies measured are well calculated when metrics
+        # method is called.
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, None, lambda _: _)
+        connection_pool._create_connection_latencies = [float(i) for i in range(0, 101)]
+
+        assert connection_pool.metrics().create_connection_avg == 50.0
+        assert connection_pool.metrics().create_connection_p50 == 50.0
+        assert connection_pool.metrics().create_connection_p99 == 99.0
+        assert connection_pool.metrics().create_connection_upper == 100.0
+
+        await connection_pool.close()
+
     async def test_remove_waiter(self, minimal_connection_pool):
         waiter = Mock()
         minimal_connection_pool._waiters.append(waiter)
@@ -109,6 +131,10 @@ class TestConnectionPool:
         # test specific atributes of the metrics
         assert connection_pool.metrics().cur_connections == 1
         assert connection_pool.metrics().connections_created == 1
+        assert connection_pool.metrics().create_connection_avg is not None
+        assert connection_pool.metrics().create_connection_p50 is not None
+        assert connection_pool.metrics().create_connection_p99 is not None
+        assert connection_pool.metrics().create_connection_upper is not None
 
     async def test_create_connection_with_timeout(self, mocker, not_closed_connection):
         ev = asyncio.Event()
@@ -126,6 +152,24 @@ class TestConnectionPool:
         await ev.wait()
 
         create_protocol.assert_called_with("localhost", 11211, timeout=1.0)
+
+    async def test_create_connection_max_observed_latencies(self, event_loop, mocker, not_closed_connection):
+        mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
+
+        connection_pool = ConnectionPool("localhost", 11211, 1, None, None, lambda _: _)
+
+        # Perform twice operations than the maximum observed latencies by removing
+        # the connection at each operation
+        for i in range(_MAX_CREATE_CONNECTION_LATENCIES_OBSERVED * 2):
+            async with connection_pool.create_connection_context():
+                pass
+
+            # remove the connection explicitly, behind the scenes connection pool
+            # will be forced to create a new one
+            connection_pool._close_connection(not_closed_connection)
+
+        # We should never have more than the maximum number of latencies observed
+        assert len(connection_pool._create_connection_latencies) == _MAX_CREATE_CONNECTION_LATENCIES_OBSERVED
 
     async def test_connection_context_connection(self, mocker, not_closed_connection):
         mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))

@@ -4,7 +4,7 @@ import time
 from collections import deque
 from copy import copy
 from dataclasses import dataclass
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, List, Optional
 
 from .protocol import MemcacheAsciiProtocol, create_protocol
 
@@ -12,6 +12,9 @@ logger = logging.getLogger(__name__)
 
 CREATE_CONNECTION_MAX_BACKOFF = 60.0
 DECLARE_UNHEALTHY_CONNECTION_POOL_AFTER_RETRIES = 3
+
+
+_MAX_CREATE_CONNECTION_LATENCIES_OBSERVED = 100
 
 
 @dataclass
@@ -40,6 +43,13 @@ class ConnectionPoolMetrics:
     operations_executed_with_error: int
     operations_waited: int
 
+    # Create connection latencies measured from the last,
+    # if there are, 100 observed values.
+    create_connection_avg: Optional[float]
+    create_connection_p50: Optional[float]
+    create_connection_p99: Optional[float]
+    create_connection_upper: Optional[float]
+
 
 class ConnectionPool:
 
@@ -52,6 +62,7 @@ class ConnectionPool:
     _loop: asyncio.AbstractEventLoop
     _creating_connection_task: Optional[asyncio.Task]
     _create_connection_in_progress: bool
+    _create_connection_latencies: List[float]
     _connections_last_time_used: Dict[MemcacheAsciiProtocol, float]
     _purge_unused_connections_after: Optional[int]
     _total_purged_connections: int
@@ -83,6 +94,10 @@ class ConnectionPool:
             operations_executed=0,
             operations_executed_with_error=0,
             operations_waited=0,
+            create_connection_avg=None,
+            create_connection_p50=None,
+            create_connection_p99=None,
+            create_connection_upper=None,
         )
 
         # A connection pool starts always in a healthy state
@@ -103,6 +118,7 @@ class ConnectionPool:
         # attributes used for creating new connections
         self._creating_connection_task = None
         self._creating_connection = False
+        self._create_connection_latencies = []
 
         # attributes used for purging connections
         self._connections_last_time_used = {}
@@ -184,7 +200,16 @@ class ConnectionPool:
         """
         error = False
         try:
+            start = time.monotonic()
             connection = await create_protocol(self._host, self._port, timeout=self._connection_timeout)
+            elapsed = time.monotonic() - start
+
+            # record time elapsed and keep only the last N observed values
+            self._create_connection_latencies.append(elapsed)
+            self._create_connection_latencies = self._create_connection_latencies[
+                -_MAX_CREATE_CONNECTION_LATENCIES_OBSERVED:
+            ]
+
             self._connections_last_time_used[connection] = time.monotonic()
             self._total_connections += 1
             self._wakeup_next_waiter_or_append_to_unused(connection)
@@ -310,8 +335,20 @@ class ConnectionPool:
 
     def metrics(self) -> ConnectionPoolMetrics:
         metrics = copy(self._metrics)
+
         # current values are updated at read time
         metrics.cur_connections = self.total_connections
+
+        # calculate the create connection latencies only if there
+        # are latencies observed, otherwise leave the default value
+        # which should be None.
+        if self._create_connection_latencies:
+            latencies = sorted(self._create_connection_latencies)
+            metrics.create_connection_avg = sum(latencies) / len(latencies)
+            metrics.create_connection_p50 = latencies[int((50 * len(latencies) / 100))]
+            metrics.create_connection_p99 = latencies[int((99 * len(latencies) / 100))]
+            metrics.create_connection_upper = latencies[-1]
+
         return metrics
 
     @property
