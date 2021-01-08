@@ -63,6 +63,7 @@ class Cluster:
         self,
         memcached_hosts_address: Sequence[MemcachedHostAddress],
         max_connections: int,
+        min_connections: int,
         purge_unused_connections_after: Optional[float],
         connection_timeout: Optional[float],
         cluster_events: Optional[ClusterEvents],
@@ -84,6 +85,7 @@ class Cluster:
             Node(
                 memcached_host_address,
                 max_connections,
+                min_connections,
                 purge_unused_connections_after,
                 connection_timeout,
                 self._on_node_healthy_status_change_cb,

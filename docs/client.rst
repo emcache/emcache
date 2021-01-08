@@ -28,6 +28,8 @@ When no other parameters are provided, the following keyword arguments are confi
 - **max_connections** Configured to 2, maximum number of TCP connections that would be opened per node. Consider configure that number according to the maximum number of concurrent
   clients that you might have and the impact that these connections might have for the Memcached server. Take look to the advanced topics section, and specifically to the 
   Connection pool section.
+- **min_connections** Configured to 1, minum number of TCP connections that the client will try to keep open in ideal circumstances.
+  Connection pool section.
 - **purge_unused_connections_after** By default enabled and conigured to **60.0 secconds**. If you do not want to purge actively - close - connections that haven't been used for a while give a `None` value.
 - **connection_timeout** By default configured to **5 seconds**, meaning that any attempt of creating a new connection that might take more than 5 seconds would be considered timed out.
   For disabling that time out give a `None` value.

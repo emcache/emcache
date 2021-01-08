@@ -9,6 +9,7 @@ from emcache.client_errors import CommandError, NotFoundCommandError, StorageCom
 from emcache.default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
+    DEFAULT_MIN_CONNECTIONS,
     DEFAULT_PURGE_UNHEALTHY_NODES,
     DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
     DEFAULT_TIMEOUT,
@@ -92,16 +93,17 @@ class TestClient:
     @pytest.fixture
     async def client(self, event_loop, mocker, cluster, memcached_host_address):
         mocker.patch("emcache.client.Cluster", return_value=cluster)
-        return _Client([memcached_host_address], None, 1, None, None, None, False)
+        return _Client([memcached_host_address], None, 1, 1, None, None, None, False)
 
     async def test_invalid_host_addresses(self):
         with pytest.raises(ValueError):
-            _Client([], None, 1, None, None, None, False)
+            _Client([], None, 1, 1, None, None, None, False)
 
     async def test_cluster_initialization(self, event_loop, mocker, memcached_host_address):
         node_addresses = [memcached_host_address]
         timeout = 1
         max_connections = 1
+        min_connections = 1
         purge_unused_connections_after = 60.0
         connection_timeout = 1.0
         cluster_events = Mock()
@@ -111,6 +113,7 @@ class TestClient:
             node_addresses,
             timeout,
             max_connections,
+            min_connections,
             purge_unused_connections_after,
             connection_timeout,
             cluster_events,
@@ -119,6 +122,7 @@ class TestClient:
         cluster_class.assert_called_with(
             node_addresses,
             max_connections,
+            min_connections,
             purge_unused_connections_after,
             connection_timeout,
             cluster_events,
@@ -138,7 +142,7 @@ class TestClient:
 
         optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
         timeout = 2.0
-        client = _Client([memcached_host_address], timeout, 1, None, None, None, False,)
+        client = _Client([memcached_host_address], timeout, 1, 1, None, None, None, False,)
         connection = CoroutineMock(return_value=b"")
         connection.storage_command = CoroutineMock(return_value=b"STORED")
         node = Mock()
@@ -474,6 +478,7 @@ async def test_create_client_default_values(event_loop, mocker):
         [("localhost", 11211)],
         DEFAULT_TIMEOUT,
         DEFAULT_MAX_CONNECTIONS,
+        DEFAULT_MIN_CONNECTIONS,
         DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
         DEFAULT_CONNECTION_TIMEOUT,
         # No ClusterEVents provided
