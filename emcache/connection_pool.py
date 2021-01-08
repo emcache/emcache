@@ -180,6 +180,9 @@ class ConnectionPool:
             self._metrics.connections_purged += 1
             logger.info(f"{self} Connection purged")
 
+            # we purge one connection per loop iteration
+            break
+
         self._loop.call_later(self._purge_unused_connections_after, self._purge_unused_connections)
 
     def _wakeup_next_waiter_or_append_to_unused(self, connection):

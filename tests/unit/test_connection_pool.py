@@ -609,38 +609,63 @@ class TestConnectionPool:
         asyncio_patched.get_running_loop = get_running_loop
         get_running_loop.return_value.call_later = call_later
 
-        connection_pool = ConnectionPool("localhost", 11211, 2, 1, 60, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 3, 1, 60, None, lambda _: _)
 
         # Check that the call late was done with the right parameters
         call_later.assert_called_with(60, connection_pool._purge_unused_connections)
 
-        # we add two connections by hand, with different timestamps.
+        # we add three connections by hand, with different timestamps.
         none_expired_connection = Mock()
-        expired_connection = Mock()
+        expired_connection_1 = Mock()
+        expired_connection_2 = Mock()
 
         connection_pool._unused_connections.append(none_expired_connection)
-        connection_pool._unused_connections.append(expired_connection)
+        connection_pool._unused_connections.append(expired_connection_1)
+        connection_pool._unused_connections.append(expired_connection_2)
 
         connection_pool._connections_last_time_used[none_expired_connection] = time.monotonic()
-        connection_pool._connections_last_time_used[expired_connection] = time.monotonic() - 61
+        connection_pool._connections_last_time_used[expired_connection_1] = time.monotonic() - 61
+        connection_pool._connections_last_time_used[expired_connection_2] = time.monotonic() - 61
 
-        connection_pool._total_connections = 2
+        connection_pool._total_connections = 3
 
         # Run the purge
         connection_pool._purge_unused_connections()
 
-        # Check that the expired has been removed and the none expired is still there
-        assert expired_connection not in connection_pool._unused_connections
+        # Check that only one expired connection has been removed and the none expired is still there
+        assert expired_connection_1 not in connection_pool._unused_connections
+        assert expired_connection_2 in connection_pool._unused_connections
         assert none_expired_connection in connection_pool._unused_connections
 
-        assert expired_connection not in connection_pool._connections_last_time_used
+        assert expired_connection_1 not in connection_pool._connections_last_time_used
+        assert expired_connection_2 in connection_pool._connections_last_time_used
+        assert none_expired_connection in connection_pool._connections_last_time_used
+
+        assert connection_pool.total_connections == 2
+
+        assert connection_pool.metrics().cur_connections == 2
+        assert connection_pool.metrics().connections_purged == 1
+
+        # Run the purge again, which should purge the other unused connection
+        connection_pool._purge_unused_connections()
+
+        assert expired_connection_2 not in connection_pool._unused_connections
+        assert none_expired_connection in connection_pool._unused_connections
+
+        assert expired_connection_2 not in connection_pool._connections_last_time_used
         assert none_expired_connection in connection_pool._connections_last_time_used
 
         assert connection_pool.total_connections == 1
 
-        # test specific atributes of the metrics
         assert connection_pool.metrics().cur_connections == 1
-        assert connection_pool.metrics().connections_purged == 1
+        assert connection_pool.metrics().connections_purged == 2
+
+        # Run the purge again, nothing should happen
+        connection_pool._purge_unused_connections()
+
+        assert none_expired_connection in connection_pool._unused_connections
+        assert none_expired_connection in connection_pool._connections_last_time_used
+        assert connection_pool.total_connections == 1
 
     @pytest.mark.parametrize("min_connections", [1, 2])
     async def test_purge_not_the_beyond_min_connections(self, event_loop, mocker, min_connections):
