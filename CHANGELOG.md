@@ -1,6 +1,6 @@
 NOT RELEASED YET
 =================
-- Add create connection latencies metrics
+- Add create connection latencies metrics [#54](https://github.com/pfreixes/emcache/pull/54)
 
 0.4.0
 ==========
