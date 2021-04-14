@@ -94,7 +94,7 @@ async def main():
     )
     parser.add_argument(
         "--test",
-        help="Test to be executed set_get or set_get_many, by default sets and gets stress",
+        help="Test to be executed set_get, set_get_autobatching or set_get_many, by default sets and gets stress",
         type=str,
         default="set_get",
     )
@@ -108,12 +108,16 @@ async def main():
 
     hosts = [MemcachedHostAddress(host, int(port)) for host, port in zip(addresses, ports)]
 
-    client = await create_client(hosts, timeout=None, max_connections=args.concurrency)
-
     if args.test == "set_get":
+        client = await create_client(hosts, timeout=None, max_connections=args.concurrency)
+        await benchmark("SET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
+        await benchmark("GET", cmd_get, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
+    elif args.test == "set_get_autobatching":
+        client = await create_client(hosts, timeout=None, max_connections=args.concurrency, autobatching=True)
         await benchmark("SET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
         await benchmark("GET", cmd_get, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
     elif args.test == "set_get_many":
+        client = await create_client(hosts, timeout=None, max_connections=args.concurrency)
         await benchmark("SET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
         await benchmark("GET_MANY", cmd_get_many, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
     else:

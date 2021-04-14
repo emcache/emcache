@@ -1,3 +1,7 @@
+0.5.0 (NOT YET)
+================
+- Support for autobatching [#57](https://github.com/pfreixes/emcache/pull/57)
+
 0.4.1
 ======
 - Add create connection latencies metrics [#54](https://github.com/pfreixes/emcache/pull/54)
