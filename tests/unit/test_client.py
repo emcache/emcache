@@ -3,6 +3,7 @@ from unittest.mock import ANY, Mock, call
 import pytest
 from asynctest import CoroutineMock, MagicMock as AsyncMagicMock
 
+from emcache.base import Item
 from emcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, _Client, create_client
 from emcache.client_errors import CommandError, NotFoundCommandError, StorageCommandError
 from emcache.default_values import (
@@ -455,6 +456,67 @@ class TestClient:
         await f(b"key", b"value")
 
         connection.storage_command.assert_called_with(ANY, ANY, ANY, 0, 0, ANY, ANY)
+
+    @pytest.fixture
+    async def autobatching(self, event_loop, mocker):
+        item = Item(b"value", None, None)
+        autobatching_get_noflags = CoroutineMock()
+        autobatching_get_noflags.execute = CoroutineMock(return_value=item)
+        autobatching_get_flags = CoroutineMock()
+        autobatching_get_flags.execute = CoroutineMock(return_value=item)
+        autobatching_gets_noflags = CoroutineMock()
+        autobatching_gets_noflags.execute = CoroutineMock(return_value=item)
+        autobatching_gets_flags = CoroutineMock()
+        autobatching_gets_flags.execute = CoroutineMock(return_value=item)
+        return (autobatching_get_noflags, autobatching_get_flags, autobatching_gets_noflags, autobatching_gets_flags)
+
+    @pytest.fixture
+    async def client_autobatching(self, event_loop, mocker, cluster, memcached_host_address, autobatching):
+        autobatch_class = mocker.patch("emcache.client.AutoBatching")
+        get_noflags, get_flags, gets_noflags, gets_flags = autobatching
+        autobatch_class.side_effect = [get_noflags, get_flags, gets_noflags, gets_flags]
+        mocker.patch("emcache.client.Cluster", return_value=cluster)
+        return _Client([memcached_host_address], None, 1, 1, None, None, None, False, True, 32)
+
+    async def test_get_command_use_autobatching_if_enabled(self, client_autobatching, autobatching):
+        await client_autobatching.get(b"foo")
+
+        get_noflags, get_flags, gets_noflags, gets_flags = autobatching
+
+        get_noflags.execute.assert_called_with(b"foo")
+        get_flags.execute.assert_not_called()
+        gets_noflags.execute.assert_not_called()
+        gets_flags.execute.assert_not_called()
+
+    async def test_get_and_flags_command_use_autobatching_if_enabled(self, client_autobatching, autobatching):
+        await client_autobatching.get(b"foo", return_flags=True)
+
+        get_noflags, get_flags, gets_noflags, gets_flags = autobatching
+
+        get_flags.execute.assert_called_with(b"foo")
+        get_noflags.execute.assert_not_called()
+        gets_noflags.execute.assert_not_called()
+        gets_flags.execute.assert_not_called()
+
+    async def test_gets_command_use_autobatching_if_enabled(self, client_autobatching, autobatching):
+        await client_autobatching.gets(b"foo")
+
+        get_noflags, get_flags, gets_noflags, gets_flags = autobatching
+
+        gets_noflags.execute.assert_called_with(b"foo")
+        get_noflags.execute.assert_not_called()
+        get_flags.execute.assert_not_called()
+        gets_flags.execute.assert_not_called()
+
+    async def test_gets_and_flags_command_use_autobatching_if_enabled(self, client_autobatching, autobatching):
+        await client_autobatching.gets(b"foo", return_flags=True)
+
+        get_noflags, get_flags, gets_noflags, gets_flags = autobatching
+
+        gets_flags.execute.assert_called_with(b"foo")
+        get_flags.execute.assert_not_called()
+        get_noflags.execute.assert_not_called()
+        gets_noflags.execute.assert_not_called()
 
 
 async def test_create_client_default_values(event_loop, mocker):
