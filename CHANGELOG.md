@@ -1,4 +1,4 @@
-0.5.0 (NOT YET)
+0.5.0
 ================
 - Support for autobatching [#57](https://github.com/pfreixes/emcache/pull/57)
 
