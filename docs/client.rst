@@ -35,6 +35,8 @@ When no other parameters are provided, the following keyword arguments are confi
   For disabling that time out give a `None` value.
 - **cluster_events** By default configured to `None`. Take a look to the advanced topics section, and specifically to the cluster events section.
 - **purge_unhealthy_nodes** By default configured to False, if it was configured to True traffic wouldn't be send to nodes that are reporting an unhealthy status. Take a look to the advanced topics section, and specifically to the healthy and unhealhty nodes section.
+- **autobatching** By default configured to False, if it was configured to True all `get` and `gets` methods will use autobatching strategy, leveraing on the `get_many` command for sending group of get´s operations in batches. This option can speed up your application x2/x3. More information take a look to the Autobatching secion within the Advanced Options section.
+- **autobatching_max_leys** By default 32. Will be used only if **autobatching** is enabled. Configures the maximum number of keys to be sent in a single batch.
 
 Example of a client creation that would not purge unused connections
 

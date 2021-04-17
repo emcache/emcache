@@ -1,12 +1,14 @@
-import asyncio
-from unittest.mock import ANY, Mock
+from unittest.mock import ANY, Mock, call
 
 import pytest
 from asynctest import CoroutineMock, MagicMock as AsyncMagicMock
 
-from emcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, OpTimeout, _Client, create_client
+from emcache.base import Item
+from emcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, _Client, create_client
 from emcache.client_errors import CommandError, NotFoundCommandError, StorageCommandError
 from emcache.default_values import (
+    DEFAULT_AUTOBATCHING_ENABLED,
+    DEFAULT_AUTOBATCHING_MAX_KEYS,
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
     DEFAULT_MIN_CONNECTIONS,
@@ -18,61 +20,6 @@ from emcache.node import MemcachedHostAddress
 from emcache.protocol import DELETED, NOT_FOUND, STORED, TOUCHED
 
 pytestmark = pytest.mark.asyncio
-
-
-class TestOpTimeout:
-    async def test_timeout(self, event_loop):
-        with pytest.raises(asyncio.TimeoutError):
-            async with OpTimeout(0.01, event_loop):
-                await asyncio.sleep(1)
-
-    async def test_dont_timeout(self, event_loop):
-        async with OpTimeout(1, event_loop):
-            await asyncio.sleep(0.01)
-
-    async def test_cancellation_is_supported(self, event_loop):
-        ev = asyncio.Event()
-
-        async def coro():
-            async with OpTimeout(0.01, event_loop):
-                ev.set()
-                await asyncio.sleep(0.02)
-
-        task = event_loop.create_task(coro())
-        await ev.wait()
-
-        # We cancel before the timeout is triggered
-        task.cancel()
-
-        # we should observe a cancellation rather than
-        #  a timeout error.
-        with pytest.raises(asyncio.CancelledError):
-            await task
-
-    async def test_check_cancel_timer_handler(self):
-        # When a timeout is not triggered, time handler
-        # must be cancelled
-
-        timer_handler = Mock()
-        loop = Mock()
-        loop.call_later.return_value = timer_handler
-        async with OpTimeout(0.01, loop):
-            pass
-
-        loop.call_later.assert_called_with(0.01, ANY)
-        timer_handler.cancel.assert_called()
-
-    async def test_check_cancel_timer_handler_when_exception_triggers(self):
-        # the same but having an exception
-        timer_handler = Mock()
-        loop = Mock()
-        loop.call_later.return_value = timer_handler
-
-        with pytest.raises(Exception):
-            async with OpTimeout(0.01, loop):
-                raise Exception
-
-        timer_handler.cancel.assert_called()
 
 
 class TestClient:
@@ -93,11 +40,47 @@ class TestClient:
     @pytest.fixture
     async def client(self, event_loop, mocker, cluster, memcached_host_address):
         mocker.patch("emcache.client.Cluster", return_value=cluster)
-        return _Client([memcached_host_address], None, 1, 1, None, None, None, False)
+        return _Client([memcached_host_address], None, 1, 1, None, None, None, False, False, 32)
 
     async def test_invalid_host_addresses(self):
         with pytest.raises(ValueError):
-            _Client([], None, 1, 1, None, None, None, False)
+            _Client([], None, 1, 1, None, None, None, False, False, 32)
+
+    async def test_autobatching_initialization(self, event_loop, mocker, memcached_host_address):
+        node_addresses = [memcached_host_address]
+        timeout = 1
+        max_connections = 1
+        min_connections = 1
+        purge_unused_connections_after = 60.0
+        connection_timeout = 1.0
+        cluster_events = Mock()
+        purge_unhealthy_nodes = True
+        autobatching = True
+        autobatching_max_keys = 32
+        cluster = Mock()
+        cluster_class = mocker.patch("emcache.client.Cluster")
+        cluster_class.return_value = cluster
+        autobatching_class = mocker.patch("emcache.client.AutoBatching")
+        client = _Client(
+            node_addresses,
+            timeout,
+            max_connections,
+            min_connections,
+            purge_unused_connections_after,
+            connection_timeout,
+            cluster_events,
+            purge_unhealthy_nodes,
+            autobatching,
+            autobatching_max_keys,
+        )
+        autobatching_class.assert_has_calls(
+            [
+                call(client, cluster, ANY, return_flags=False, return_cas=False, timeout=timeout, max_keys=32),
+                call(client, cluster, ANY, return_flags=True, return_cas=False, timeout=timeout, max_keys=32),
+                call(client, cluster, ANY, return_flags=False, return_cas=True, timeout=timeout, max_keys=32),
+                call(client, cluster, ANY, return_flags=True, return_cas=True, timeout=timeout, max_keys=32),
+            ]
+        )
 
     async def test_cluster_initialization(self, event_loop, mocker, memcached_host_address):
         node_addresses = [memcached_host_address]
@@ -108,6 +91,8 @@ class TestClient:
         connection_timeout = 1.0
         cluster_events = Mock()
         purge_unhealthy_nodes = True
+        autobatching = False
+        autobatching_max_keys = 32
         cluster_class = mocker.patch("emcache.client.Cluster")
         _Client(
             node_addresses,
@@ -118,6 +103,8 @@ class TestClient:
             connection_timeout,
             cluster_events,
             purge_unhealthy_nodes,
+            autobatching,
+            autobatching_max_keys,
         )
         cluster_class.assert_called_with(
             node_addresses,
@@ -142,7 +129,7 @@ class TestClient:
 
         optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
         timeout = 2.0
-        client = _Client([memcached_host_address], timeout, 1, 1, None, None, None, False,)
+        client = _Client([memcached_host_address], timeout, 1, 1, None, None, None, False, False, 32)
         connection = CoroutineMock(return_value=b"")
         connection.storage_command = CoroutineMock(return_value=b"STORED")
         node = Mock()
@@ -470,6 +457,67 @@ class TestClient:
 
         connection.storage_command.assert_called_with(ANY, ANY, ANY, 0, 0, ANY, ANY)
 
+    @pytest.fixture
+    async def autobatching(self, event_loop, mocker):
+        item = Item(b"value", None, None)
+        autobatching_get_noflags = CoroutineMock()
+        autobatching_get_noflags.execute = CoroutineMock(return_value=item)
+        autobatching_get_flags = CoroutineMock()
+        autobatching_get_flags.execute = CoroutineMock(return_value=item)
+        autobatching_gets_noflags = CoroutineMock()
+        autobatching_gets_noflags.execute = CoroutineMock(return_value=item)
+        autobatching_gets_flags = CoroutineMock()
+        autobatching_gets_flags.execute = CoroutineMock(return_value=item)
+        return (autobatching_get_noflags, autobatching_get_flags, autobatching_gets_noflags, autobatching_gets_flags)
+
+    @pytest.fixture
+    async def client_autobatching(self, event_loop, mocker, cluster, memcached_host_address, autobatching):
+        autobatch_class = mocker.patch("emcache.client.AutoBatching")
+        get_noflags, get_flags, gets_noflags, gets_flags = autobatching
+        autobatch_class.side_effect = [get_noflags, get_flags, gets_noflags, gets_flags]
+        mocker.patch("emcache.client.Cluster", return_value=cluster)
+        return _Client([memcached_host_address], None, 1, 1, None, None, None, False, True, 32)
+
+    async def test_get_command_use_autobatching_if_enabled(self, client_autobatching, autobatching):
+        await client_autobatching.get(b"foo")
+
+        get_noflags, get_flags, gets_noflags, gets_flags = autobatching
+
+        get_noflags.execute.assert_called_with(b"foo")
+        get_flags.execute.assert_not_called()
+        gets_noflags.execute.assert_not_called()
+        gets_flags.execute.assert_not_called()
+
+    async def test_get_and_flags_command_use_autobatching_if_enabled(self, client_autobatching, autobatching):
+        await client_autobatching.get(b"foo", return_flags=True)
+
+        get_noflags, get_flags, gets_noflags, gets_flags = autobatching
+
+        get_flags.execute.assert_called_with(b"foo")
+        get_noflags.execute.assert_not_called()
+        gets_noflags.execute.assert_not_called()
+        gets_flags.execute.assert_not_called()
+
+    async def test_gets_command_use_autobatching_if_enabled(self, client_autobatching, autobatching):
+        await client_autobatching.gets(b"foo")
+
+        get_noflags, get_flags, gets_noflags, gets_flags = autobatching
+
+        gets_noflags.execute.assert_called_with(b"foo")
+        get_noflags.execute.assert_not_called()
+        get_flags.execute.assert_not_called()
+        gets_flags.execute.assert_not_called()
+
+    async def test_gets_and_flags_command_use_autobatching_if_enabled(self, client_autobatching, autobatching):
+        await client_autobatching.gets(b"foo", return_flags=True)
+
+        get_noflags, get_flags, gets_noflags, gets_flags = autobatching
+
+        gets_flags.execute.assert_called_with(b"foo")
+        get_flags.execute.assert_not_called()
+        get_noflags.execute.assert_not_called()
+        gets_noflags.execute.assert_not_called()
+
 
 async def test_create_client_default_values(event_loop, mocker):
     client_class = mocker.patch("emcache.client._Client")
@@ -484,4 +532,6 @@ async def test_create_client_default_values(event_loop, mocker):
         # No ClusterEVents provided
         None,
         DEFAULT_PURGE_UNHEALTHY_NODES,
+        DEFAULT_AUTOBATCHING_ENABLED,
+        DEFAULT_AUTOBATCHING_MAX_KEYS,
     )

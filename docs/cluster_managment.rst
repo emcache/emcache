@@ -64,3 +64,5 @@ returned as attributes of this class are:
 - **create_connection_upper** Tells you what's the worst time that creating a connection took, using the last 100 observed values.
 
 These metrics can be push to a time series database for monitoring the execution of the Emcache driver, the user will need to take care of calculating the deltas, if the user is intereseted on them, of each historical value since historical values are accumulated values.
+
+When autobatching is enabled, each count for **operations_executed**, **operations_executed_with_error** and **operations_waited** could imply multiple keys, since autobatching uses a single command for retrieveing multiple keys.

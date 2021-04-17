@@ -128,4 +128,24 @@ Right now :class:`ClusterEvents` has only support for reporting events realated 
 called - independntly of the `purge_unhealthy_nodes` configuration - when one of the nodes of the cluster change the healthy status. Besides of the argument for identifying univocally the node that is related
 to a specifice event, as a first argument the :class:`ClusterManagment` instance will be provided which might be used for retrieving more information about the cluster and its nodes.
 
-Events are dispatched in serie, meaning that behind the scenes Emcache will be calling one and only one hook at any moment, and order of the events will be guaranteed. The hook, due to the asynchronous nature might decide to run asynchronous operations, this might delay the delivery of pending messages. 
+Events are dispatched in serie, meaning that behind the scenes Emcache will be calling one and only one hook at any moment, and order of the events will be guaranteed. The hook, due to the asynchronous nature might decide to run asynchronous operations, this might delay the delivery of pending messages.
+
+Autobatching
+^^^^^^^^^^^^^
+
+Emcache provides support for autobatching the operations `get` and `gets`. Meaning that a group of keys would be asked at the same time by using internally the `get_many` oeration. This option can speed up the throughput of the application x2/x3. This comes disabled by defualt, for enabling it we would need to create the client by setting the parameter `autobatching` to True, like the following example:
+
+.. code-block:: python
+
+    client = await emcache.create_client(
+        [
+            emcache.MemcachedHostAddress('localhost', 11211),
+            emcache.MemcachedHostAddress('localhost', 11212)
+        ],
+        autobatching=True
+    )
+
+Once this is enabled, the regular calls to the `get` and `gets` methods will be transparently autobatched by Emcache. An alternative parameter called `autobatching_max_keys` can be also configured for configuring the maximum number of keys grouped in a single batch, by default 32 keys.
+
+Autobatching pauses all `get` and `gets` executions within the same event loop iteration for sending them later on in the next event loop iteration. Once the next event loop iteration is
+reached - immediately - as many different nodes and  as many batches needed with a size shorter than `autobatching_max_keys` will trigger the execution of the `get_many` operation.

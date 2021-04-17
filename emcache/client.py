@@ -3,10 +3,13 @@ import logging
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from ._cython import cyemcache
+from .autobatching import AutoBatching
 from .base import Client, ClusterEvents, ClusterManagment, Item
 from .client_errors import CommandError, NotFoundCommandError, NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster, MemcachedHostAddress
 from .default_values import (
+    DEFAULT_AUTOBATCHING_ENABLED,
+    DEFAULT_AUTOBATCHING_MAX_KEYS,
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
     DEFAULT_MIN_CONNECTIONS,
@@ -16,6 +19,7 @@ from .default_values import (
 )
 from .node import Node
 from .protocol import DELETED, EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED
+from .timeout import OpTimeout
 
 logger = logging.getLogger(__name__)
 
@@ -24,47 +28,17 @@ MAX_ALLOWED_FLAG_VALUE = 2 ** 16
 MAX_ALLOWED_CAS_VALUE = 2 ** 64
 
 
-class OpTimeout:
-
-    _timeout: Optional[float]
-    _loop: asyncio.AbstractEventLoop
-    _task: Optional[asyncio.Task]
-    _timed_out: bool
-    _timer_handler: Optional[asyncio.TimerHandle]
-
-    __slots__ = ("_timed_out", "_timeout", "_loop", "_task", "_timer_handler")
-
-    def __init__(self, timeout: Optional[float], loop):
-        self._timed_out = False
-        self._timeout = timeout
-        self._loop = loop
-        self._task = asyncio.current_task(loop)
-        self._timer_handler = None
-
-    def _on_timeout(self):
-        if not self._task.done():
-            self._timed_out = True
-            self._task.cancel()
-
-    async def __aenter__(self):
-        if self._timeout is not None:
-            self._timer_handler = self._loop.call_later(self._timeout, self._on_timeout)
-
-    async def __aexit__(self, exc_type, exc_value, traceback):
-        if self._timed_out and (exc_type == asyncio.CancelledError):
-            # its not a real cancellation, was a timeout
-            raise asyncio.TimeoutError
-
-        if self._timer_handler:
-            self._timer_handler.cancel()
-
-
 class _Client(Client):
 
     _cluster: Cluster
     _timeout: Optional[float]
     _loop: asyncio.AbstractEventLoop
     _closed: bool
+    _autobatching_noflags_nocas: Optional[AutoBatching]
+    _autobatching_flags_nocas: Optional[AutoBatching]
+    _autobatching_noflags_cas: Optional[AutoBatching]
+    _autobatching_flags_cas: Optional[AutoBatching]
+    _autobatching: bool
 
     def __init__(
         self,
@@ -76,6 +50,8 @@ class _Client(Client):
         connection_timeout: Optional[float],
         cluster_events: Optional[ClusterEvents],
         purge_unealthy_nodes: bool,
+        autobatching: bool,
+        autobatching_max_keys: int,
     ) -> None:
 
         if not node_addresses:
@@ -93,6 +69,54 @@ class _Client(Client):
         )
         self._timeout = timeout
         self._closed = False
+
+        if autobatching:
+            # We generate 4 diffrent autobatching instances, that would
+            # be elegible depending on the parameters provided by the `get`
+            # and the `gets`
+            self._autobatching_noflags_nocas = AutoBatching(
+                self,
+                self._cluster,
+                self._loop,
+                return_flags=False,
+                return_cas=False,
+                timeout=self._timeout,
+                max_keys=autobatching_max_keys,
+            )
+            self._autobatching_flags_nocas = AutoBatching(
+                self,
+                self._cluster,
+                self._loop,
+                return_flags=True,
+                return_cas=False,
+                timeout=self._timeout,
+                max_keys=autobatching_max_keys,
+            )
+            self._autobatching_noflags_cas = AutoBatching(
+                self,
+                self._cluster,
+                self._loop,
+                return_flags=False,
+                return_cas=True,
+                timeout=self._timeout,
+                max_keys=autobatching_max_keys,
+            )
+            self._autobatching_flags_cas = AutoBatching(
+                self,
+                self._cluster,
+                self._loop,
+                return_flags=True,
+                return_cas=True,
+                timeout=self._timeout,
+                max_keys=autobatching_max_keys,
+            )
+            self._autobatching = True
+        else:
+            self._autobatching_noflags_nocas = None
+            self._autobatching_flags_nocas = None
+            self._autobatching_noflags_cas = None
+            self._autobatching_flags_cas = None
+            self._autobatching = False
 
     async def _storage_command(
         self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool, cas: int = None
@@ -181,6 +205,12 @@ class _Client(Client):
 
         return [task.result() for task in tasks]
 
+    @property
+    def closed(self) -> bool:
+        """ Rreturns True if the client is already closed and no longer
+        available to be used."""
+        return self._closed
+
     async def close(self) -> None:
         """ Close any active background task and close all TCP
         connections.
@@ -214,6 +244,13 @@ class _Client(Client):
         If timeout is not disabled, an `asyncio.TimeoutError` will
         be returned in case of a timed out operation.
         """
+        # route the execution to the Autobatching logic if its enabled
+        if self._autobatching:
+            if not return_flags:
+                return await self._autobatching_noflags_nocas.execute(key)
+            else:
+                return await self._autobatching_flags_nocas.execute(key)
+
         keys, values, flags, _ = await self._fetch_command(b"get", key)
 
         if key not in keys:
@@ -237,6 +274,13 @@ class _Client(Client):
         If timeout is not disabled, an `asyncio.TimeoutError` will
         be returned in case of a timed out operation.
         """
+        # route the execution to the Autobatching logic if its enabled
+        if self._autobatching:
+            if not return_flags:
+                return await self._autobatching_noflags_cas.execute(key)
+            else:
+                return await self._autobatching_flags_cas.execute(key)
+
         keys, values, flags, cas = await self._fetch_command(b"gets", key)
 
         if key not in keys:
@@ -569,6 +613,8 @@ async def create_client(
     connection_timeout: Optional[float] = DEFAULT_CONNECTION_TIMEOUT,
     cluster_events: Optional[ClusterEvents] = None,
     purge_unhealthy_nodes: bool = DEFAULT_PURGE_UNHEALTHY_NODES,
+    autobatching: bool = DEFAULT_AUTOBATCHING_ENABLED,
+    autobatching_max_keys: bool = DEFAULT_AUTOBATCHING_MAX_KEYS,
 ) -> Client:
     """ Factory for creating a new `emcache.Client` instance.
 
@@ -595,6 +641,14 @@ async def create_client(
     should be enabled considering your specific use case, considering that nodes that are reported still
     healthy might receive more traffic and the hit/miss ratio might be affected. For more information you
     should take a look to the documentation.
+
+    `autobatching` if enabled, not by default, provides a way for executing the get and gets operations
+    using batches. Operations routed are piled up until the next loop iteracion, which one reached sends
+    the batch - or multiple of them - using single commands. Performance for the `get` and `gets` operation
+    can boost up x2/x3
+
+    `autobatching_max_keys` when autobatching is used defines the maximum number of keys that would be send
+    within the same batch, by default 32 keys.
     """
     return _Client(
         node_addresses,
@@ -605,4 +659,6 @@ async def create_client(
         connection_timeout,
         cluster_events,
         purge_unhealthy_nodes,
+        autobatching,
+        autobatching_max_keys,
     )

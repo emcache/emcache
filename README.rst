@@ -82,17 +82,20 @@ and using 32 concurrent Asyncio tasks - threads for the use case of Pymemcache. 
 In the first part of the benchmark, the client tried to run as mucha **set** operations it could, and in a second step the same was
 done but using **get** operations.
 
-+---------------+---------------+---------------+-------------------+--------------------+------------------+
-| Client        | Concurrency   | Sets opS/sec  | Sets latency AVG  |  Gets opS/sec      | Gets latency AVG |
-+===============+===============+===============+===================+====================+==================+
-| aiomcache     |            32 |         33872 |           0.00094 |              34183 |          0.00093 |
-+---------------+---------------+---------------+-------------------+--------------------+------------------+
-| pymemcache    |            32 |         32792 |           0.00097 |              32961 |          0.00096 |
-+---------------+---------------+---------------+-------------------+--------------------+------------------+
-| emcache       |            32 |         49410 |           0.00064 |              49212 |          0.00064 |
-+---------------+---------------+---------------+-------------------+--------------------+------------------+
++------------------------+---------------+---------------+-------------------+--------------------+------------------+
+| Client                 | Concurrency   | Sets opS/sec  | Sets latency AVG  |  Gets opS/sec      | Gets latency AVG |
++========================+===============+===============+===================+====================+==================+
+| aiomcache              |            32 |         33872 |           0.00094 |              34183 |          0.00093 |
++------------------------+---------------+---------------+-------------------+--------------------+------------------+
+| pymemcache             |            32 |         32792 |           0.00097 |              32961 |          0.00096 |
++------------------------+---------------+---------------+-------------------+--------------------+------------------+
+| emcache                |            32 |         49410 |           0.00064 |              49212 |          0.00064 |
++------------------------+---------------+---------------+-------------------+--------------------+------------------+
+| emcache (autobatching) |            32 |         49410 |           0.00064 |              89052 |          0.00035 |
++------------------------+---------------+---------------+-------------------+--------------------+------------------+
 
-Emcache performed better than the other two implementations reaching almost 50K ops/sec for get and set operations.
+Emcache performed better than the other two implementations reaching almost 50K ops/sec for get and set operations. One autobatching is used
+it can boost the throughtput x2 (more info about autobatching below)
 
 Another benchmark was performed for comparing how each implementation will behave in case of having to deal with more than 1 node, a new
 benchmark was performed with different cluster sizes but using the same methodology as the previous test by first, performing as many set
@@ -119,6 +122,19 @@ The addition of new nodes did not add almost degradation for Emcache, in the las
 get ops/sec and 46K set ops/sec. On the other hand, Pymemcached suffered substantial degradation making Emcache ~x5 times.
 faster.
 
+Autobatching
+============
+
+Autobatching provides you a way for fetching multiple keys using a single command, batching happens transparently behind the scenes
+without bothering the caller.
+
+For start using the autobatching feature you must provide the parameter `autobatching` as True, hereby all usages of the `get` and `gets` 
+command will send batched requests behind the scenes.
+
+Get´s are piled up until the next loop iteration. Once the next loop iteration is reached all get´s are transmitted using the
+same Memcached operation.
+
+Autobatching can boost up the throughput of your application x2/x3.
 
 Development
 ===========

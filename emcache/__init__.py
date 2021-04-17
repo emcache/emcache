@@ -9,6 +9,8 @@ from .client_errors import (
 )
 from .connection_pool import ConnectionPoolMetrics
 from .default_values import (
+    DEFAULT_AUTOBATCHING_ENABLED,
+    DEFAULT_AUTOBATCHING_MAX_KEYS,
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
     DEFAULT_PURGE_UNHEALTHY_NODES,
@@ -24,6 +26,8 @@ __all__ = (
     "ClusterNoAvailableNodes",
     "ConnectionPoolMetrics",
     "create_client",
+    "DEFAULT_AUTOBATCHING_ENABLED",
+    "DEFAULT_AUTOBATCHING_MAX_KEYS",
     "DEFAULT_TIMEOUT",
     "DEFAULT_CONNECTION_TIMEOUT",
     "DEFAULT_MAX_CONNECTIONS",

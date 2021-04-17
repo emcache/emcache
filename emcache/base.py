@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractmethod, abstractproperty
 from dataclasses import dataclass
 from typing import Dict, Optional, Sequence
 
@@ -13,6 +13,11 @@ class Item:
 
 
 class Client(metaclass=ABCMeta):
+    @abstractproperty
+    def closed(self) -> bool:
+        """ Rreturns True if the client is already closed and no longer
+        available to be used."""
+
     @abstractmethod
     async def close(self) -> None:
         """ Closes any active background task and close all TCP
