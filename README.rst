@@ -6,11 +6,11 @@ A high performance asynchronous Python client for `Memcached <https://memcached.
 .. image:: https://readthedocs.org/projects/emcache/badge/?version=latest
   :target: https://emcache.readthedocs.io/en/latest/?badge=latest
 
-.. image:: https://github.com/pfreixes/emcache/workflows/CI/badge.svg
-  :target: https://github.com/pfreixes/emcache/workflows/CI/badge.svg
+.. image:: https://github.com/emcache/emcache/workflows/CI/badge.svg
+  :target: https://github.com/emcache/emcache/workflows/CI/badge.svg
 
-.. image:: https://github.com/pfreixes/emcache/workflows/PyPi%20release/badge.svg
-  :target: https://github.com/pfreixes/emcache/workflows/PyPi%20release/badge.svg
+.. image:: https://github.com/emcache/emcache/workflows/PyPi%20release/badge.svg
+  :target: https://github.com/emcache/emcache/workflows/PyPi%20release/badge.svg
 
 Emcache stands on the giant's shoulders and implements most of the characteristics that are desired for a Memcached client based
 on the experience of other Memcached clients, providing the following main characteristics:
@@ -143,7 +143,7 @@ Clone the repository and its murmur3 submodule
 
 .. code-block:: bash
 
-    git clone --recursive git@github.com:pfreixes/emcache
+    git clone --recursive git@github.com:emcache/emcache
 
 Compile murmur3
 
