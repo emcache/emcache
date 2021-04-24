@@ -52,7 +52,7 @@ setup(
     name="emcache",
     description="A high performance asynchronous Python client for Memcached with full batteries included",
     long_description=readme,
-    url="http://github.com/pfreixes/emcache",
+    url="http://github.com/emcache/emcache",
     author="Pau Freixes",
     author_email="pfreixes@gmail.com",
     platforms=["*nix"],
