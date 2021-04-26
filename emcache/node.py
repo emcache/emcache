@@ -35,6 +35,9 @@ class Node:
         purge_unused_connections_after: Optional[float],
         connection_timeout: Optional[float],
         on_healthy_status_change_cb: Callable[["Node", bool], None],
+        ssl: bool,
+        ssl_verify: bool,
+        ssl_extra_ca: Optional[str],
     ) -> None:
 
         # A connection pool starts always in a healthy state
@@ -50,6 +53,9 @@ class Node:
             purge_unused_connections_after,
             connection_timeout,
             self._on_connection_pool_healthy_status_change_cb,
+            ssl,
+            ssl_verify,
+            ssl_extra_ca,
         )
         self._closed = False
         logger.debug(f"{self} new node created")

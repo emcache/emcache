@@ -70,6 +70,9 @@ class ConnectionPool:
     _connection_timeout: Optional[float]
     _metrics: ConnectionPoolMetrics
     _closed: bool
+    _ssl: bool
+    _ssl_verify: bool
+    _ssl_extra_ca: Optional[str]
 
     def __init__(
         self,
@@ -80,6 +83,9 @@ class ConnectionPool:
         purge_unused_connections_after: Optional[float],
         connection_timeout: Optional[float],
         on_healthy_status_change_cb: Callable[[bool], None],
+        ssl: bool,
+        ssl_verify: bool,
+        ssl_extra_ca: Optional[str],
     ):
         if max_connections < 1:
             raise ValueError("max_connections must be higher than 0")
@@ -135,6 +141,11 @@ class ConnectionPool:
             )
         else:
             self._purge_timer_handler = None
+
+        # attributes for ssl configuration
+        self._ssl = ssl
+        self._ssl_verify = ssl_verify
+        self._ssl_extra_ca = ssl_extra_ca
 
         self._maybe_new_connection_if_current_is_lower_than_min()
 
@@ -211,7 +222,14 @@ class ConnectionPool:
         error = False
         try:
             start = time.monotonic()
-            connection = await create_protocol(self._host, self._port, timeout=self._connection_timeout)
+            connection = await create_protocol(
+                self._host,
+                self._port,
+                ssl=self._ssl,
+                ssl_verify=self._ssl_verify,
+                ssl_extra_ca=self._ssl_extra_ca,
+                timeout=self._connection_timeout,
+            )
             elapsed = time.monotonic() - start
 
             # record time elapsed and keep only the last N observed values

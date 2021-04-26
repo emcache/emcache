@@ -15,6 +15,8 @@ from .default_values import (
     DEFAULT_MAX_CONNECTIONS,
     DEFAULT_PURGE_UNHEALTHY_NODES,
     DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
+    DEFAULT_SSL,
+    DEFAULT_SSL_VERIFY,
     DEFAULT_TIMEOUT,
 )
 from .node import MemcachedHostAddress
@@ -33,6 +35,8 @@ __all__ = (
     "DEFAULT_MAX_CONNECTIONS",
     "DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER",
     "DEFAULT_PURGE_UNHEALTHY_NODES",
+    "DEFAULT_SSL",
+    "DEFAULT_SSL_VERIFY",
     "Item",
     "MemcachedHostAddress",
     "CommandError",

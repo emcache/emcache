@@ -1,3 +1,4 @@
+import os
 import time
 
 import pytest
@@ -17,7 +18,19 @@ async def memcached_address_2():
 
 @pytest.fixture
 async def client(event_loop, memcached_address_1, memcached_address_2):
-    client = await create_client([memcached_address_1, memcached_address_2], timeout=2.0)
+    # Following environment variables are used for configuring the
+    # usage of SSL, by default disabled
+    ssl = bool(int(os.getenv("SSL", "0")))
+    ssl_verify = bool(int(os.getenv("SSL_VERIFY", "0")))
+    ssl_extra_ca = os.getenv("SSL_VERIFY", None)
+
+    client = await create_client(
+        [memcached_address_1, memcached_address_2],
+        timeout=2.0,
+        ssl=ssl,
+        ssl_verify=ssl_verify,
+        ssl_extra_ca=ssl_extra_ca,
+    )
     try:
         yield client
     finally:

@@ -14,6 +14,8 @@ from emcache.default_values import (
     DEFAULT_MIN_CONNECTIONS,
     DEFAULT_PURGE_UNHEALTHY_NODES,
     DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
+    DEFAULT_SSL,
+    DEFAULT_SSL_VERIFY,
     DEFAULT_TIMEOUT,
 )
 from emcache.node import MemcachedHostAddress
@@ -40,11 +42,11 @@ class TestClient:
     @pytest.fixture
     async def client(self, event_loop, mocker, cluster, memcached_host_address):
         mocker.patch("emcache.client.Cluster", return_value=cluster)
-        return _Client([memcached_host_address], None, 1, 1, None, None, None, False, False, 32)
+        return _Client([memcached_host_address], None, 1, 1, None, None, None, False, False, 32, False, False, None)
 
     async def test_invalid_host_addresses(self):
         with pytest.raises(ValueError):
-            _Client([], None, 1, 1, None, None, None, False, False, 32)
+            _Client([], None, 1, 1, None, None, None, False, False, 32, False, False, None)
 
     async def test_autobatching_initialization(self, event_loop, mocker, memcached_host_address):
         node_addresses = [memcached_host_address]
@@ -57,6 +59,9 @@ class TestClient:
         purge_unhealthy_nodes = True
         autobatching = True
         autobatching_max_keys = 32
+        ssl = False
+        ssl_verify = False
+        ssl_extra_ca = None
         cluster = Mock()
         cluster_class = mocker.patch("emcache.client.Cluster")
         cluster_class.return_value = cluster
@@ -72,6 +77,9 @@ class TestClient:
             purge_unhealthy_nodes,
             autobatching,
             autobatching_max_keys,
+            ssl,
+            ssl_verify,
+            ssl_extra_ca,
         )
         autobatching_class.assert_has_calls(
             [
@@ -93,6 +101,9 @@ class TestClient:
         purge_unhealthy_nodes = True
         autobatching = False
         autobatching_max_keys = 32
+        ssl = False
+        ssl_verify = False
+        ssl_extra_ca = None
         cluster_class = mocker.patch("emcache.client.Cluster")
         _Client(
             node_addresses,
@@ -105,6 +116,9 @@ class TestClient:
             purge_unhealthy_nodes,
             autobatching,
             autobatching_max_keys,
+            ssl,
+            ssl_verify,
+            ssl_extra_ca,
         )
         cluster_class.assert_called_with(
             node_addresses,
@@ -114,6 +128,9 @@ class TestClient:
             connection_timeout,
             cluster_events,
             purge_unhealthy_nodes,
+            ssl,
+            ssl_verify,
+            ssl_extra_ca,
         )
 
     async def test_close(self, client, cluster):
@@ -129,7 +146,9 @@ class TestClient:
 
         optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
         timeout = 2.0
-        client = _Client([memcached_host_address], timeout, 1, 1, None, None, None, False, False, 32)
+        client = _Client(
+            [memcached_host_address], timeout, 1, 1, None, None, None, False, False, 32, False, False, None
+        )
         connection = CoroutineMock(return_value=b"")
         connection.storage_command = CoroutineMock(return_value=b"STORED")
         node = Mock()
@@ -476,7 +495,7 @@ class TestClient:
         get_noflags, get_flags, gets_noflags, gets_flags = autobatching
         autobatch_class.side_effect = [get_noflags, get_flags, gets_noflags, gets_flags]
         mocker.patch("emcache.client.Cluster", return_value=cluster)
-        return _Client([memcached_host_address], None, 1, 1, None, None, None, False, True, 32)
+        return _Client([memcached_host_address], None, 1, 1, None, None, None, False, True, 32, False, False, None)
 
     async def test_get_command_use_autobatching_if_enabled(self, client_autobatching, autobatching):
         await client_autobatching.get(b"foo")
@@ -534,4 +553,7 @@ async def test_create_client_default_values(event_loop, mocker):
         DEFAULT_PURGE_UNHEALTHY_NODES,
         DEFAULT_AUTOBATCHING_ENABLED,
         DEFAULT_AUTOBATCHING_MAX_KEYS,
+        DEFAULT_SSL,
+        DEFAULT_SSL_VERIFY,
+        None,
     )

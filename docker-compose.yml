@@ -9,3 +9,10 @@ services:
     command: ['-p', '11212']
     ports:
       - "11212:11212"
+  memcached3:
+    image: memcached
+    command: ['-p', '11213', '--enable-ssl', '-o', 'ssl_chain_cert=/app/tests/acceptance/data/cert.pem,ssl_key=/app/tests/acceptance/data/key.pem']
+    volumes:
+      - ./:/app
+    ports:
+      - "11213:11213"

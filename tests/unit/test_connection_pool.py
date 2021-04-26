@@ -31,6 +31,9 @@ async def minimal_connection_pool(mocker):
         None,
         None,
         lambda _: _,
+        False,
+        False,
+        None,
     )
 
 
@@ -53,15 +56,15 @@ class TestConnectionPool:
 
     async def test_minimum_max_connections(self):
         with pytest.raises(ValueError):
-            ConnectionPool("localhost", 11211, 0, 1, None, None, lambda _: _)
+            ConnectionPool("localhost", 11211, 0, 1, None, None, lambda _: _, False, False, None)
 
     async def test_minimum_min_connections(self):
         with pytest.raises(ValueError):
-            ConnectionPool("localhost", 11211, 1, -1, None, None, lambda _: _)
+            ConnectionPool("localhost", 11211, 1, -1, None, None, lambda _: _, False, False, None)
 
     async def test_maximum_min_connections(self):
         with pytest.raises(ValueError):
-            ConnectionPool("localhost", 11211, 1, 2, None, None, lambda _: _)
+            ConnectionPool("localhost", 11211, 1, 2, None, None, lambda _: _, False, False, None)
 
     async def test_close(self, mocker):
         connection = Mock()
@@ -73,7 +76,7 @@ class TestConnectionPool:
 
         _ = mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=f))
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _, False, False, None)
 
         # wait till the create_connection has ben called and a connection has been
         # returned.
@@ -89,7 +92,7 @@ class TestConnectionPool:
         # published. Specific attribute value are tested in the other tests which are
         # not specific to metrics but they are simulating most of the situations that
         # are needed for incrementing the counters.
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _, False, False, None)
         assert isinstance(connection_pool.metrics(), ConnectionPoolMetrics)
 
         # checks that without latencies create connection times are None values
@@ -103,7 +106,7 @@ class TestConnectionPool:
     async def test_metrics_create_connection_latencies(self):
         # Check that the latencies measured are well calculated when metrics
         # method is called.
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _, False, False, None)
         connection_pool._create_connection_latencies = [float(i) for i in range(0, 101)]
 
         assert connection_pool.metrics().create_connection_avg == 50.0
@@ -134,12 +137,16 @@ class TestConnectionPool:
         create_protocol = mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=f))
 
         max_connections = min_connections
-        connection_pool = ConnectionPool("localhost", 11211, max_connections, min_connections, None, None, lambda _: _)
+        connection_pool = ConnectionPool(
+            "localhost", 11211, max_connections, min_connections, None, None, lambda _: _, False, False, None
+        )
 
         # wait till the min_connections have been created.
         await ev.wait()
 
-        create_protocol.assert_called_with("localhost", 11211, timeout=None)
+        create_protocol.assert_called_with(
+            "localhost", 11211, ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=None
+        )
         assert connection_pool.total_connections == min_connections
 
         # test specific atributes of the metrics
@@ -159,18 +166,20 @@ class TestConnectionPool:
 
         create_protocol = mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=f))
 
-        _ = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, lambda _: _)
+        _ = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, lambda _: _, False, False, None)
 
         # wait till the create_connection has ben called and a connection has been
         # returned.
         await ev.wait()
 
-        create_protocol.assert_called_with("localhost", 11211, timeout=1.0)
+        create_protocol.assert_called_with(
+            "localhost", 11211, ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=1.0
+        )
 
     async def test_create_connection_max_observed_latencies(self, event_loop, mocker, not_closed_connection):
         mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _, False, False, None)
 
         # Perform twice operations than the maximum observed latencies by removing
         # the connection at each operation
@@ -188,7 +197,7 @@ class TestConnectionPool:
     async def test_connection_context_connection(self, mocker, not_closed_connection):
         mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _, False, False, None)
 
         connection_context = connection_pool.create_connection_context()
         async with connection_context as connection_from_pool:
@@ -207,7 +216,7 @@ class TestConnectionPool:
             "emcache.connection_pool.create_protocol", CoroutineMock(side_effect=[exc, not_closed_connection]),
         )
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, lambda _: _, False, False, None)
 
         async def coro(connection_context):
             async with connection_context as _:
@@ -221,7 +230,12 @@ class TestConnectionPool:
         await task
 
         # check that we have called twice the create_protocol
-        create_protocol.assert_has_calls([call("localhost", 11211, timeout=1.0), call("localhost", 11211, timeout=1.0)])
+        create_protocol.assert_has_calls(
+            [
+                call("localhost", 11211, ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=1.0),
+                call("localhost", 11211, ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=1.0),
+            ]
+        )
 
         # test specific atributes of the metrics
         assert connection_pool.metrics().cur_connections == 1
@@ -237,7 +251,7 @@ class TestConnectionPool:
 
         create_protocol = mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=Exception),)
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, lambda _: _, False, False, None)
 
         async def coro(connection_context):
             async with connection_context as _:
@@ -252,7 +266,9 @@ class TestConnectionPool:
             await asyncio.wait_for(task, timeout=0.01)
 
         # check that we have called once the create_protocol
-        create_protocol.assert_called_once_with("localhost", 11211, timeout=1.0)
+        create_protocol.assert_called_once_with(
+            "localhost", 11211, ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=1.0
+        )
 
         assert connection_pool.total_connections == 0
 
@@ -267,7 +283,7 @@ class TestConnectionPool:
             "emcache.connection_pool.create_protocol", CoroutineMock(side_effect=errors + [not_closed_connection]),
         )
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, lambda _: _, False, False, None)
 
         async def coro(connection_context):
             async with connection_context as _:
@@ -301,7 +317,7 @@ class TestConnectionPool:
             "emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection)
         )
 
-        connection_pool = ConnectionPool("localhost", 11211, 3, 1, None, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 3, 1, None, None, lambda _: _, False, False, None)
 
         async def coro(connection_context):
             async with connection_context as _:
@@ -329,7 +345,7 @@ class TestConnectionPool:
         )
 
         # Limit the number of maximum connection to 2
-        connection_pool = ConnectionPool("localhost", 11211, 2, 1, None, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 2, 1, None, None, lambda _: _, False, False, None)
 
         # Events used for having only at most one concurrent create_connection, otherwise
         # we would suffer the dogpile side effect and only one connection will be created
@@ -381,7 +397,7 @@ class TestConnectionPool:
         connection_closed = Mock()
         connection_closed.closed.return_value = True
 
-        connection_pool = ConnectionPool("localhost", 11211, 2, 1, None, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 2, 1, None, None, lambda _: _, False, False, None)
 
         # we add by hand a closed connection and a none closed one to the pool
         connection_pool._unused_connections.append(not_closed_connection)
@@ -412,7 +428,7 @@ class TestConnectionPool:
             CoroutineMock(side_effect=[connection_closed, not_closed_connection]),
         )
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _, False, False, None)
 
         async def coro(connection_context):
             async with connection_context as _:
@@ -433,7 +449,10 @@ class TestConnectionPool:
 
         # check that we have called the create_protocol twice
         create_protocol.assert_has_calls(
-            [call("localhost", 11211, timeout=None), call("localhost", 11211, timeout=None)]
+            [
+                call("localhost", 11211, ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=None),
+                call("localhost", 11211, ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=None),
+            ]
         )
         assert connection_pool.total_connections == 1
 
@@ -449,7 +468,7 @@ class TestConnectionPool:
             CoroutineMock(side_effect=[not_closed_connection, not_closed_connection]),
         )
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _, False, False, None)
 
         async def coro(connection_context, raise_exception=False):
             async with connection_context as _:
@@ -474,7 +493,10 @@ class TestConnectionPool:
 
         # check that we have called the create_protocol twice
         create_protocol.assert_has_calls(
-            [call("localhost", 11211, timeout=None), call("localhost", 11211, timeout=None)]
+            [
+                call("localhost", 11211, ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=None),
+                call("localhost", 11211, ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=None),
+            ]
         )
         assert connection_pool.total_connections == 1
 
@@ -488,7 +510,7 @@ class TestConnectionPool:
         # of the last ones.
         mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _, False, False, None)
 
         waiters_woken_up = []
 
@@ -521,7 +543,7 @@ class TestConnectionPool:
 
         mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=never_return_connection))
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _, False, False, None)
 
         async def coro(connection_context):
             async with connection_context as _:
@@ -549,7 +571,7 @@ class TestConnectionPool:
 
         mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=not_closed_connection))
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _, False, False, None)
 
         waiters_woken_up = []
 
@@ -609,7 +631,7 @@ class TestConnectionPool:
         asyncio_patched.get_running_loop = get_running_loop
         get_running_loop.return_value.call_later = call_later
 
-        connection_pool = ConnectionPool("localhost", 11211, 3, 1, 60, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 3, 1, 60, None, lambda _: _, False, False, None)
 
         # Check that the call late was done with the right parameters
         call_later.assert_called_with(60, connection_pool._purge_unused_connections)
@@ -678,7 +700,9 @@ class TestConnectionPool:
         get_running_loop.return_value.call_later = call_later
 
         max_connections = min_connections
-        connection_pool = ConnectionPool("localhost", 11211, max_connections, min_connections, 60, None, lambda _: _)
+        connection_pool = ConnectionPool(
+            "localhost", 11211, max_connections, min_connections, 60, None, lambda _: _, False, False, None
+        )
 
         # we add N min expired connections that must not be removed since they are the minimum ones
         expired_connections = [Mock() for _ in range(min_connections)]
@@ -709,7 +733,7 @@ class TestConnectionPool:
         asyncio_patched.get_running_loop = get_running_loop
         get_running_loop.return_value.call_later = call_later
 
-        _ = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _)
+        _ = ConnectionPool("localhost", 11211, 1, 1, None, None, lambda _: _, False, False, None)
 
         # check that the mock wiring was done correctly by at least observing
         # the call to the `get_running_loop`
@@ -723,7 +747,7 @@ class TestConnectionPool:
 
         now = time.monotonic()
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, 60, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, 60, None, lambda _: _, False, False, None)
 
         # Create a new connection and use it
         connection_context = connection_pool.create_connection_context()
@@ -741,7 +765,7 @@ class TestConnectionPool:
         connection = Mock()
         mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(return_value=connection))
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, 60, None, lambda _: _)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, 60, None, lambda _: _, False, False, None)
 
         # Create a new connection and use it
         connection_context = connection_pool.create_connection_context()
@@ -766,7 +790,7 @@ class TestConnectionPool:
 
         cb_mock = Mock()
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, cb_mock)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, cb_mock, False, False, None)
 
         async def coro(connection_context):
             async with connection_context as _:
@@ -797,7 +821,7 @@ class TestConnectionPool:
 
         cb_mock = Mock()
 
-        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, cb_mock)
+        connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, cb_mock, False, False, None)
 
         async def coro(connection_context):
             async with connection_context as _:
