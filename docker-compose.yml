@@ -11,7 +11,7 @@ services:
       - "11212:11212"
   memcached3:
     image: memcached
-    command: ['-p', '11213', '--enable-ssl', '-o', 'ssl_chain_cert=/app/tests/acceptance/data/cert.pem,ssl_key=/app/tests/acceptance/data/key.pem']
+    command: ['-p', '11213', '--enable-ssl', '-o', 'ssl_chain_cert=/app/tests/acceptance/data/localhost.crt,ssl_key=/app/tests/acceptance/data/localhost.key']
     volumes:
       - ./:/app
     ports:

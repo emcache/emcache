@@ -247,7 +247,9 @@ async def create_protocol(
             ssl = ssl_module.SSLContext(ssl_module.PROTOCOL_TLS)
         elif ssl_verify and ssl_extra_ca:
             ssl = ssl_module.SSLContext(ssl_module.PROTOCOL_TLS)
-            ssl.load_verify_locations(ssl_extra_ca)
+            ssl.verify_mode = ssl_module.CERT_REQUIRED
+            ssl.load_default_certs()
+            ssl.load_verify_locations(cafile=ssl_extra_ca)
         else:
             ssl = ssl_module.create_default_context()
     else:
