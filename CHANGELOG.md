@@ -1,4 +1,4 @@
-0.6.0 (NOT YET RELEASED)
+0.6.0
 ================
 - Support for SSL [#62](https://github.com/emcache/emcache/pull/62)
 
