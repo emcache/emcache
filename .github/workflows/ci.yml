@@ -45,6 +45,7 @@ jobs:
         brew install memcached
         memcached -d -p 11211
         memcached -d -p 11212
+        memcached -d -p 11213 --enable-ssl -o ssl_chain_cert=./tests/acceptance/data/localhost.crt,ssl_key=./tests/acceptance/data/localhost.key
     - name: Docker dependencies
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |

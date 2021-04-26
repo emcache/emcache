@@ -17,7 +17,7 @@ async def memcached_address_2():
 
 @pytest.fixture
 async def client(event_loop, memcached_address_1, memcached_address_2):
-    client = await create_client([memcached_address_1, memcached_address_2], timeout=2.0)
+    client = await create_client([memcached_address_1, memcached_address_2], timeout=2.0,)
     try:
         yield client
     finally:

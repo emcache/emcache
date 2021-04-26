@@ -15,6 +15,8 @@ from .default_values import (
     DEFAULT_MIN_CONNECTIONS,
     DEFAULT_PURGE_UNHEALTHY_NODES,
     DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
+    DEFAULT_SSL,
+    DEFAULT_SSL_VERIFY,
     DEFAULT_TIMEOUT,
 )
 from .node import Node
@@ -52,6 +54,9 @@ class _Client(Client):
         purge_unealthy_nodes: bool,
         autobatching: bool,
         autobatching_max_keys: int,
+        ssl: bool,
+        ssl_verify: bool,
+        ssl_extra_ca: Optional[str],
     ) -> None:
 
         if not node_addresses:
@@ -66,6 +71,9 @@ class _Client(Client):
             connection_timeout,
             cluster_events,
             purge_unealthy_nodes,
+            ssl,
+            ssl_verify,
+            ssl_extra_ca,
         )
         self._timeout = timeout
         self._closed = False
@@ -615,6 +623,9 @@ async def create_client(
     purge_unhealthy_nodes: bool = DEFAULT_PURGE_UNHEALTHY_NODES,
     autobatching: bool = DEFAULT_AUTOBATCHING_ENABLED,
     autobatching_max_keys: bool = DEFAULT_AUTOBATCHING_MAX_KEYS,
+    ssl: bool = DEFAULT_SSL,
+    ssl_verify: bool = DEFAULT_SSL_VERIFY,
+    ssl_extra_ca: Optional[str] = None,
 ) -> Client:
     """ Factory for creating a new `emcache.Client` instance.
 
@@ -649,7 +660,23 @@ async def create_client(
 
     `autobatching_max_keys` when autobatching is used defines the maximum number of keys that would be send
     within the same batch, by default 32 keys.
+
+    `ssl` if enabled an SSL connection to the Memcached hosts will be negotiated. By default False.
+
+    `ssl_verify` if enabled certificate provided by Memcached servers will be verified. By default True.
+
+    `ssl_extra_ca` By default None. You can provide an extra absolute file path where a new CA file
+    can be loaded.
     """
+    # check SSL availability earlier, protocol which is the one that will use
+    # it when connections are creatd in background wont´t need to deal with this
+    # check.
+    if ssl:
+        try:
+            import ssl as _  # noqa
+        except ImportError:
+            raise ValueError("SSL can not be enabled, no Python SSL module found")
+
     return _Client(
         node_addresses,
         timeout,
@@ -661,4 +688,7 @@ async def create_client(
         purge_unhealthy_nodes,
         autobatching,
         autobatching_max_keys,
+        ssl,
+        ssl_verify,
+        ssl_extra_ca,
     )

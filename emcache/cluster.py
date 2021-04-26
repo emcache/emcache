@@ -68,6 +68,9 @@ class Cluster:
         connection_timeout: Optional[float],
         cluster_events: Optional[ClusterEvents],
         purge_unhealthy_nodes: bool,
+        ssl: bool,
+        ssl_verify: bool,
+        ssl_extra_ca: Optional[str],
     ) -> None:
 
         if not memcached_hosts_address:
@@ -89,6 +92,9 @@ class Cluster:
                 purge_unused_connections_after,
                 connection_timeout,
                 self._on_node_healthy_status_change_cb,
+                ssl,
+                ssl_verify,
+                ssl_extra_ca,
             )
             for memcached_host_address in memcached_hosts_address
         ]

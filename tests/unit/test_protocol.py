@@ -201,6 +201,6 @@ async def test_create_protocol(event_loop, mocker):
     protocol_mock = Mock()
     loop_mock.create_connection = CoroutineMock(return_value=(None, protocol_mock))
 
-    protocol = await create_protocol("localhost", 11211)
+    protocol = await create_protocol("localhost", 11211, ssl=False, ssl_verify=False, ssl_extra_ca=None)
     assert protocol is protocol_mock
-    loop_mock.create_connection.assert_called_with(MemcacheAsciiProtocol, host="localhost", port=11211)
+    loop_mock.create_connection.assert_called_with(MemcacheAsciiProtocol, host="localhost", port=11211, ssl=False)
