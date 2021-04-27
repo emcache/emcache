@@ -13,6 +13,7 @@ from .default_values import (
     DEFAULT_AUTOBATCHING_MAX_KEYS,
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
+    DEFAULT_PROTOCOL,
     DEFAULT_PURGE_UNHEALTHY_NODES,
     DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
     DEFAULT_SSL,
@@ -20,6 +21,7 @@ from .default_values import (
     DEFAULT_TIMEOUT,
 )
 from .node import MemcachedHostAddress
+from .protocol import Protocol
 
 __all__ = (
     "Client",
@@ -37,10 +39,12 @@ __all__ = (
     "DEFAULT_PURGE_UNHEALTHY_NODES",
     "DEFAULT_SSL",
     "DEFAULT_SSL_VERIFY",
+    "DEFAULT_PROTOCOL",
     "Item",
     "MemcachedHostAddress",
     "CommandError",
     "NotFoundCommandError",
     "NotStoredStorageCommandError",
     "StorageCommandError",
+    "Protocol",
 )

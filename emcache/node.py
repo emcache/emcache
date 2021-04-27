@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 from .connection_pool import BaseConnectionContext, ConnectionPool, ConnectionPoolMetrics
+from .protocol import Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ class Node:
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
+        protocol: Protocol,
     ) -> None:
 
         # A connection pool starts always in a healthy state
@@ -56,6 +58,7 @@ class Node:
             ssl,
             ssl_verify,
             ssl_extra_ca,
+            protocol,
         )
         self._closed = False
         logger.debug(f"{self} new node created")

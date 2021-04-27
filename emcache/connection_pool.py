@@ -6,7 +6,7 @@ from copy import copy
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional
 
-from .protocol import MemcacheAsciiProtocol, create_protocol
+from .protocol import BaseProtocol, Protocol, create_protocol
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ class ConnectionPool:
     _creating_connection_task: Optional[asyncio.Task]
     _create_connection_in_progress: bool
     _create_connection_latencies: List[float]
-    _connections_last_time_used: Dict[MemcacheAsciiProtocol, float]
+    _connections_last_time_used: Dict[BaseProtocol, float]
     _purge_unused_connections_after: Optional[int]
     _total_purged_connections: int
     _purge_timer_handler: Optional[asyncio.TimerHandle]
@@ -73,6 +73,7 @@ class ConnectionPool:
     _ssl: bool
     _ssl_verify: bool
     _ssl_extra_ca: Optional[str]
+    _protocol: Protocol
 
     def __init__(
         self,
@@ -86,6 +87,7 @@ class ConnectionPool:
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
+        protocol: Protocol,
     ):
         if max_connections < 1:
             raise ValueError("max_connections must be higher than 0")
@@ -146,6 +148,8 @@ class ConnectionPool:
         self._ssl = ssl
         self._ssl_verify = ssl_verify
         self._ssl_extra_ca = ssl_extra_ca
+
+        self._protocol = protocol
 
         self._maybe_new_connection_if_current_is_lower_than_min()
 
@@ -225,6 +229,7 @@ class ConnectionPool:
             connection = await create_protocol(
                 self._host,
                 self._port,
+                self._protocol,
                 ssl=self._ssl,
                 ssl_verify=self._ssl_verify,
                 ssl_extra_ca=self._ssl_extra_ca,
@@ -344,7 +349,7 @@ class ConnectionPool:
 
     # Below methods are used by the _BaseConnectionContext and derivated classes.
 
-    def release_connection(self, connection: MemcacheAsciiProtocol, *, exc: Exception = None):
+    def release_connection(self, connection: BaseProtocol, *, exc: Exception = None):
         """ Returns back to the pool a connection."""
         if self._closed:
             logger.debug(f"{self} Closing connection")
@@ -394,22 +399,19 @@ class BaseConnectionContext:
     """
 
     _connection_pool: ConnectionPool
-    _connection: Optional[MemcacheAsciiProtocol]
+    _connection: Optional[BaseProtocol]
     _waiter: Optional[asyncio.Future]
 
     __slots__ = ("_connection_pool", "_connection", "_waiter")
 
     def __init__(
-        self,
-        connection_pool: ConnectionPool,
-        connection: Optional[MemcacheAsciiProtocol],
-        waiter: Optional[asyncio.Future],
+        self, connection_pool: ConnectionPool, connection: Optional[BaseProtocol], waiter: Optional[asyncio.Future],
     ) -> None:
         self._connection_pool = connection_pool
         self._connection = connection
         self._waiter = waiter
 
-    async def __aenter__(self) -> MemcacheAsciiProtocol:
+    async def __aenter__(self) -> BaseProtocol:
         raise NotImplementedError
 
     async def __aexit__(self, fexc_type, exc, tb) -> None:
@@ -419,7 +421,7 @@ class BaseConnectionContext:
 class ConnectionContext(BaseConnectionContext):
     """ Context used when there is a ready connection to be used."""
 
-    async def __aenter__(self) -> MemcacheAsciiProtocol:
+    async def __aenter__(self) -> BaseProtocol:
         return self._connection
 
 
@@ -428,7 +430,7 @@ class WaitingForAConnectionContext(BaseConnectionContext):
     wait till a connection is given back to the loop and the waiter is being
     woken up."""
 
-    async def __aenter__(self) -> MemcacheAsciiProtocol:
+    async def __aenter__(self) -> BaseProtocol:
         try:
             self._connection = await self._waiter
         except asyncio.CancelledError:

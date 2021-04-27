@@ -13,6 +13,7 @@ from .default_values import (
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
     DEFAULT_MIN_CONNECTIONS,
+    DEFAULT_PROTOCOL,
     DEFAULT_PURGE_UNHEALTHY_NODES,
     DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
     DEFAULT_SSL,
@@ -20,7 +21,7 @@ from .default_values import (
     DEFAULT_TIMEOUT,
 )
 from .node import Node
-from .protocol import DELETED, EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED
+from .protocol import DELETED, EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED, Protocol
 from .timeout import OpTimeout
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ class _Client(Client):
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
+        protocol: Protocol,
     ) -> None:
 
         if not node_addresses:
@@ -74,6 +76,7 @@ class _Client(Client):
             ssl,
             ssl_verify,
             ssl_extra_ca,
+            protocol,
         )
         self._timeout = timeout
         self._closed = False
@@ -626,6 +629,7 @@ async def create_client(
     ssl: bool = DEFAULT_SSL,
     ssl_verify: bool = DEFAULT_SSL_VERIFY,
     ssl_extra_ca: Optional[str] = None,
+    protocol: Protocol = DEFAULT_PROTOCOL,
 ) -> Client:
     """ Factory for creating a new `emcache.Client` instance.
 
@@ -667,6 +671,8 @@ async def create_client(
 
     `ssl_extra_ca` By default None. You can provide an extra absolute file path where a new CA file
     can be loaded.
+
+    `protocol`. By default uses binary protocol. You can configure the `Protocol.ASCII` as an alterantive.
     """
     # check SSL availability earlier, protocol which is the one that will use
     # it when connections are creatd in background wont´t need to deal with this
@@ -691,4 +697,5 @@ async def create_client(
         ssl,
         ssl_verify,
         ssl_extra_ca,
+        protocol,
     )

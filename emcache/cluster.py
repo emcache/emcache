@@ -7,6 +7,7 @@ from .base import ClusterEvents, ClusterManagment
 from .client_errors import ClusterNoAvailableNodes
 from .connection_pool import ConnectionPoolMetrics
 from .node import MemcachedHostAddress, Node
+from .protocol import Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,7 @@ class Cluster:
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
+        protocol: Protocol,
     ) -> None:
 
         if not memcached_hosts_address:
@@ -95,6 +97,7 @@ class Cluster:
                 ssl,
                 ssl_verify,
                 ssl_extra_ca,
+                protocol,
             )
             for memcached_host_address in memcached_hosts_address
         ]

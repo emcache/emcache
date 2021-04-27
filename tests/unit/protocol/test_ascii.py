@@ -2,9 +2,8 @@ import asyncio
 from unittest.mock import Mock
 
 import pytest
-from asynctest import CoroutineMock
 
-from emcache.protocol import MemcacheAsciiProtocol, create_protocol
+from emcache.protocol.ascii_ import MemcacheAsciiProtocol
 
 pytestmark = pytest.mark.asyncio
 
@@ -192,15 +191,3 @@ class TestMemcacheAsciiProtocol:
     async def test_delete_command_noreply(self, event_loop, protocol):
         await protocol.delete_command(b"foo", True)
         protocol._transport.write.assert_called_with(b"delete foo noreply\r\n")
-
-
-async def test_create_protocol(event_loop, mocker):
-    loop_mock = Mock()
-    mocker.patch("emcache.protocol.asyncio.get_running_loop", return_value=loop_mock)
-
-    protocol_mock = Mock()
-    loop_mock.create_connection = CoroutineMock(return_value=(None, protocol_mock))
-
-    protocol = await create_protocol("localhost", 11211, ssl=False, ssl_verify=False, ssl_extra_ca=None)
-    assert protocol is protocol_mock
-    loop_mock.create_connection.assert_called_with(MemcacheAsciiProtocol, host="localhost", port=11211, ssl=False)

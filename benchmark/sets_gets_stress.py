@@ -7,7 +7,7 @@ from typing import List
 
 import uvloop
 
-from emcache import Client, create_client, MemcachedHostAddress
+from emcache import Client, create_client, MemcachedHostAddress, Protocol
 
 uvloop.install()
 
@@ -93,6 +93,9 @@ async def main():
         "--duration", help="Test duration in seconds, by default 60", type=int, default=60,
     )
     parser.add_argument(
+        "--protocol", help="Protocol used binary or ascii, by default binary", type=str, default="binary",
+    )
+    parser.add_argument(
         "--test",
         help="Test to be executed set_get, set_get_autobatching or set_get_many, by default sets and gets stress",
         type=str,
@@ -107,19 +110,24 @@ async def main():
         ports = args.memcache_port.split(",")
 
     hosts = [MemcachedHostAddress(host, int(port)) for host, port in zip(addresses, ports)]
+    protocol = Protocol.BINARY if args.protocol == "binary" else Protocol.ASCII
 
     if args.test == "set_get":
-        client = await create_client(hosts, timeout=None, max_connections=args.concurrency)
+        client = await create_client(hosts, timeout=None, max_connections=args.concurrency, protocol=protocol)
         await benchmark("SET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
         await benchmark("GET", cmd_get, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
     elif args.test == "set_get_autobatching":
-        client = await create_client(hosts, timeout=None, max_connections=args.concurrency, autobatching=True)
+        client = await create_client(
+            hosts, timeout=None, max_connections=args.concurrency, autobatching=True, protocol=protocol
+        )
         await benchmark("SET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
         await benchmark("GET", cmd_get, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
     elif args.test == "set_get_many":
         client = await create_client(hosts, timeout=None, max_connections=args.concurrency)
         await benchmark("SET", cmd_set, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
-        await benchmark("GET_MANY", cmd_get_many, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration)
+        await benchmark(
+            "GET_MANY", cmd_get_many, MAX_NUMBER_OF_KEYS, client, args.concurrency, args.duration, protocol=protocol
+        )
     else:
         raise ValueError("Unkown test")
 

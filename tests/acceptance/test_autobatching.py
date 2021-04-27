@@ -2,17 +2,17 @@ import asyncio
 
 import pytest
 
-from emcache import create_client
+from emcache import Protocol, create_client
 from emcache.default_values import DEFAULT_AUTOBATCHING_MAX_KEYS
 
 pytestmark = pytest.mark.asyncio
 
 
 class TestAutobatching:
-    @pytest.fixture
-    async def autobatching_client(self, event_loop, memcached_address_1, memcached_address_2):
+    @pytest.fixture(params=[Protocol.BINARY, Protocol.ASCII])
+    async def autobatching_client(self, request, event_loop, memcached_address_1, memcached_address_2):
         autobatching_client = await create_client(
-            [memcached_address_1, memcached_address_2], timeout=2.0, autobatching=True
+            [memcached_address_1, memcached_address_2], timeout=2.0, autobatching=True, protocol=request.param
         )
         try:
             yield autobatching_client

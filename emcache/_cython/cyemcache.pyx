@@ -1,4 +1,8 @@
 include "hashing/rendezvous.pyx"
 include "protocol/ascii/multi_line_parser.pyx"
 include "protocol/ascii/one_line_parser.pyx"
+include "protocol/binary/constants.pyx"
+include "protocol/binary/multi_op_parser.pyx"
+include "protocol/binary/one_op_parser.pyx"
+include "protocol/binary/request_builder.pyx"
 include "key_validation.pyx"

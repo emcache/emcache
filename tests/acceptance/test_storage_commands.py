@@ -1,3 +1,4 @@
+import asyncio
 import sys
 
 import pytest
@@ -25,8 +26,8 @@ class TestSet:
 
     async def test_set_exptime(self, client, key_generation):
         key_and_value = next(key_generation)
-        await client.set(key_and_value, key_and_value, exptime=-1)
-
+        await client.set(key_and_value, key_and_value, exptime=1)
+        await asyncio.sleep(2)
         item = await client.get(key_and_value)
 
         assert item is None
@@ -61,7 +62,8 @@ class TestAdd:
 
     async def test_add_exptime(self, client, key_generation):
         key_and_value = next(key_generation)
-        await client.add(key_and_value, key_and_value, exptime=-1)
+        await client.add(key_and_value, key_and_value, exptime=1)
+        await asyncio.sleep(2)
         item = await client.get(key_and_value)
         assert item is None
 
@@ -109,7 +111,8 @@ class TestReplace:
         # set the new key and replace the value with exptime = -1
         # for having it expired inmediatly
         await client.set(key_and_value, key_and_value)
-        await client.replace(key_and_value, b"replace", exptime=-1)
+        await client.replace(key_and_value, b"replace", exptime=1)
+        await asyncio.sleep(2)
         item = await client.get(key_and_value)
         assert item is None
 
@@ -229,9 +232,10 @@ class TestCas:
         item = await client.gets(key_and_value)
 
         # Swap using the right cas token and updating the exptime
-        await client.cas(key_and_value, b"new_value", item.cas, exptime=-1)
+        await client.cas(key_and_value, b"new_value", item.cas, exptime=1)
+        await asyncio.sleep(2)
 
-        # Check that got expired since we gave an exptime value of -1
+        # Check that got expired since we gave an exptime value of 1
         item = await client.get(key_and_value, return_flags=True)
         assert item is None
 

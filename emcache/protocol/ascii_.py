@@ -1,28 +1,13 @@
-import asyncio
 import logging
-import socket
 from typing import List, Optional, Tuple, Union
 
-from ._cython import cyemcache
-
-try:
-    import ssl as ssl_module
-except ImportError:
-    ssl_module = None
+from .._cython import cyemcache
+from .base import BaseProtocol
 
 logger = logging.getLogger(__name__)
 
 
-EXISTS = b"EXISTS"
-STORED = b"STORED"
-TOUCHED = b"TOUCHED"
-OK = b"OK"
-DELETED = b"DELETED"
-NOT_STORED = b"NOT_STORED"
-NOT_FOUND = b"NOT_FOUND"
-
-
-class MemcacheAsciiProtocol(asyncio.Protocol):
+class MemcacheAsciiProtocol(BaseProtocol):
     """Memcache ascii protocol communication.
 
     Ascii protocol communication uses a request/response pattern, all commands
@@ -34,41 +19,13 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
     """
 
     _parser: Optional[Union[cyemcache.AsciiOneLineParser, cyemcache.AsciiMultiLineParser]]
-    _transport: Optional[asyncio.Transport]
-    _loop: asyncio.AbstractEventLoop
-    _closed: bool
 
     def __init__(self) -> None:
-        self._loop = asyncio.get_running_loop()
-        self._transport = None
-        self._closed = False
+        super().__init__()
 
         # Parser is configured during the execution of the command,
         # and will depend on the nature of the command
         self._parser = None
-
-    def connection_made(self, transport) -> None:
-        self._transport = transport
-        sock = transport.get_extra_info("socket")
-        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
-        logger.debug("Connection made")
-
-    def connection_lost(self, exc) -> None:
-        logger.warning(f"Connection lost: {exc}")
-        self.close()
-
-    def close(self):
-        if self._closed:
-            return
-
-        self._closed = True
-        self._transport.close()
-
-    def eof_received(self):
-        self.close()
-
-    def closed(self) -> bool:
-        return self._closed
 
     def data_received(self, data: bytes) -> None:
         if self._parser is None:
@@ -232,33 +189,3 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             return result
         finally:
             self._parser = None
-
-
-async def create_protocol(
-    host: str, port: int, ssl: bool, ssl_verify: bool, ssl_extra_ca: Optional[str], *, timeout: int = None
-) -> MemcacheAsciiProtocol:
-    """ Create a new connection which supports the Memcache protocol, if timeout is provided
-    an `asyncio.TimeoutError` can be raised."""
-
-    loop = asyncio.get_running_loop()
-
-    if ssl:
-        if not ssl_verify:
-            ssl = ssl_module.SSLContext(ssl_module.PROTOCOL_TLS)
-        elif ssl_verify and ssl_extra_ca:
-            ssl = ssl_module.SSLContext(ssl_module.PROTOCOL_TLS)
-            ssl.verify_mode = ssl_module.CERT_REQUIRED
-            ssl.load_default_certs()
-            ssl.load_verify_locations(cafile=ssl_extra_ca)
-        else:
-            ssl = ssl_module.create_default_context()
-    else:
-        ssl = False
-
-    if timeout is None:
-        _, protocol = await loop.create_connection(MemcacheAsciiProtocol, host=host, port=port, ssl=ssl)
-    else:
-        _, protocol = await asyncio.wait_for(
-            loop.create_connection(MemcacheAsciiProtocol, host=host, port=port, ssl=ssl), timeout
-        )
-    return protocol
