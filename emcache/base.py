@@ -186,6 +186,68 @@ class Client(metaclass=ABCMeta):
         use the documentation of that method.
         """
 
+    @abstractmethod
+    async def increment(
+            self, key: bytes, value: int, *, noreply: bool = False
+    ) -> Optional[int]:
+        """Increment a specific integer stored with a key by a given `value`, the key
+        must exist.
+
+        If `noreply` is not used and the key exists the new value will be returned, othewise
+        a None is returned.
+
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised.
+        """
+
+    @abstractmethod
+    async def decrement(
+            self, key: bytes, value: int, *, noreply: bool = False
+    ) -> Optional[int]:
+        """Decrement a specific integer stored with a key by a given `value`, the key
+        must exist.
+
+        If `noreply` is not used and the key exists the new value will be returned, othewise
+        a None is returned.
+
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised.
+        """
+
+    @abstractmethod
+    async def touch(
+            self, key: bytes, exptime: int, *, noreply: bool = False
+    ) -> None:
+        """Set and override, if its the case, the expitme for an exixting key.
+
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised. Other errors
+        raised by the memcached server which implys that the item was
+        not touched raises a generic `CommandError` exception.
+        """
+
+    @abstractmethod
+    async def delete(
+            self, key: bytes, *, noreply: bool = False
+    ) -> None:
+        """Delete an exixting key.
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised. Other errors
+        raised by the memcached server which implys that the item was
+        not touched raises a generic `CommandError` exception.
+        """
+
+    async def flush_all(
+        self, memcached_host_address: MemcachedHostAddress, delay: int = 0, *, noreply: bool = False
+    ) -> None:
+        """Flush all keys in an specific memcahed host address.
+
+        Flush can be deferred at memcached server side for a specific time by
+        using the `delay` option, otherwise the flush will happen immediately.
+
+        If the command fails a `CommandError` exception will be raised.
+        """
+
 
 class ClusterEvents(metaclass=ABCMeta):
     """ ClusterEvents can be used for being notified about different
