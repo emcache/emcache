@@ -3,6 +3,7 @@ import re
 import sys
 
 from setuptools import Extension, setup
+from Cython.Build import cythonize
 
 if sys.platform in ("win32", "cygwin", "cli"):
     raise RuntimeError("emcache does not support Windows at the moment")
@@ -16,7 +17,7 @@ MURMUR3_DIR = os.path.join(os.path.dirname(__file__), "vendor", "murmur3")
 extensions = [
     Extension(
         "emcache._cython.cyemcache",
-        sources=["emcache/_cython/cyemcache.c"],
+        sources=["emcache/_cython/cyemcache.pyx"],
         include_dirs=[MURMUR3_DIR],
         library_dirs=[MURMUR3_DIR],
         libraries=["murmur3"],
@@ -57,7 +58,7 @@ setup(
     author_email="pfreixes@gmail.com",
     platforms=["*nix"],
     packages=["emcache"],
-    ext_modules=extensions,
+    ext_modules=cythonize(extensions),
     extras_require={"dev": dev_requires},
     classifiers=[
         "Development Status :: 4 - Beta",
