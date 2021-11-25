@@ -57,10 +57,7 @@ setup(
     author_email="pfreixes@gmail.com",
     platforms=["*nix"],
     packages=["emcache"],
-    setup_requires=[
-        'setuptools>=18.0',
-        'cython'
-    ],
+    setup_requires=["setuptools>=18.0", "cython"],
     ext_modules=extensions,
     extras_require={"dev": dev_requires},
     classifiers=[
