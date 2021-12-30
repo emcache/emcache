@@ -35,7 +35,7 @@ jobs:
       run: |
         mkdir /tmp/emcache
         cp -r . /tmp/emcache
-        docker run -v /tmp/emcache:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux1_x86_64 /io/bin/build_manylinux1_wheel.sh
+        docker run -v /tmp/emcache:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux2010_x86_64 /io/bin/build_manylinux1_wheel.sh
         mkdir dist
         cp /tmp/emcache/dist/emcache-*.whl dist/
     - name: Mac acceptance test dependencies
