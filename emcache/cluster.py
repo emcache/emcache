@@ -110,10 +110,12 @@ class Cluster:
         while True:
             try:
                 coro = await self._events.get()
-                await coro
             except asyncio.CancelledError:
                 # if a cancellation is received we stop processing events
                 break
+
+            try:
+                await coro
             except Exception:
                 logger.exception(f"Hook raised an exception, continuing processing events")
 
