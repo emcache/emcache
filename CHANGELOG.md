@@ -1,3 +1,7 @@
+0.6.1
+================
+- Support for Python 3.10
+
 0.6.0
 ================
 - Support for SSL [#62](https://github.com/emcache/emcache/pull/62)
