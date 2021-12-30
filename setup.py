@@ -25,7 +25,7 @@ extensions = [
 
 dev_requires = [
     "Cython==0.29.18",
-    "pytest==5.4.1",
+    "pytest==6.2.5",
     "pytest-mock==3.1.0",
     "pytest-asyncio==0.11.0",
     "asynctest==0.13.0",
