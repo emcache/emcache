@@ -16,3 +16,11 @@ services:
       - ./:/app
     ports:
       - "11213:11213"
+  memcached_uds:
+    image: memcached
+    command: ['-s', '/sockets/emcache.sock', '-a', '777']
+    volumes:
+      - ./:/app
+      - type: bind
+        source: /tmp/
+        target: /sockets/
