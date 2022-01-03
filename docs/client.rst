@@ -18,6 +18,17 @@ For example
         ]
     )
 
+Or, in the case of a memcached server listening on a unix domain socket
+
+.. code-block:: python
+
+   client = await emcache.create_client(
+       [
+           emcache.MemcachedHostAddress('/tmp/memcached.sock', 0)
+       ]
+   )
+
+
 The previous example would return a :class:`emcache.Client` object instance that will perform the operations to two different Nodes, depending on the outcome of the hashing algorithm.
 Take a look to the advanced topics section and specifically to the Hashing section for understanding how operations are being routed to the different nodes.
 
