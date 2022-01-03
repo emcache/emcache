@@ -24,6 +24,11 @@ class TestMemcachedHostAddress:
         assert memcached_node.address == "localhost"
         assert memcached_node.port == 11211
 
+    def test_attributes_uds(self):
+        memcached_node = MemcachedHostAddress("/tmp/emcache.sock", 0)
+        assert memcached_node.address == "/tmp/emcache.sock"
+        assert memcached_node.port == 0
+
 
 class TestNode:
     async def test_properties(self, connection_pool, memcached_host_address):

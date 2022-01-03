@@ -9,6 +9,9 @@ class TestClusterManagment:
     async def test_nodes(self, client, memcached_address_1, memcached_address_2):
         assert client.cluster_managment().nodes() == [memcached_address_1, memcached_address_2]
 
+    async def test_nodes_unix_socket(self, client_unix_socket, memcached_unix_socket):
+        assert client_unix_socket.cluster_managment().nodes() == [memcached_unix_socket]
+
     async def test_healthy_nodes(self, client, memcached_address_1, memcached_address_2):
         assert client.cluster_managment().healthy_nodes() == [memcached_address_1, memcached_address_2]
 

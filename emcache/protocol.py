@@ -50,7 +50,8 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
     def connection_made(self, transport) -> None:
         self._transport = transport
         sock = transport.get_extra_info("socket")
-        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
+        if sock.family in [socket.AF_INET, socket.AF_INET6]:
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
         logger.debug("Connection made")
 
     def connection_lost(self, exc) -> None:
@@ -255,10 +256,14 @@ async def create_protocol(
     else:
         ssl = False
 
+    if port:
+        coro = loop.create_connection(MemcacheAsciiProtocol, host=host, port=port, ssl=ssl)
+    elif os.path.exists(host):
+        coro = loop.create_unix_connection(MemcacheAsciiProtocol, path=host, ssl=ssl)
+
     if timeout is None:
-        _, protocol = await loop.create_connection(MemcacheAsciiProtocol, host=host, port=port, ssl=ssl)
+        _, protocol = await coro
     else:
-        _, protocol = await asyncio.wait_for(
-            loop.create_connection(MemcacheAsciiProtocol, host=host, port=port, ssl=ssl), timeout
-        )
+        _, protocol = await asyncio.wait_for(coro, timeout)
+
     return protocol

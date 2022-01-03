@@ -16,8 +16,22 @@ async def memcached_address_2():
 
 
 @pytest.fixture
+async def memcached_unix_socket():
+    return MemcachedHostAddress("/tmp/emcache.sock", 0)
+
+
+@pytest.fixture
 async def client(event_loop, memcached_address_1, memcached_address_2):
     client = await create_client([memcached_address_1, memcached_address_2], timeout=2.0,)
+    try:
+        yield client
+    finally:
+        await client.close()
+
+
+@pytest.fixture
+async def client_unix_socket(event_loop, memcached_unix_socket):
+    client = await create_client([memcached_unix_socket], timeout=2.0,)
     try:
         yield client
     finally:

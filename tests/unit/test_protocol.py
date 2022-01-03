@@ -1,4 +1,5 @@
 import asyncio
+import tempfile
 from unittest.mock import Mock
 
 import pytest
@@ -204,3 +205,17 @@ async def test_create_protocol(event_loop, mocker):
     protocol = await create_protocol("localhost", 11211, ssl=False, ssl_verify=False, ssl_extra_ca=None)
     assert protocol is protocol_mock
     loop_mock.create_connection.assert_called_with(MemcacheAsciiProtocol, host="localhost", port=11211, ssl=False)
+
+
+async def test_create_protocol_unix_socket(event_loop, mocker):
+    loop_mock = Mock()
+    mocker.patch("emcache.protocol.asyncio.get_running_loop", return_value=loop_mock)
+
+    _, mock_uds = tempfile.mkstemp()
+
+    protocol_mock = Mock()
+    loop_mock.create_unix_connection = CoroutineMock(return_value=(None, protocol_mock))
+
+    protocol = await create_protocol(mock_uds, 0, ssl=False, ssl_verify=False, ssl_extra_ca=None)
+    assert protocol is protocol_mock
+    loop_mock.create_unix_connection.assert_called_with(MemcacheAsciiProtocol, path=mock_uds, ssl=False)
