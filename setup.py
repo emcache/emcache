@@ -30,7 +30,7 @@ dev_requires = [
     "pytest-asyncio==0.11.0",
     "asynctest==0.13.0",
     "pytest-cov==2.8.1",
-    "black==19.10b0",
+    "black==22.3.0",
     "isort==4.3.21",
     "flake8==3.7.9",
 ]
