@@ -9,14 +9,14 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class MemcachedHostAddress:
-    """ Data class for identifying univocally a Memcached host. """
+    """Data class for identifying univocally a Memcached host."""
 
     address: str
     port: int
 
 
 class Node:
-    """ Node class is in charge of providing a connection for communicating
+    """Node class is in charge of providing a connection for communicating
     with the Memcached node, also it holds any attribute related to the
     Memcached node.
     """
@@ -79,7 +79,7 @@ class Node:
         self._on_healthy_status_change_cb(self, self._healthy)
 
     async def close(self):
-        """ Close any active background task and close the connection pool """
+        """Close any active background task and close the connection pool"""
         # Theoretically as it is being implemented, the client must guard that
         # the node close method is only called once yes or yes.
         assert self._closed is False

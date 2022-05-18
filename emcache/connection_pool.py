@@ -19,7 +19,7 @@ _MAX_CREATE_CONNECTION_LATENCIES_OBSERVED = 100
 
 @dataclass
 class ConnectionPoolMetrics:
-    """ Provides basic metrics for understanding how the connection pool has
+    """Provides basic metrics for understanding how the connection pool has
     behaved historically and currently.
     """
 
@@ -161,7 +161,7 @@ class ConnectionPool:
         return str(self)
 
     def _close_connection(self, connection):
-        """ Performs all of the operations needed for closing a connection. """
+        """Performs all of the operations needed for closing a connection."""
         connection.close()
         self._metrics.connections_closed += 1
 
@@ -174,7 +174,7 @@ class ConnectionPool:
         self._total_connections -= 1
 
     def _purge_unused_connections(self):
-        """ Iterate over all of the connections and see which ones have not
+        """Iterate over all of the connections and see which ones have not
         been used recently and if its the case close and remove them.
         """
         now = time.monotonic()
@@ -212,7 +212,7 @@ class ConnectionPool:
             self._unused_connections.append(connection)
 
     async def _create_new_connection(self, backoff=None, retries=None) -> None:
-        """ Creates a new connection in background, and once its ready
+        """Creates a new connection in background, and once its ready
         adds it to the poool.
 
         If connection fails a backoff strategy is started till which will
@@ -295,7 +295,7 @@ class ConnectionPool:
             self._creating_connection_task.add_done_callback(_keep_checking)
 
     async def close(self):
-        """ Close any active background task and close all connections """
+        """Close any active background task and close all connections"""
         # Theoretically as it is being implemented, the client must guard that
         # the connection pool close method is only called once yes or yes.
         assert self._closed is False
@@ -318,7 +318,7 @@ class ConnectionPool:
             self._close_connection(connection)
 
     def create_connection_context(self) -> "BaseConnectionContext":
-        """ Returns a connection context that might provide a connection
+        """Returns a connection context that might provide a connection
         ready to be used, or a future connection ready to be used.
 
         Behind the scenes will try to make grow the pool when there
@@ -345,7 +345,7 @@ class ConnectionPool:
     # Below methods are used by the _BaseConnectionContext and derivated classes.
 
     def release_connection(self, connection: MemcacheAsciiProtocol, *, exc: Exception = None):
-        """ Returns back to the pool a connection."""
+        """Returns back to the pool a connection."""
         if self._closed:
             logger.debug(f"{self} Closing connection")
             self._close_connection(connection)
@@ -386,7 +386,7 @@ class ConnectionPool:
 
 
 class BaseConnectionContext:
-    """ Base class for providing connection contexts, see the derivated
+    """Base class for providing connection contexts, see the derivated
     ones for the two different use cases.
 
     Base class provides the close method for returning back the connection
@@ -417,14 +417,14 @@ class BaseConnectionContext:
 
 
 class ConnectionContext(BaseConnectionContext):
-    """ Context used when there is a ready connection to be used."""
+    """Context used when there is a ready connection to be used."""
 
     async def __aenter__(self) -> MemcacheAsciiProtocol:
         return self._connection
 
 
 class WaitingForAConnectionContext(BaseConnectionContext):
-    """ Context used when there is no a ready connection to be used. This will
+    """Context used when there is no a ready connection to be used. This will
     wait till a connection is given back to the loop and the waiter is being
     woken up."""
 

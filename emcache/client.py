@@ -26,8 +26,8 @@ from .timeout import OpTimeout
 logger = logging.getLogger(__name__)
 
 
-MAX_ALLOWED_FLAG_VALUE = 2 ** 16
-MAX_ALLOWED_CAS_VALUE = 2 ** 64
+MAX_ALLOWED_FLAG_VALUE = 2**16
+MAX_ALLOWED_CAS_VALUE = 2**64
 
 
 class _Client(Client):
@@ -129,7 +129,7 @@ class _Client(Client):
     async def _storage_command(
         self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool, cas: int = None
     ) -> None:
-        """ Proxy function used for all storage commands `add`, `set`,
+        """Proxy function used for all storage commands `add`, `set`,
         `replace`, `append` and `prepend`.
         """
         if self._closed:
@@ -150,7 +150,7 @@ class _Client(Client):
                 return await connection.storage_command(command, key, value, flags, exptime, noreply, cas)
 
     async def _incr_decr_command(self, command: bytes, key: bytes, value: int, noreply: bool) -> None:
-        """ Proxy function used for incr and decr. """
+        """Proxy function used for incr and decr."""
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
@@ -166,7 +166,7 @@ class _Client(Client):
                 return await connection.incr_decr_command(command, key, value, noreply)
 
     async def _fetch_command(self, command: bytes, key: bytes) -> Optional[bytes]:
-        """ Proxy function used for all fetch commands `get`, `gets`. """
+        """Proxy function used for all fetch commands `get`, `gets`."""
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
@@ -181,7 +181,7 @@ class _Client(Client):
     async def _fetch_many_command(
         self, command: bytes, keys: Sequence[bytes], return_flags=False
     ) -> Tuple[bytes, bytes, bytes]:
-        """ Proxy function used for all fetch many commands `get_many`, `gets_many`. """
+        """Proxy function used for all fetch many commands `get_many`, `gets_many`."""
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
@@ -215,12 +215,12 @@ class _Client(Client):
 
     @property
     def closed(self) -> bool:
-        """ Rreturns True if the client is already closed and no longer
+        """Rreturns True if the client is already closed and no longer
         available to be used."""
         return self._closed
 
     async def close(self) -> None:
-        """ Close any active background task and close all TCP
+        """Close any active background task and close all TCP
         connections.
 
         It does not implement any gracefull close at operation level,
@@ -233,7 +233,7 @@ class _Client(Client):
         await self._cluster.close()
 
     def cluster_managment(self) -> ClusterManagment:
-        """ Returns the `ClusterMangment` instance class for managing
+        """Returns the `ClusterMangment` instance class for managing
         the cluster related to that client.
 
         Same instance is returned at any call.
@@ -627,7 +627,7 @@ async def create_client(
     ssl_verify: bool = DEFAULT_SSL_VERIFY,
     ssl_extra_ca: Optional[str] = None,
 ) -> Client:
-    """ Factory for creating a new `emcache.Client` instance.
+    """Factory for creating a new `emcache.Client` instance.
 
     By deafault emcache client will be created with the following default values.
 

@@ -25,7 +25,7 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestClient:
-    """ Only none happy path tests, happy path tests are
+    """Only none happy path tests, happy path tests are
     covered as acceptance test.
     """
 

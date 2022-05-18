@@ -20,15 +20,15 @@ class _ClusterManagment(ClusterManagment):
         self._cluster = cluster
 
     def nodes(self) -> List[MemcachedHostAddress]:
-        """Return the nodes that belong to the cluster. """
+        """Return the nodes that belong to the cluster."""
         return [node.memcached_host_address for node in self._cluster.nodes]
 
     def healthy_nodes(self) -> List[MemcachedHostAddress]:
-        """Return the nodes that are considered healthy. """
+        """Return the nodes that are considered healthy."""
         return [node.memcached_host_address for node in self._cluster.healthy_nodes]
 
     def unhealthy_nodes(self) -> List[MemcachedHostAddress]:
-        """Return the nodes that are considered unhealthy. """
+        """Return the nodes that are considered unhealthy."""
         return [node.memcached_host_address for node in self._cluster.unhealthy_nodes]
 
     def connection_pool_metrics(self) -> Mapping[MemcachedHostAddress, ConnectionPoolMetrics]:
@@ -122,7 +122,7 @@ class Cluster:
         logger.debug("Events dispatcher stopped")
 
     def _build_rdz_nodes(self):
-        """ Builds the list of rdz nodes using the nodes that claim to be healhty."""
+        """Builds the list of rdz nodes using the nodes that claim to be healhty."""
         if self._purge_unhealthy_nodes:
             nodes = self._healthy_nodes
         else:
@@ -133,12 +133,12 @@ class Cluster:
         self._rdz_nodes = [cyemcache.RendezvousNode(node.host, node.port, node) for node in nodes]
 
     def _on_node_healthy_status_change_cb(self, node: Node, healthy: bool):
-        """ CalleClose any active background task and close all TCP
+        """CalleClose any active background task and close all TCP
         connections.
 
         It does not implement any gracefull close at operation level,
         if there are active operations the outcome is not predictabled
-        by the node for telling that the healthy status has changed. """
+        by the node for telling that the healthy status has changed."""
         if healthy:
             assert node in self._unhealthy_nodes, "Node was not tracked by the cluster as unhealthy!"
             self._unhealthy_nodes.remove(node)
@@ -167,7 +167,7 @@ class Cluster:
                 logger.warning("Events can't be dispathed, queue full")
 
     async def close(self):
-        """ Close any active background task and close all nodes """
+        """Close any active background task and close all nodes"""
         # Theoretically as it is being implemented, the client must guard that
         # the cluster close method is only called once yes or yes.
         assert self._closed is False

@@ -151,7 +151,7 @@ class AutoBatching:
             logger.warning("Closing an autobatching instance with inflight batches")
 
     def execute(self, key: bytes) -> Awaitable[Item]:
-        """ Execute the Memcached operation, a get or a gets depending
+        """Execute the Memcached operation, a get or a gets depending
         the parameters of the constuctor, as part of a batch which can
         contain many other operations.
 

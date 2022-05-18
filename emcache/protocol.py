@@ -239,7 +239,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 async def create_protocol(
     host: str, port: int, ssl: bool, ssl_verify: bool, ssl_extra_ca: Optional[str], *, timeout: int = None
 ) -> MemcacheAsciiProtocol:
-    """ Create a new connection which supports the Memcache protocol, if timeout is provided
+    """Create a new connection which supports the Memcache protocol, if timeout is provided
     an `asyncio.TimeoutError` can be raised."""
 
     loop = asyncio.get_running_loop()
