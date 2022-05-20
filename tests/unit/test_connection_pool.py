@@ -213,7 +213,8 @@ class TestConnectionPool:
 
         # First we return a Timeout and second try returns an usable connection
         create_protocol = mocker.patch(
-            "emcache.connection_pool.create_protocol", CoroutineMock(side_effect=[exc, not_closed_connection]),
+            "emcache.connection_pool.create_protocol",
+            CoroutineMock(side_effect=[exc, not_closed_connection]),
         )
 
         connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, lambda _: _, False, False, None)
@@ -249,7 +250,10 @@ class TestConnectionPool:
         # Avoid the annoying sleep added by the backoff
         mocker.patch("emcache.connection_pool.asyncio.sleep", CoroutineMock())
 
-        create_protocol = mocker.patch("emcache.connection_pool.create_protocol", CoroutineMock(side_effect=Exception),)
+        create_protocol = mocker.patch(
+            "emcache.connection_pool.create_protocol",
+            CoroutineMock(side_effect=Exception),
+        )
 
         connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, lambda _: _, False, False, None)
 
@@ -280,7 +284,8 @@ class TestConnectionPool:
         errors = [asyncio.TimeoutError] * 8
 
         mocker.patch(
-            "emcache.connection_pool.create_protocol", CoroutineMock(side_effect=errors + [not_closed_connection]),
+            "emcache.connection_pool.create_protocol",
+            CoroutineMock(side_effect=errors + [not_closed_connection]),
         )
 
         connection_pool = ConnectionPool("localhost", 11211, 1, 1, None, 1.0, lambda _: _, False, False, None)
@@ -785,7 +790,8 @@ class TestConnectionPool:
         errors = [asyncio.TimeoutError] * DECLARE_UNHEALTHY_CONNECTION_POOL_AFTER_RETRIES
 
         mocker.patch(
-            "emcache.connection_pool.create_protocol", CoroutineMock(side_effect=errors + [not_closed_connection]),
+            "emcache.connection_pool.create_protocol",
+            CoroutineMock(side_effect=errors + [not_closed_connection]),
         )
 
         cb_mock = Mock()
@@ -816,7 +822,8 @@ class TestConnectionPool:
         errors = [asyncio.TimeoutError] * (DECLARE_UNHEALTHY_CONNECTION_POOL_AFTER_RETRIES * 2)
 
         mocker.patch(
-            "emcache.connection_pool.create_protocol", CoroutineMock(side_effect=errors),
+            "emcache.connection_pool.create_protocol",
+            CoroutineMock(side_effect=errors),
         )
 
         cb_mock = Mock()

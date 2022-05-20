@@ -15,12 +15,12 @@ class Item:
 class Client(metaclass=ABCMeta):
     @abstractproperty
     def closed(self) -> bool:
-        """ Rreturns True if the client is already closed and no longer
+        """Rreturns True if the client is already closed and no longer
         available to be used."""
 
     @abstractmethod
     async def close(self) -> None:
-        """ Closes any active background task and close all TCP
+        """Closes any active background task and close all TCP
         connections.
 
         It does not implement any gracefull close at operation level,
@@ -188,7 +188,7 @@ class Client(metaclass=ABCMeta):
 
 
 class ClusterEvents(metaclass=ABCMeta):
-    """ ClusterEvents can be used for being notified about different
+    """ClusterEvents can be used for being notified about different
     events that happen at cluster level.
 
     Each kind of event is identified with its own function named
@@ -222,7 +222,7 @@ class ClusterEvents(metaclass=ABCMeta):
 
 
 class ClusterManagment(metaclass=ABCMeta):
-    """ ClusterManagment provides you the public interface
+    """ClusterManagment provides you the public interface
     for managing the cluster.
 
     A `Client` instance proides you a way for having access
@@ -240,12 +240,12 @@ class ClusterManagment(metaclass=ABCMeta):
 
     @abstractmethod
     def nodes(self) -> Sequence[MemcachedHostAddress]:
-        """Return the nodes that belong to the cluster. """
+        """Return the nodes that belong to the cluster."""
 
     @abstractmethod
     def healthy_nodes(self) -> Sequence[MemcachedHostAddress]:
-        """Return the nodes that are considered healthy. """
+        """Return the nodes that are considered healthy."""
 
     @abstractmethod
     def unhealthy_nodes(self) -> Sequence[MemcachedHostAddress]:
-        """Return the nodes that are considered unhealthy. """
+        """Return the nodes that are considered unhealthy."""

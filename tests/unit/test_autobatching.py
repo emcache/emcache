@@ -212,7 +212,7 @@ class TestInfligthBartches:
 
 
 class TestAutoBatching:
-    """ Only none happy path tests, happy path tests are
+    """Only none happy path tests, happy path tests are
     covered as acceptance test.
     """
 

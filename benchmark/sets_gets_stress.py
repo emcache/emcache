@@ -87,10 +87,16 @@ async def main():
         default="11211",
     )
     parser.add_argument(
-        "--concurrency", help="Number of concurrency clients, by default 32", type=int, default=32,
+        "--concurrency",
+        help="Number of concurrency clients, by default 32",
+        type=int,
+        default=32,
     )
     parser.add_argument(
-        "--duration", help="Test duration in seconds, by default 60", type=int, default=60,
+        "--duration",
+        help="Test duration in seconds, by default 60",
+        type=int,
+        default=60,
     )
     parser.add_argument(
         "--test",
