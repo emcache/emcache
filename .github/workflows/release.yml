@@ -3,13 +3,66 @@ on:
   push:
     tags:
       - v*
+
 jobs:
-  build:
+  # Use Any Python version, cibuildwheel downloads multiple python version to create each build environment.
+  # We can only use x86-64 macOS, so we can test on x86-64. But murmur3 is now universal2 binary. So It'll be works for arm64 too.
+  build_macos:
+    outputs:
+      version: ${{ steps.get_version.outputs.VERSION }}
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.10"
+    - name: Generate macos-wheel
+      run: |
+        cd vendor/murmur3
+        make static_macos
+        cd -
+        python -m pip install --upgrade pip
+        pip install wheel cibuildwheel==2.8.0
+        make compile
+        python -m cibuildwheel --platform macos --output-dir dist/
+      env: 
+        CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
+    - name: Mac acceptance test dependencies
+      run: |
+        brew install memcached
+        memcached -d -p 11211
+        memcached -d -p 11212
+        memcached -d -p 11213 --enable-ssl -o ssl_chain_cert=./tests/acceptance/data/localhost.crt,ssl_key=./tests/acceptance/data/localhost.key
+    - name: Test generated wheel (Universal2 to x86-64 Only)
+      run: |
+        mkdir test_wheel
+        cp dist/*.whl test_wheel
+        cd test_wheel
+        pip install virtualenv
+        python -m virtualenv env
+        source env/bin/activate
+        rm -f ../.install-cython
+        make -C ../vendor/murmur3 clean static_macos
+        make -C .. install-dev
+        pip install emcache-*-cp310-cp310-macosx_10_9_universal2.whl --upgrade
+        make -C .. test
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+    - uses: actions/upload-artifact@v2
+      with:
+        name: ${{ steps.get_version.outputs.VERSION }}
+        path: test_wheel/emcache-*.whl
+
+  build_linux:
     outputs:
       version: ${{ steps.get_version.outputs.VERSION }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [ubuntu-latest]
         python-version: ["3.7", "3.8", "3.9", "3.10"]
     runs-on: ${{ matrix.os }}
     steps:
@@ -20,33 +73,14 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Generate macos-wheel
-      if: ${{ matrix.os == 'macos-latest' }}
-      run: |
-        cd vendor/murmur3
-        make static
-        cd -
-        python -m pip install --upgrade pip
-        pip install wheel
-        make compile
-        python setup.py bdist_wheel
     - name: Generate manylinux1-wheel
-      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
         mkdir /tmp/emcache
         cp -r . /tmp/emcache
         docker run -v /tmp/emcache:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux2010_x86_64 /io/bin/build_manylinux1_wheel.sh
         mkdir dist
         cp /tmp/emcache/dist/emcache-*.whl dist/
-    - name: Mac acceptance test dependencies
-      if: ${{ matrix.os == 'macos-latest' }}
-      run: |
-        brew install memcached
-        memcached -d -p 11211
-        memcached -d -p 11212
-        memcached -d -p 11213 --enable-ssl -o ssl_chain_cert=./tests/acceptance/data/localhost.crt,ssl_key=./tests/acceptance/data/localhost.key
     - name: Linux acceptance test dependencies
-      if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
         docker-compose up -d
     - name: Test generated wheel
@@ -59,7 +93,6 @@ jobs:
         source env/bin/activate
         rm -f ../.install-cython
         make -C ../vendor/murmur3 static
-        make -C .. install-dev
         pip install emcache-*.whl --upgrade
         make -C .. test
     - name: Get the version
@@ -69,8 +102,9 @@ jobs:
       with:
         name: ${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
+
   upload:
-    needs: build
+    needs: [build_macos, build_linux]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
