@@ -1,3 +1,7 @@
+0.6.2
+================
+- Support for macos builds [#75](https://github.com/emcache/emcache/pull/75)
+
 0.6.1
 ================
 - Support for Python 3.10
