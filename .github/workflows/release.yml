@@ -93,6 +93,7 @@ jobs:
         source env/bin/activate
         rm -f ../.install-cython
         make -C ../vendor/murmur3 static
+        make -C .. install-dev
         pip install emcache-*.whl --upgrade
         make -C .. test
     - name: Get the version
