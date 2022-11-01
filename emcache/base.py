@@ -29,6 +29,14 @@ class Client(metaclass=ABCMeta):
         """
 
     @abstractmethod
+    def cluster_managment(self) -> "ClusterManagment":
+        """Returns the `ClusterManagment` instance class for managing
+        the cluster related to that client.
+
+        Same instance is returned at any call.
+        """
+
+    @abstractmethod
     async def get(self, key: bytes, return_flags=False) -> Optional[Item]:
         """Return the value associated with the key as an `Item` instance.
 
@@ -138,9 +146,7 @@ class Client(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def append(
-        self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False
-    ) -> None:
+    async def append(self, key: bytes, value: bytes, *, noreply: bool = False) -> None:
         """Append a specific value for a given key to the current value
         if and only if the key already exists.
 
@@ -154,9 +160,7 @@ class Client(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def prepend(
-        self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False
-    ) -> None:
+    async def prepend(self, key: bytes, value: bytes, *, noreply: bool = False) -> None:
         """Prepend a specific value for a given key to the current value
         if and only if the key already exists.
 
@@ -184,6 +188,62 @@ class Client(metaclass=ABCMeta):
 
         Take a look at the `set` command for parameters description.
         use the documentation of that method.
+        """
+
+    @abstractmethod
+    async def increment(self, key: bytes, value: int, *, noreply: bool = False) -> Optional[int]:
+        """Increment a specific integer stored with a key by a given `value`, the key
+        must exist.
+
+        If `noreply` is not used and the key exists the new value will be returned, otherwise
+        a None is returned.
+
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised.
+        """
+
+    @abstractmethod
+    async def decrement(self, key: bytes, value: int, *, noreply: bool = False) -> Optional[int]:
+        """Decrement a specific integer stored with a key by a given `value`, the key
+        must exist.
+
+        If `noreply` is not used and the key exists the new value will be returned, otherwise
+        a None is returned.
+
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised.
+        """
+
+    @abstractmethod
+    async def touch(self, key: bytes, exptime: int, *, noreply: bool = False) -> None:
+        """Set and override, if its the case, the exptime for an existing key.
+
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised. Other errors
+        raised by the memcached server which imply that the item was
+        not touched raise a generic `CommandError` exception.
+        """
+
+    @abstractmethod
+    async def delete(self, key: bytes, *, noreply: bool = False) -> None:
+        """Delete an exixting key.
+
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised. Other errors
+        raised by the memcached server which imply that the item was
+        not touched raise a generic `CommandError` exception.
+        """
+
+    @abstractmethod
+    async def flush_all(
+        self, memcached_host_address: MemcachedHostAddress, delay: int = 0, *, noreply: bool = False
+    ) -> None:
+        """Flush all keys in a specific memcached host address.
+
+        Flush can be deferred at memcached server side for a specific time by
+        using the `delay` option, otherwise the flush will happen immediately.
+
+        If the command fails a `CommandError` exception will be raised.
         """
 
 
