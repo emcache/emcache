@@ -15,7 +15,7 @@ class Item:
 class Client(metaclass=ABCMeta):
     @abstractproperty
     def closed(self) -> bool:
-        """Rreturns True if the client is already closed and no longer
+        """Returns True if the client is already closed and no longer
         available to be used."""
 
     @abstractmethod
@@ -23,7 +23,7 @@ class Client(metaclass=ABCMeta):
         """Closes any active background task and close all TCP
         connections.
 
-        It does not implement any gracefull close at operation level,
+        It does not implement any graceful close at operation level,
         if there are active operations the outcome of these operations
         is not predictable.
         """
@@ -44,7 +44,7 @@ class Client(metaclass=ABCMeta):
 
     @abstractmethod
     async def gets(self, key: bytes, return_flags=False) -> Optional[Item]:
-        """Return the value associated with the key and its cass value as
+        """Return the value associated with the key and its cas value as
         an `Item` instance.
 
         If `return_flags` is set to True, the `Item.flags` attribute will be
@@ -67,7 +67,7 @@ class Client(metaclass=ABCMeta):
         where each request will be composed of one or many keys. Hashing
         algorithm will decide how keys will be grouped by.
 
-        if any request fails due to a timeout - if it is configured - or any other
+        If any request fails due to a timeout - if it is configured - or any other
         error, all ongoing requests will be automatically canceled and the error will
         be raised back to the caller.
         """
@@ -97,7 +97,7 @@ class Client(metaclass=ABCMeta):
         - `flags` is an arbitrary 16-bit unsigned integer stored
         along the value that can be retrieved later with a retrieval
         command.
-        - `exptime` is the expiration time expressed as an aboslute
+        - `exptime` is the expiration time expressed as an absolute
         timestamp. By default, it is set to 0 meaning that the there
         is no expiration time.
         - `noreply` when is set memcached will not return a response
@@ -225,7 +225,7 @@ class ClusterManagment(metaclass=ABCMeta):
     """ClusterManagment provides you the public interface
     for managing the cluster.
 
-    A `Client` instance proides you a way for having access
+    A `Client` instance provides you a way for having access
     to an instance of `ClusterManagment` related to the cluster
     used for that specific client, as the following example
     shows:

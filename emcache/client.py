@@ -215,7 +215,7 @@ class _Client(Client):
 
     @property
     def closed(self) -> bool:
-        """Rreturns True if the client is already closed and no longer
+        """Returns True if the client is already closed and no longer
         available to be used."""
         return self._closed
 
@@ -223,7 +223,7 @@ class _Client(Client):
         """Close any active background task and close all TCP
         connections.
 
-        It does not implement any gracefull close at operation level,
+        It does not implement any graceful close at operation level,
         if there are active operations the outcome is not predictable.
         """
         if self._closed:
@@ -233,7 +233,7 @@ class _Client(Client):
         await self._cluster.close()
 
     def cluster_managment(self) -> ClusterManagment:
-        """Returns the `ClusterMangment` instance class for managing
+        """Returns the `ClusterManagment` instance class for managing
         the cluster related to that client.
 
         Same instance is returned at any call.
@@ -270,7 +270,7 @@ class _Client(Client):
             return Item(values[0], flags[0], None)
 
     async def gets(self, key: bytes, return_flags=False) -> Optional[Item]:
-        """Return the value associated with the key and its cass value as
+        """Return the value associated with the key and its cas value as
         an `Item` instance.
 
         If `return_flags` is set to True, the `Item.flags` attribute will be
@@ -308,7 +308,7 @@ class _Client(Client):
         where each request will be composed of one or many keys. Hashing
         algorithm will decide how keys will be grouped by.
 
-        if any request fails due to a timeout - if it is configured - or any other
+        If any request fails due to a timeout - if it is configured - or any other
         error, all ongoing requests will be automatically canceled and the error will
         be raised back to the caller.
         """
@@ -362,7 +362,7 @@ class _Client(Client):
         - `flags` is an arbitrary 16-bit unsigned integer stored
         along the value that can be retrieved later with a retrieval
         command.
-        - `exptime` is the expiration time expressed as an aboslute
+        - `exptime` is the expiration time expressed as an absolute
         timestamp. By default, it is set to 0 meaning that the there
         is no expiration time.
         - `noreply` when is set memcached will not return a response
@@ -490,7 +490,7 @@ class _Client(Client):
         """Increment a specific integer stored with a key by a given `value`, the key
         must exist.
 
-        If `noreply` is not used and the key exists the new value will be returned, othewise
+        If `noreply` is not used and the key exists the new value will be returned, otherwise
         a None is returned.
 
         If the command fails because the key was not found a
@@ -510,7 +510,7 @@ class _Client(Client):
         """Decrement a specific integer stored with a key by a given `value`, the key
         must exist.
 
-        If `noreply` is not used and the key exists the new value will be returned, othewise
+        If `noreply` is not used and the key exists the new value will be returned, otherwise
         a None is returned.
 
         If the command fails because the key was not found a
@@ -527,12 +527,12 @@ class _Client(Client):
         return int(result)
 
     async def touch(self, key: bytes, exptime: int, *, noreply: bool = False) -> None:
-        """Set and override, if its the case, the expitme for an exixting key.
+        """Set and override, if its the case, the exptime for an existing key.
 
         If the command fails because the key was not found a
         `NotFoundCommandError` exception is raised. Other errors
-        raised by the memcached server which implys that the item was
-        not touched raises a generic `CommandError` exception.
+        raised by the memcached server which imply that the item was
+        not touched raise a generic `CommandError` exception.
         """
         if self._closed:
             raise RuntimeError("Emcache client is closed")
@@ -560,8 +560,8 @@ class _Client(Client):
 
         If the command fails because the key was not found a
         `NotFoundCommandError` exception is raised. Other errors
-        raised by the memcached server which implys that the item was
-        not touched raises a generic `CommandError` exception.
+        raised by the memcached server which imply that the item was
+        not touched raise a generic `CommandError` exception.
         """
         if self._closed:
             raise RuntimeError("Emcache client is closed")
@@ -587,7 +587,7 @@ class _Client(Client):
     async def flush_all(
         self, memcached_host_address: MemcachedHostAddress, delay: int = 0, *, noreply: bool = False
     ) -> None:
-        """Flush all keys in an specific memcahed host address.
+        """Flush all keys in a specific memcached host address.
 
         Flush can be deferred at memcached server side for a specific time by
         using the `delay` option, otherwise the flush will happen immediately.
@@ -629,7 +629,7 @@ async def create_client(
 ) -> Client:
     """Factory for creating a new `emcache.Client` instance.
 
-    By deafault emcache client will be created with the following default values.
+    By default emcache client will be created with the following default values.
 
     An enabled timeout per operation configured to `DEFAULT_TIMEOUT`, for disabling it pass a `None`
     value to the `tiemout` keyword argument.
@@ -648,7 +648,7 @@ async def create_client(
     For receiving cluster events you must provide a valid `ClusterEvents` instance class.
 
     `purge_unealthy_nodes` can be used for avoid keep sending traffic to nodes that have been marked as
-    unhealhty, by default this is disabled and for enabling it you should give a `True` value. This option
+    unhealthy, by default this is disabled and for enabling it you should give a `True` value. This option
     should be enabled considering your specific use case, considering that nodes that are reported still
     healthy might receive more traffic and the hit/miss ratio might be affected. For more information you
     should take a look to the documentation.
@@ -669,7 +669,7 @@ async def create_client(
     can be loaded.
     """
     # check SSL availability earlier, protocol which is the one that will use
-    # it when connections are creatd in background wont´t need to deal with this
+    # it when connections are created in background won't need to deal with this
     # check.
     if ssl:
         try:
