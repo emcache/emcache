@@ -15,7 +15,7 @@ class Item:
 class Client(metaclass=ABCMeta):
     @abstractproperty
     def closed(self) -> bool:
-        """Rreturns True if the client is already closed and no longer
+        """Returns True if the client is already closed and no longer
         available to be used."""
 
     @abstractmethod
@@ -23,9 +23,17 @@ class Client(metaclass=ABCMeta):
         """Closes any active background task and close all TCP
         connections.
 
-        It does not implement any gracefull close at operation level,
+        It does not implement any graceful close at operation level,
         if there are active operations the outcome of these operations
         is not predictable.
+        """
+
+    @abstractmethod
+    def cluster_managment(self) -> "ClusterManagment":
+        """Returns the `ClusterManagment` instance class for managing
+        the cluster related to that client.
+
+        Same instance is returned at any call.
         """
 
     @abstractmethod
@@ -44,7 +52,7 @@ class Client(metaclass=ABCMeta):
 
     @abstractmethod
     async def gets(self, key: bytes, return_flags=False) -> Optional[Item]:
-        """Return the value associated with the key and its cass value as
+        """Return the value associated with the key and its cas value as
         an `Item` instance.
 
         If `return_flags` is set to True, the `Item.flags` attribute will be
@@ -67,7 +75,7 @@ class Client(metaclass=ABCMeta):
         where each request will be composed of one or many keys. Hashing
         algorithm will decide how keys will be grouped by.
 
-        if any request fails due to a timeout - if it is configured - or any other
+        If any request fails due to a timeout - if it is configured - or any other
         error, all ongoing requests will be automatically canceled and the error will
         be raised back to the caller.
         """
@@ -97,7 +105,7 @@ class Client(metaclass=ABCMeta):
         - `flags` is an arbitrary 16-bit unsigned integer stored
         along the value that can be retrieved later with a retrieval
         command.
-        - `exptime` is the expiration time expressed as an aboslute
+        - `exptime` is the expiration time expressed as an absolute
         timestamp. By default, it is set to 0 meaning that the there
         is no expiration time.
         - `noreply` when is set memcached will not return a response
@@ -138,9 +146,7 @@ class Client(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def append(
-        self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False
-    ) -> None:
+    async def append(self, key: bytes, value: bytes, *, noreply: bool = False) -> None:
         """Append a specific value for a given key to the current value
         if and only if the key already exists.
 
@@ -154,9 +160,7 @@ class Client(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def prepend(
-        self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False
-    ) -> None:
+    async def prepend(self, key: bytes, value: bytes, *, noreply: bool = False) -> None:
         """Prepend a specific value for a given key to the current value
         if and only if the key already exists.
 
@@ -184,6 +188,62 @@ class Client(metaclass=ABCMeta):
 
         Take a look at the `set` command for parameters description.
         use the documentation of that method.
+        """
+
+    @abstractmethod
+    async def increment(self, key: bytes, value: int, *, noreply: bool = False) -> Optional[int]:
+        """Increment a specific integer stored with a key by a given `value`, the key
+        must exist.
+
+        If `noreply` is not used and the key exists the new value will be returned, otherwise
+        a None is returned.
+
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised.
+        """
+
+    @abstractmethod
+    async def decrement(self, key: bytes, value: int, *, noreply: bool = False) -> Optional[int]:
+        """Decrement a specific integer stored with a key by a given `value`, the key
+        must exist.
+
+        If `noreply` is not used and the key exists the new value will be returned, otherwise
+        a None is returned.
+
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised.
+        """
+
+    @abstractmethod
+    async def touch(self, key: bytes, exptime: int, *, noreply: bool = False) -> None:
+        """Set and override, if its the case, the exptime for an existing key.
+
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised. Other errors
+        raised by the memcached server which imply that the item was
+        not touched raise a generic `CommandError` exception.
+        """
+
+    @abstractmethod
+    async def delete(self, key: bytes, *, noreply: bool = False) -> None:
+        """Delete an exixting key.
+
+        If the command fails because the key was not found a
+        `NotFoundCommandError` exception is raised. Other errors
+        raised by the memcached server which imply that the item was
+        not touched raise a generic `CommandError` exception.
+        """
+
+    @abstractmethod
+    async def flush_all(
+        self, memcached_host_address: MemcachedHostAddress, delay: int = 0, *, noreply: bool = False
+    ) -> None:
+        """Flush all keys in a specific memcached host address.
+
+        Flush can be deferred at memcached server side for a specific time by
+        using the `delay` option, otherwise the flush will happen immediately.
+
+        If the command fails a `CommandError` exception will be raised.
         """
 
 
@@ -225,7 +285,7 @@ class ClusterManagment(metaclass=ABCMeta):
     """ClusterManagment provides you the public interface
     for managing the cluster.
 
-    A `Client` instance proides you a way for having access
+    A `Client` instance provides you a way for having access
     to an instance of `ClusterManagment` related to the cluster
     used for that specific client, as the following example
     shows:
