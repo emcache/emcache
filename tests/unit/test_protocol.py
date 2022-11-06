@@ -1,8 +1,7 @@
 import asyncio
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from asynctest import CoroutineMock
 
 from emcache.protocol import MemcacheAsciiProtocol, create_protocol
 
@@ -199,7 +198,7 @@ async def test_create_protocol(event_loop, mocker):
     mocker.patch("emcache.protocol.asyncio.get_running_loop", return_value=loop_mock)
 
     protocol_mock = Mock()
-    loop_mock.create_connection = CoroutineMock(return_value=(None, protocol_mock))
+    loop_mock.create_connection = AsyncMock(return_value=(None, protocol_mock))
 
     protocol = await create_protocol("localhost", 11211, ssl=False, ssl_verify=False, ssl_extra_ca=None)
     assert protocol is protocol_mock

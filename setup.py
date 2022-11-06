@@ -24,11 +24,10 @@ extensions = [
 ]
 
 dev_requires = [
-    "Cython==0.29.18",
+    "Cython==0.29.32",
     "pytest==6.2.5",
     "pytest-mock==3.1.0",
     "pytest-asyncio==0.11.0",
-    "asynctest==0.13.0",
     "pytest-cov==2.8.1",
     "black==22.3.0",
     "isort==4.3.21",
@@ -66,6 +65,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "License :: OSI Approved :: Apache Software License",
         "License :: OSI Approved :: MIT License",
         "Intended Audience :: Developers",

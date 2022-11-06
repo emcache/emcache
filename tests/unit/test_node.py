@@ -1,7 +1,6 @@
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from asynctest import CoroutineMock
 
 from emcache.node import MemcachedHostAddress, Node
 
@@ -54,7 +53,7 @@ class TestNode:
 
     async def test_close(self, mocker, memcached_host_address):
         connection_pool = Mock()
-        connection_pool.close = CoroutineMock()
+        connection_pool.close = AsyncMock()
         mocker.patch("emcache.node.ConnectionPool", return_value=connection_pool)
         node = Node(memcached_host_address, 1, 1, 60, 5, lambda _: _, False, False, None)
         await node.close()
