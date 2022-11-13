@@ -1,3 +1,12 @@
+1.0.0
+================
+### Breaking Changes:
+- This Version discontinues to support Python 3.7. [#86](https://github.com/emcache/emcache/pull/86)
+
+### Changes:
+- Synchronize emcache.Client public interface with emcache.client._Client implementation [#84](https://github.com/emcache/emcache/pull/84)
+- Support for Python 3.11 [#86](https://github.com/emcache/emcache/pull/86)
+
 0.6.2
 ================
 - Support for macos builds [#75](https://github.com/emcache/emcache/pull/75)

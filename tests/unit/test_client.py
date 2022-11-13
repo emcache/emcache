@@ -1,7 +1,6 @@
-from unittest.mock import ANY, Mock, call
+from unittest.mock import ANY, AsyncMock, MagicMock, Mock, call
 
 import pytest
-from asynctest import CoroutineMock, MagicMock as AsyncMagicMock
 
 from emcache.base import Item
 from emcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, _Client, create_client
@@ -32,7 +31,7 @@ class TestClient:
     @pytest.fixture
     async def cluster(self):
         cluster = Mock()
-        cluster.close = CoroutineMock()
+        cluster.close = AsyncMock()
         return cluster
 
     @pytest.fixture
@@ -144,15 +143,16 @@ class TestClient:
     async def test_timeout_value_used(self, event_loop, mocker, memcached_host_address):
         mocker.patch("emcache.client.Cluster")
 
-        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
+
         timeout = 2.0
         client = _Client(
             [memcached_host_address], timeout, 1, 1, None, None, None, False, False, 32, False, False, None
         )
-        connection = CoroutineMock(return_value=b"")
-        connection.storage_command = CoroutineMock(return_value=b"STORED")
+        connection = AsyncMock()
+        connection.storage_command = AsyncMock(return_value=b"STORED")
         node = Mock()
-        connection_context = AsyncMagicMock()
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node.connection.return_value = connection_context
         client._cluster.pick_node.return_value = node
@@ -164,9 +164,9 @@ class TestClient:
     @pytest.mark.parametrize("command", ["set", "add", "replace", "append", "prepend", "replace"])
     async def test_not_stored_error_storage_command(self, client, command):
         # patch what is necesary for returnning an error string
-        connection = CoroutineMock()
-        connection.storage_command = CoroutineMock(return_value=b"ERROR")
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.storage_command = AsyncMock(return_value=b"ERROR")
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -190,11 +190,11 @@ class TestClient:
 
     @pytest.mark.parametrize("command", ["set", "add", "replace", "append", "prepend", "replace"])
     async def test_storage_command_use_timeout(self, client, command, mocker):
-        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
-        connection = CoroutineMock()
-        connection.storage_command = CoroutineMock(return_value=STORED)
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.storage_command = AsyncMock(return_value=STORED)
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -206,9 +206,9 @@ class TestClient:
 
     async def test_cas_not_stored_error_storage_command(self, client):
         # patch what is necesary for returnning an error string
-        connection = CoroutineMock()
-        connection.storage_command = CoroutineMock(return_value=b"ERROR")
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.storage_command = AsyncMock(return_value=b"ERROR")
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -217,11 +217,11 @@ class TestClient:
             await client.cas(b"foo", b"value", 1)
 
     async def test_cas_use_timeout(self, client, mocker):
-        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
-        connection = CoroutineMock()
-        connection.storage_command = CoroutineMock(return_value=STORED)
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.storage_command = AsyncMock(return_value=STORED)
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -244,11 +244,11 @@ class TestClient:
 
     @pytest.mark.parametrize("command", ["get", "gets"])
     async def test_fetch_command_use_timeout(self, client, command, mocker):
-        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
-        connection = CoroutineMock()
-        connection.fetch_command = CoroutineMock(return_value=([b"foo"], [b"value"], [0], [0]))
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.fetch_command = AsyncMock(return_value=iter([[b"foo"], [b"value"], [0], [0]]))
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -273,11 +273,11 @@ class TestClient:
 
     @pytest.mark.parametrize("command", ["get_many", "gets_many"])
     async def test_fetch_many_command_use_timeout(self, client, command, mocker):
-        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
-        connection = CoroutineMock()
-        connection.fetch_command = CoroutineMock(return_value=([b"foo"], [b"value"], [0], [0]))
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.fetch_command = AsyncMock(return_value=iter([[b"foo"], [b"value"], [0], [0]]))
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -308,11 +308,11 @@ class TestClient:
 
     @pytest.mark.parametrize("command", ["increment", "decrement"])
     async def test_incr_decr_use_timeout(self, client, command, mocker):
-        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
-        connection = CoroutineMock()
-        connection.incr_decr_command = CoroutineMock(return_value=1)
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.incr_decr_command = AsyncMock(return_value=1)
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -352,9 +352,9 @@ class TestClient:
 
     async def test_touch_error_command(self, client):
         # patch what is necesary for returnning an error string
-        connection = CoroutineMock()
-        connection.touch_command = CoroutineMock(return_value=b"ERROR")
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.touch_command = AsyncMock(return_value=b"ERROR")
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -363,11 +363,11 @@ class TestClient:
             await client.touch(b"foo", 1)
 
     async def test_touch_use_timeout(self, client, mocker):
-        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
-        connection = CoroutineMock()
-        connection.touch_command = CoroutineMock(return_value=TOUCHED)
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.touch_command = AsyncMock(return_value=TOUCHED)
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -387,9 +387,9 @@ class TestClient:
 
     async def test_delete_error_command(self, client):
         # patch what is necesary for returnning an error string
-        connection = CoroutineMock()
-        connection.delete_command = CoroutineMock(return_value=b"ERROR")
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.delete_command = AsyncMock(return_value=iter([b"ERROR"]))
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -399,9 +399,9 @@ class TestClient:
 
     async def test_delete_error_not_found(self, client):
         # patch what is necesary for returnning an error string
-        connection = CoroutineMock()
-        connection.delete_command = CoroutineMock(return_value=NOT_FOUND)
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.delete_command = AsyncMock(return_value=NOT_FOUND)
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -410,11 +410,11 @@ class TestClient:
             await client.delete(b"foo")
 
     async def test_delete_use_timeout(self, client, mocker):
-        optimeout_class = mocker.patch("emcache.client.OpTimeout", AsyncMagicMock())
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
-        connection = CoroutineMock()
-        connection.delete_command = CoroutineMock(return_value=DELETED)
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.delete_command = AsyncMock(return_value=DELETED)
+        connection_context = MagicMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -430,9 +430,9 @@ class TestClient:
 
     async def test_flush_all_error_command(self, client, memcached_host_address):
         # patch what is necesary for returnning an error string
-        connection = CoroutineMock()
-        connection.flush_all_command = CoroutineMock(return_value=b"ERROR")
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.flush_all_command = AsyncMock(return_value=iter([b"ERROR"]))
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -444,9 +444,9 @@ class TestClient:
     async def test_exception_cancels_everything(self, client, command):
         # patch what is necesary for rasing an exception for the first query and
         # a "valid" response from the others
-        connection = CoroutineMock()
-        connection.fetch_command.side_effect = CoroutineMock(side_effect=[OSError(), b"Ok", b"Ok"])
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.fetch_command.side_effect = MagicMock(side_effect=iter([OSError(), b"Ok", b"Ok"]))
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node1 = Mock()
         node2 = Mock()
@@ -463,9 +463,9 @@ class TestClient:
     async def test_exptime_flags_disabled(self, client, command):
         # Some storage commands do not support update the flags and neither
         # the exptime, in these use cases the values are set to 0.
-        connection = CoroutineMock()
-        connection.storage_command = CoroutineMock(return_value=b"STORED")
-        connection_context = AsyncMagicMock()
+        connection = AsyncMock()
+        connection.storage_command = AsyncMock(return_value=b"STORED")
+        connection_context = MagicMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
@@ -479,14 +479,14 @@ class TestClient:
     @pytest.fixture
     async def autobatching(self, event_loop, mocker):
         item = Item(b"value", None, None)
-        autobatching_get_noflags = CoroutineMock()
-        autobatching_get_noflags.execute = CoroutineMock(return_value=item)
-        autobatching_get_flags = CoroutineMock()
-        autobatching_get_flags.execute = CoroutineMock(return_value=item)
-        autobatching_gets_noflags = CoroutineMock()
-        autobatching_gets_noflags.execute = CoroutineMock(return_value=item)
-        autobatching_gets_flags = CoroutineMock()
-        autobatching_gets_flags.execute = CoroutineMock(return_value=item)
+        autobatching_get_noflags = MagicMock()
+        autobatching_get_noflags.execute = AsyncMock(return_value=iter([item]))
+        autobatching_get_flags = MagicMock()
+        autobatching_get_flags.execute = AsyncMock(return_value=iter([item]))
+        autobatching_gets_noflags = MagicMock()
+        autobatching_gets_noflags.execute = AsyncMock(return_value=iter([item]))
+        autobatching_gets_flags = MagicMock()
+        autobatching_gets_flags.execute = AsyncMock(return_value=iter([item]))
         return (autobatching_get_noflags, autobatching_get_flags, autobatching_gets_noflags, autobatching_gets_flags)
 
     @pytest.fixture

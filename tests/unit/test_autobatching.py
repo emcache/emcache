@@ -1,9 +1,8 @@
 import asyncio
 import itertools
-from unittest.mock import ANY, Mock
+from unittest.mock import ANY, AsyncMock, MagicMock, Mock
 
 import pytest
-from asynctest import CoroutineMock, MagicMock as AsyncMagicMock
 
 from emcache.autobatching import AutoBatching, _InflightBatches
 
@@ -12,7 +11,7 @@ pytestmark = pytest.mark.asyncio
 
 class TestInfligthBartches:
     @pytest.fixture
-    async def cluster(self):
+    def cluster(self):
         cluster = Mock()
         return cluster
 
@@ -27,10 +26,10 @@ class TestInfligthBartches:
         }
 
     async def test_multiple_batches(self, event_loop, mocker, cluster, ops):
-        connection = CoroutineMock()
-        connection.fetch_command = CoroutineMock(return_value=(list(ops.keys()), list(ops.keys()), None, None))
+        connection = AsyncMock()
+        connection.fetch_command = AsyncMock(return_value=(list(ops.keys()), list(ops.keys()), None, None))
         node = Mock()
-        connection_context = AsyncMagicMock()
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node.connection.return_value = connection_context
         cluster.pick_nodes.return_value = {node: list(ops.keys())}
@@ -51,11 +50,11 @@ class TestInfligthBartches:
         assert connection.fetch_command.call_count == 2
 
     async def test_timeout_value_used(self, event_loop, mocker, cluster, ops):
-        optimeout_class = mocker.patch("emcache.autobatching.OpTimeout", AsyncMagicMock())
-        connection = CoroutineMock()
-        connection.fetch_command = CoroutineMock(return_value=(list(ops.keys()), list(ops.keys()), None, None))
+        optimeout_class = mocker.patch("emcache.autobatching.OpTimeout", MagicMock())
+        connection = AsyncMock()
+        connection.fetch_command = AsyncMock(return_value=(list(ops.keys()), list(ops.keys()), None, None))
         node = Mock()
-        connection_context = AsyncMagicMock()
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node.connection.return_value = connection_context
         cluster.pick_nodes.return_value = {node: list(ops.keys())}
@@ -75,10 +74,10 @@ class TestInfligthBartches:
         optimeout_class.assert_called_with(1.0, ANY)
 
     async def test_futures_are_wake_up_no_side_effect_on_cancellation(self, event_loop, cluster, ops):
-        connection = CoroutineMock()
-        connection.fetch_command = CoroutineMock(return_value=(list(ops.keys()), list(ops.keys()), None, None))
+        connection = AsyncMock()
+        connection.fetch_command = AsyncMock(return_value=(list(ops.keys()), list(ops.keys()), None, None))
         node = Mock()
-        connection_context = AsyncMagicMock()
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node.connection.return_value = connection_context
         cluster.pick_nodes.return_value = {node: list(ops.keys())}
@@ -102,10 +101,10 @@ class TestInfligthBartches:
         # reach that point
 
     async def test_futures_missing_keys_are_wake_up_no_side_effect_on_cancellation(self, event_loop, cluster, ops):
-        connection = CoroutineMock()
-        connection.fetch_command = CoroutineMock(return_value=([], [], None, None))
+        connection = AsyncMock()
+        connection.fetch_command = AsyncMock(return_value=([], [], None, None))
         node = Mock()
-        connection_context = AsyncMagicMock()
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node.connection.return_value = connection_context
         cluster.pick_nodes.return_value = {node: list(ops.keys())}
@@ -133,10 +132,10 @@ class TestInfligthBartches:
         # force to trigger the exception at `fetch_command` level, thought is not the
         # where the exception will be raised is good enough for knowing if the caller
         # is managing as is expected the exception.
-        connection = CoroutineMock()
-        connection.fetch_command = CoroutineMock(side_effect=asyncio.TimeoutError)
+        connection = AsyncMock()
+        connection.fetch_command = AsyncMock(side_effect=asyncio.TimeoutError)
         node = Mock()
-        connection_context = AsyncMagicMock()
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node.connection.return_value = connection_context
         cluster.pick_nodes.return_value = {node: list(ops.keys())}
@@ -159,10 +158,10 @@ class TestInfligthBartches:
         # force to trigger the exception at `fetch_command` level, thought is not the
         # where the exception will be raised is good enough for knowing if the caller
         # is managing as is expected the exception.
-        connection = CoroutineMock()
-        connection.fetch_command = CoroutineMock(side_effect=asyncio.TimeoutError)
+        connection = AsyncMock()
+        connection.fetch_command = AsyncMock(side_effect=asyncio.TimeoutError)
         node = Mock()
-        connection_context = AsyncMagicMock()
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node.connection.return_value = connection_context
         cluster.pick_nodes.return_value = {node: list(ops.keys())}
@@ -188,10 +187,10 @@ class TestInfligthBartches:
     async def test_signal_termination(self, event_loop, mocker, cluster, ops):
         on_finish = Mock()
 
-        connection = CoroutineMock()
-        connection.fetch_command = CoroutineMock(return_value=(list(ops.keys()), list(ops.keys()), None, None))
+        connection = AsyncMock()
+        connection.fetch_command = AsyncMock(return_value=(list(ops.keys()), list(ops.keys()), None, None))
         node = Mock()
-        connection_context = AsyncMagicMock()
+        connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node.connection.return_value = connection_context
         cluster.pick_nodes.return_value = {node: list(ops.keys())}

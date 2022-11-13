@@ -1,8 +1,7 @@
 import asyncio
-from unittest.mock import Mock, call
+from unittest.mock import AsyncMock, Mock, call
 
 import pytest
-from asynctest import CoroutineMock
 
 from emcache.base import ClusterEvents
 from emcache.client_errors import ClusterNoAvailableNodes
@@ -28,7 +27,7 @@ def node1(memcached_host_address_1):
     node1.host = memcached_host_address_1.address
     node1.port = memcached_host_address_1.port
     node1.memcached_host_address = memcached_host_address_1
-    node1.close = CoroutineMock()
+    node1.close = AsyncMock()
     return node1
 
 
@@ -38,7 +37,7 @@ def node2(memcached_host_address_2):
     node2.host = memcached_host_address_2.address
     node2.port = memcached_host_address_2.port
     node2.memcached_host_address = memcached_host_address_2
-    node2.close = CoroutineMock()
+    node2.close = AsyncMock()
     return node2
 
 
@@ -252,7 +251,12 @@ class TestCluster:
         cluster._on_node_healthy_status_change_cb(node1, True)
 
         # Check that hooks were called by just waiting for the events
-        await asyncio.wait({ev_cb_on_healthy_node.wait(), ev_cb_on_unhealthy_node.wait()})
+        await asyncio.wait(
+            {
+                asyncio.create_task(ev_cb_on_healthy_node.wait()),
+                asyncio.create_task(ev_cb_on_unhealthy_node.wait()),
+            }
+        )
 
         # Check that the instance of the cluster managment was the right one
         assert cluster_events.cluster_managment_on_healhty is cluster.cluster_managment
@@ -281,6 +285,6 @@ class TestCluster:
 
         # Check that the hook for the healthy one is called, the exception should
         # not break the flow for sending hooks.
-        await asyncio.wait({ev_cb_on_healthy_node.wait()})
+        await asyncio.wait({asyncio.create_task(ev_cb_on_healthy_node.wait())})
 
         await cluster.close()
