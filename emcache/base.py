@@ -310,7 +310,7 @@ class ClusterManagment(metaclass=ABCMeta):
     @abstractmethod
     def unhealthy_nodes(self) -> Sequence[MemcachedHostAddress]:
         """Return the nodes that are considered unhealthy."""
-    
+
     @abstractmethod
     def connection_pool_metrics(self) -> Mapping[MemcachedHostAddress, ConnectionPoolMetrics]:
         """Return the metrics for the connection pools."""
