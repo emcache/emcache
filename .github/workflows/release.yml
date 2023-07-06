@@ -103,9 +103,40 @@ jobs:
       with:
         name: ${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
+    
+  build_linux_aarch64:
+    outputs:
+      version: ${{ steps.get_version.outputs.VERSION }}
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: true
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.11"
+    - name: Generate manylinux2014_aarch64-wheel
+      run: |
+        brew install docker
+        brew install colima
+        colima start
+        docker run --platform linux/arm64 -v `pwd`:/io -e "PYTHON_VERSION=3.11" quay.io/pypa/manylinux2014_aarch64 /io/bin/build_manylinux1_wheel.sh
+        mkdir test_wheel
+        mv dist/emcache-*.whl test_wheel
+    - name: Run unit tests using the wheel
+      run: |
+        docker run --platform linux/arm64 --entrypoint bash -v `pwd`:/io python:3.11-bookworm /io/bin/test_aarch_wheel.sh
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+    - uses: actions/upload-artifact@v2
+      with:
+        name: aarch64-${{ steps.get_version.outputs.VERSION }}
+        path: test_wheel/emcache-*.whl
 
   upload:
-    needs: [build_macos, build_linux]
+    needs: [build_macos, build_linux, build_linux_aarch64]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -114,6 +145,10 @@ jobs:
         # build_macos and build_linux will uses same version,
         # so we can download it at once
         name: ${{ needs.build_linux.outputs.version }}
+        path: wheelhouse/
+    - uses: actions/download-artifact@v2
+      with:
+        name: aarch64-${{ needs.build_linux_aarch64.outputs.version }}
         path: wheelhouse/
     - name: Display content
       run: ls -R
