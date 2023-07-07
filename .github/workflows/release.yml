@@ -125,12 +125,12 @@ jobs:
         brew install docker
         brew install colima
         colima start
-        docker run --platform linux/arm64 -v `pwd`:/io -e "PYTHON_VERSION=${{ matrix.python-version }}" quay.io/pypa/manylinux2014_aarch64 /io/bin/build_manylinux1_wheel.sh
+        docker run --platform linux/arm64 -v `pwd`:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux2014_aarch64 /io/bin/build_manylinux1_wheel.sh
         mkdir test_wheel
         mv dist/emcache-*.whl test_wheel
     - name: Run unit tests using the wheel
       run: |
-        docker run --platform linux/arm64 --entrypoint bash -v `pwd`:/io python:3.11-bookworm /io/bin/test_aarch_wheel.sh
+        docker run --platform linux/arm64 --entrypoint bash -v `pwd`:/io python:${{matrix.python-version}}-bookworm /io/bin/test_aarch_wheel.sh
     - name: Get the version
       id: get_version
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
@@ -157,9 +157,9 @@ jobs:
     - name: Display content
       run: ls -R
       working-directory: wheelhouse/
-    - name: Publish distribution to PyPI
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        packages_dir: wheelhouse/
-        password: ${{ secrets.PYPI_RELEASE_UPLOAD }}
-        repository_url: https://upload.pypi.org/legacy/
+    # - name: Publish distribution to PyPI
+    #   uses: pypa/gh-action-pypi-publish@master
+    #   with:
+    #     packages_dir: wheelhouse/
+    #     password: ${{ secrets.PYPI_RELEASE_UPLOAD }}
+    #     repository_url: https://upload.pypi.org/legacy/
