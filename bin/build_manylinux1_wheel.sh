@@ -32,6 +32,7 @@ cd /io/vendor/murmur3
 make static
 cd /io
 ${PYTHON} -m pip install --upgrade pip
+${PIP} install Cython
 ${PIP} install auditwheel
 PYTHON=${PYTHON} PIP=${PIP} CYTHON=${CYTHON} make compile
 ${PYTHON} setup.py bdist_wheel
