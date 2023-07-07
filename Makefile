@@ -31,12 +31,12 @@ install: compile
 
 format:
 	isort --recursive .
-	black .
+	black --exclude=venv .
 
 lint:
 	isort --check-only --recursive .
-	black --check .
-	flake8
+	black --check --exclude=venv .
+	flake8 --exclude=venv .
 
 acceptance:
 	pytest -sv tests/acceptance
