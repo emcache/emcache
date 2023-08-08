@@ -1,12 +1,14 @@
 import asyncio
 import logging
-from typing import Dict, List, Mapping, Optional, Sequence
+import random
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from ._cython import cyemcache
 from .base import ClusterEvents, ClusterManagment
 from .client_errors import ClusterNoAvailableNodes
 from .connection_pool import ConnectionPoolMetrics
 from .node import MemcachedHostAddress, Node
+from .timeout import OpTimeout
 
 logger = logging.getLogger(__name__)
 
@@ -52,12 +54,19 @@ class Cluster:
 
     _cluster_events: Optional[ClusterEvents]
     _purge_unhealthy_nodes: bool
+    _autodiscovery: Optional[float]
+    _autodiscover_version: int
+    _autodiscovery_task: Optional[asyncio.Task]
+    _new_node_options: List[Any]
+    _original_nodes: List[Node]
     _healthy_nodes: List[Node]
     _unhelathy_nodes: List[Node]
     _rdz_nodes: List[cyemcache.RendezvousNode]
     _events_dispatcher_task: asyncio.Task
     _events: asyncio.Queue
     _closed: bool
+    _timeout: Optional[float]
+    _loop: asyncio.AbstractEventLoop
 
     def __init__(
         self,
@@ -71,6 +80,9 @@ class Cluster:
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
+        autodiscovery: Optional[float],
+        timeout: Optional[float],
+        loop: asyncio.AbstractEventLoop,
     ) -> None:
 
         if not memcached_hosts_address:
@@ -78,31 +90,42 @@ class Cluster:
 
         self._cluster_events = cluster_events
         self._purge_unhealthy_nodes = purge_unhealthy_nodes
+        self._autodiscovery = autodiscovery
+        self._autodiscover_version = 0
+        self._timeout = timeout
+        self._loop = loop
 
         # Create nodes and configure them to be used by the Rendezvous
         # hashing. By default all are placed under the healthy list, if later
         # on they report that are unhealhty and `purge_unhealthy_nodes` has been
         # configured they will be removed.
+        self._new_node_options = [
+            max_connections,
+            min_connections,
+            purge_unused_connections_after,
+            connection_timeout,
+            self._on_node_healthy_status_change_cb,
+            ssl,
+            ssl_verify,
+            ssl_extra_ca,
+        ]
         self._unhealthy_nodes = []
         self._healthy_nodes = [
-            Node(
-                memcached_host_address,
-                max_connections,
-                min_connections,
-                purge_unused_connections_after,
-                connection_timeout,
-                self._on_node_healthy_status_change_cb,
-                ssl,
-                ssl_verify,
-                ssl_extra_ca,
-            )
-            for memcached_host_address in memcached_hosts_address
+            Node(memcached_host_address, *self._new_node_options) for memcached_host_address in memcached_hosts_address
         ]
+        self._original_nodes = self._healthy_nodes
         self._build_rdz_nodes()
         self._cluster_managment = _ClusterManagment(self)
         self._events = asyncio.Queue(maxsize=MAX_EVENTS)
         self._events_dispatcher_task = asyncio.get_running_loop().create_task(self._events_dispatcher())
         self._closed = False
+
+        if self._autodiscovery:
+            asyncio.ensure_future(self.autodiscover())
+            self._autodiscovery_task = self._loop.create_task(self._autodiscovery_monitor())
+        else:
+            self._autodiscovery_task = None
+
         logger.debug(f"Cluster configured with {len(self.nodes)} nodes")
 
     async def _events_dispatcher(self):
@@ -182,6 +205,14 @@ class Cluster:
             except asyncio.CancelledError:
                 pass
 
+        if self._autodiscovery_task and not self._autodiscovery_task.done():
+            self._autodiscovery_task.cancel()
+
+            try:
+                await self._autodiscovery_task
+            except asyncio.CancelledError:
+                pass
+
         for node in self.nodes:
             await node.close()
 
@@ -220,6 +251,60 @@ class Cluster:
                 return node
 
         raise ValueError(f"{memcached_host_address} can not be found")
+
+    async def _autodiscovery_monitor(self) -> None:
+        logger.debug(f"Autodiscovery task started")
+        while True:
+            if self._autodiscovery is None:
+                break
+
+            try:
+                await asyncio.sleep(self._autodiscovery)
+                await self.autodiscover()
+            except asyncio.CancelledError:
+                # if a cancellation is received we stop monitoring for cluster changes
+                break
+
+            except Exception:
+                logger.exception(f"Autodiscover raised an exception, continuing processing ")
+
+        logger.debug("Autodiscovery task stopped")
+
+    async def _get_autodiscovered_nodes(self) -> tuple[bool, int, list[tuple[str, str, int]]]:
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        node = random.choice(self._original_nodes)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                return await connection.autodiscovery()
+
+    async def autodiscover(self) -> None:
+        autodiscovery, version, nodes = await self._get_autodiscovered_nodes()
+        if not autodiscovery:
+            logger.warning("autodiscovery request failed")
+            return
+
+        if version == self._autodiscover_version:
+            return
+
+        if not nodes:
+            logger.error("Node list received from autodiscovery is empty!")
+            return
+
+        new_nodes: list[Node] = []
+        for host, ip, port in nodes:
+            try:
+                new_nodes.append(self.node(MemcachedHostAddress(host, port)))
+            except ValueError:
+                new_nodes.append(Node(MemcachedHostAddress(host, port), *self._new_node_options))
+
+        self._healthy_nodes = new_nodes
+        self._unhealthy_nodes = []
+        self._build_rdz_nodes()
+
+        logger.info("Updated nodes to version %d via autodiscovery", version)
+        self._autodiscover_version = version
 
     @property
     def cluster_managment(self) -> ClusterManagment:

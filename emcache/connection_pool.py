@@ -213,7 +213,7 @@ class ConnectionPool:
 
     async def _create_new_connection(self, backoff=None, retries=None) -> None:
         """Creates a new connection in background, and once its ready
-        adds it to the poool.
+        adds it to the pool.
 
         If connection fails a backoff strategy is started till which will
         a totally failure node the task will remain trying forever every

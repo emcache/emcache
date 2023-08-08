@@ -57,6 +57,7 @@ class _Client(Client):
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
+        autodiscovery: Optional[float],
     ) -> None:
 
         if not node_addresses:
@@ -74,13 +75,16 @@ class _Client(Client):
             ssl,
             ssl_verify,
             ssl_extra_ca,
+            autodiscovery,
+            timeout,
+            self._loop,
         )
         self._timeout = timeout
         self._closed = False
 
         if autobatching:
-            # We generate 4 diffrent autobatching instances, that would
-            # be elegible depending on the parameters provided by the `get`
+            # We generate 4 different autobatching instances, that would
+            # be eligible depending on the parameters provided by the `get`
             # and the `gets`
             self._autobatching_noflags_nocas = AutoBatching(
                 self,
@@ -527,7 +531,7 @@ class _Client(Client):
         return int(result)
 
     async def touch(self, key: bytes, exptime: int, *, noreply: bool = False) -> None:
-        """Set and override, if its the case, the exptime for an existing key.
+        """Set and override, if it's the case, the exptime for an existing key.
 
         If the command fails because the key was not found a
         `NotFoundCommandError` exception is raised. Other errors
@@ -626,6 +630,7 @@ async def create_client(
     ssl: bool = DEFAULT_SSL,
     ssl_verify: bool = DEFAULT_SSL_VERIFY,
     ssl_extra_ca: Optional[str] = None,
+    autodiscovery: Optional[float] = None,
 ) -> Client:
     """Factory for creating a new `emcache.Client` instance.
 
@@ -691,4 +696,5 @@ async def create_client(
         ssl,
         ssl_verify,
         ssl_extra_ca,
+        autodiscovery,
     )

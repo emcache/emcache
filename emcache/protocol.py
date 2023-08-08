@@ -1,7 +1,8 @@
 import asyncio
 import logging
+import re
 import socket
-from typing import List, Optional, Tuple, Union
+from typing import Final, List, Optional, Tuple, Union
 
 from ._cython import cyemcache
 
@@ -22,6 +23,61 @@ NOT_STORED = b"NOT_STORED"
 NOT_FOUND = b"NOT_FOUND"
 
 
+class AutoDiscoveryParser:
+    COMMAND_RE: Final = re.compile(rb"^CONFIG cluster 0 (\d+)\r\n")
+
+    def __init__(self, future: asyncio.Future) -> None:
+        self._future = future
+        self._buffer = bytearray()
+        self._autodiscovery: bool = False
+        self._version: int = 0
+        self._nodes: list[tuple[str, str, int]] = []
+
+    def feed_data(self, buffer: bytes) -> None:
+        self._buffer.extend(buffer)
+
+        if self._buffer.endswith(b"ERROR\r\n"):
+            self._autodiscovery = False
+            self._future.set_result(None)
+            return
+
+        if self._buffer.endswith(b"END\r\n"):
+            self._autodiscovery = True
+            self.parse()
+            self._future.set_result(None)
+
+    def parse(self) -> None:
+        try:
+            if not (match := self.COMMAND_RE.search(self._buffer)):
+                logger.error("Unable to find pattern %s in %r", self.COMMAND_RE.pattern, self._buffer)
+                self._autodiscovery = False
+                return
+
+            output = self._buffer[match.end(0) : match.end(0) + int(match.group(1))].strip().split(b"\n")
+
+            self._version = int(output[0])
+
+            self._nodes = []
+            for item in output[1].decode("utf-8").split():
+                elements = item.split("|")
+                self._nodes.append((elements[0], elements[1], int(elements[2])))
+        except Exception:
+            logger.exception("Unable to parse: %r", self._buffer)
+            self._autodiscovery = False
+
+    def autodiscovery(self) -> bool:
+        return self._autodiscovery
+
+    def version(self) -> int:
+        return self._version
+
+    def nodes(self) -> list[tuple[str, str, int]]:
+        return self._nodes
+
+    def value(self):
+        return self._buffer
+
+
 class MemcacheAsciiProtocol(asyncio.Protocol):
     """Memcache ascii protocol communication.
 
@@ -33,7 +89,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
     usage of different connections.
     """
 
-    _parser: Optional[Union[cyemcache.AsciiOneLineParser, cyemcache.AsciiMultiLineParser]]
+    _parser: Optional[Union[cyemcache.AsciiOneLineParser, cyemcache.AsciiMultiLineParser, AutoDiscoveryParser]]
     _transport: Optional[asyncio.Transport]
     _loop: asyncio.AbstractEventLoop
     _closed: bool
@@ -47,7 +103,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         # and will depend on the nature of the command
         self._parser = None
 
-    def connection_made(self, transport) -> None:
+    def connection_made(self, transport: asyncio.Transport) -> None:
         self._transport = transport
         sock = transport.get_extra_info("socket")
         sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
@@ -59,14 +115,14 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
         self.close()
 
-    def close(self):
+    def close(self) -> None:
         if self._closed:
             return
 
         self._closed = True
         self._transport.close()
 
-    def eof_received(self):
+    def eof_received(self) -> None:
         self.close()
 
     def closed(self) -> bool:
@@ -232,6 +288,18 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             await future
             result = parser.value()
             return result
+        finally:
+            self._parser = None
+
+    async def autodiscovery(self) -> tuple[bool, int, list[tuple[str, str, int]]]:
+        try:
+            command = b"config get cluster\r\n"
+            future = self._loop.create_future()
+            parser = AutoDiscoveryParser(future)
+            self._parser = parser
+            self._transport.write(command)
+            await future
+            return parser.autodiscovery(), parser.version(), parser.nodes()
         finally:
             self._parser = None
 
