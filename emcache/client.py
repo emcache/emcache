@@ -10,6 +10,8 @@ from .cluster import Cluster, MemcachedHostAddress
 from .default_values import (
     DEFAULT_AUTOBATCHING_ENABLED,
     DEFAULT_AUTOBATCHING_MAX_KEYS,
+    DEFAULT_AUTODISCOVERY_POLL_INTERVAL,
+    DEFAULT_AUTODISCOVERY_TIMEOUT,
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
     DEFAULT_MIN_CONNECTIONS,
@@ -57,7 +59,9 @@ class _Client(Client):
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
-        autodiscovery: Optional[float],
+        autodiscovery: bool,
+        autodiscovery_poll_interval: float,
+        autodiscovery_timeout: float,
     ) -> None:
 
         if not node_addresses:
@@ -76,7 +80,8 @@ class _Client(Client):
             ssl_verify,
             ssl_extra_ca,
             autodiscovery,
-            timeout,
+            autodiscovery_poll_interval,
+            autodiscovery_timeout,
             self._loop,
         )
         self._timeout = timeout
@@ -630,7 +635,9 @@ async def create_client(
     ssl: bool = DEFAULT_SSL,
     ssl_verify: bool = DEFAULT_SSL_VERIFY,
     ssl_extra_ca: Optional[str] = None,
-    autodiscovery: Optional[float] = None,
+    autodiscovery: bool = False,
+    autodiscovery_poll_interval: float = DEFAULT_AUTODISCOVERY_POLL_INTERVAL,
+    autodiscovery_timeout: float = DEFAULT_AUTODISCOVERY_TIMEOUT,
 ) -> Client:
     """Factory for creating a new `emcache.Client` instance.
 
@@ -672,6 +679,14 @@ async def create_client(
 
     `ssl_extra_ca` By default None. You can provide an extra absolute file path where a new CA file
     can be loaded.
+
+    `autodiscovery` if enabled the client will automatically call `config get cluster` and update node list.
+    By default, False.
+
+    `autodiscovery_poll_interval` when autodiscovery is enabled how frequently to check for node updates.
+    By default, 60s.
+
+    `autodiscovery_timeout` the timeout for the `config get cluster` command. By default, 5s.
     """
     # check SSL availability earlier, protocol which is the one that will use
     # it when connections are created in background won't need to deal with this
@@ -682,7 +697,7 @@ async def create_client(
         except ImportError:
             raise ValueError("SSL can not be enabled, no Python SSL module found")
 
-    return _Client(
+    client = _Client(
         node_addresses,
         timeout,
         max_connections,
@@ -697,4 +712,13 @@ async def create_client(
         ssl_verify,
         ssl_extra_ca,
         autodiscovery,
+        autodiscovery_poll_interval,
+        autodiscovery_timeout,
     )
+
+    if autodiscovery:
+        while not await client._cluster.autodiscover():
+            logger.error("autodiscovery: failed to obtain cluster configuration, retrying ...")
+            await asyncio.sleep(1)
+
+    return client

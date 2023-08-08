@@ -23,7 +23,7 @@ NOT_STORED = b"NOT_STORED"
 NOT_FOUND = b"NOT_FOUND"
 
 
-class AutoDiscoveryParser:
+class AutoDiscoveryCommandParser:
     COMMAND_RE: Final = re.compile(rb"^CONFIG cluster 0 (\d+)\r\n")
 
     def __init__(self, future: asyncio.Future) -> None:
@@ -89,7 +89,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
     usage of different connections.
     """
 
-    _parser: Optional[Union[cyemcache.AsciiOneLineParser, cyemcache.AsciiMultiLineParser, AutoDiscoveryParser]]
+    _parser: Optional[Union[cyemcache.AsciiOneLineParser, cyemcache.AsciiMultiLineParser, AutoDiscoveryCommandParser]]
     _transport: Optional[asyncio.Transport]
     _loop: asyncio.AbstractEventLoop
     _closed: bool
@@ -295,7 +295,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         try:
             command = b"config get cluster\r\n"
             future = self._loop.create_future()
-            parser = AutoDiscoveryParser(future)
+            parser = AutoDiscoveryCommandParser(future)
             self._parser = parser
             self._transport.write(command)
             await future

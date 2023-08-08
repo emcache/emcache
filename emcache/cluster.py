@@ -54,8 +54,10 @@ class Cluster:
 
     _cluster_events: Optional[ClusterEvents]
     _purge_unhealthy_nodes: bool
-    _autodiscovery: Optional[float]
-    _autodiscover_version: int
+    _autodiscovery: bool
+    _autodiscovery_poll_interval: float
+    _autodiscovery_timeout: float
+    _autodiscover_config_version: int
     _autodiscovery_task: Optional[asyncio.Task]
     _new_node_options: List[Any]
     _original_nodes: List[Node]
@@ -65,7 +67,6 @@ class Cluster:
     _events_dispatcher_task: asyncio.Task
     _events: asyncio.Queue
     _closed: bool
-    _timeout: Optional[float]
     _loop: asyncio.AbstractEventLoop
 
     def __init__(
@@ -80,8 +81,9 @@ class Cluster:
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
-        autodiscovery: Optional[float],
-        timeout: Optional[float],
+        autodiscovery: bool,
+        autodiscovery_poll_interval: float,
+        autodiscovery_timeout: float,
         loop: asyncio.AbstractEventLoop,
     ) -> None:
 
@@ -91,8 +93,9 @@ class Cluster:
         self._cluster_events = cluster_events
         self._purge_unhealthy_nodes = purge_unhealthy_nodes
         self._autodiscovery = autodiscovery
-        self._autodiscover_version = 0
-        self._timeout = timeout
+        self._autodiscovery_poll_interval = autodiscovery_poll_interval
+        self._autodiscovery_timeout = autodiscovery_timeout
+        self._autodiscover_config_version = -1
         self._loop = loop
 
         # Create nodes and configure them to be used by the Rendezvous
@@ -121,7 +124,6 @@ class Cluster:
         self._closed = False
 
         if self._autodiscovery:
-            asyncio.ensure_future(self.autodiscover())
             self._autodiscovery_task = self._loop.create_task(self._autodiscovery_monitor())
         else:
             self._autodiscovery_task = None
@@ -253,20 +255,20 @@ class Cluster:
         raise ValueError(f"{memcached_host_address} can not be found")
 
     async def _autodiscovery_monitor(self) -> None:
-        logger.debug(f"Autodiscovery task started")
+        logger.debug("Autodiscovery task started")
         while True:
-            if self._autodiscovery is None:
+            if not self._autodiscovery:
                 break
 
             try:
-                await asyncio.sleep(self._autodiscovery)
+                await asyncio.sleep(self._autodiscovery_poll_interval)
                 await self.autodiscover()
             except asyncio.CancelledError:
                 # if a cancellation is received we stop monitoring for cluster changes
                 break
 
             except Exception:
-                logger.exception(f"Autodiscover raised an exception, continuing processing ")
+                logger.exception("Autodiscover raised an exception, continuing processing")
 
         logger.debug("Autodiscovery task stopped")
 
@@ -275,36 +277,56 @@ class Cluster:
             raise RuntimeError("Emcache client is closed")
 
         node = random.choice(self._original_nodes)
-        async with OpTimeout(self._timeout, self._loop):
+        async with OpTimeout(self._autodiscovery_timeout, self._loop):
             async with node.connection() as connection:
                 return await connection.autodiscovery()
 
-    async def autodiscover(self) -> None:
-        autodiscovery, version, nodes = await self._get_autodiscovered_nodes()
-        if not autodiscovery:
-            logger.warning("autodiscovery request failed")
-            return
+    async def autodiscover(self) -> bool:
+        try:
+            autodiscovery, version, nodes = await self._get_autodiscovered_nodes()
+        except asyncio.TimeoutError as e:
+            logger.error("Got timeout when checking cluster configuration: %r", e)
+            return False
 
-        if version == self._autodiscover_version:
-            return
+        if not autodiscovery:
+            logger.warning("autodiscovery request failed, does the server support 'config get cluster' command?")
+            return False
+
+        if version == self._autodiscover_config_version:
+            return False
 
         if not nodes:
             logger.error("Node list received from autodiscovery is empty!")
-            return
+            return False
 
+        # Updating node list with preservation of their status
+        new_nodes_set = {MemcachedHostAddress(host, port) for host, ip, port in nodes}
+        old_nodes_set = {node.memcached_host_address for node in self.nodes}
+
+        # Add brand-new nodes to the list as healthy
+        for node in new_nodes_set - old_nodes_set:
+            self._healthy_nodes.append(Node(node, *self._new_node_options))
+
+        # Remove unhealthy nodes that are no longer being used
         new_nodes: list[Node] = []
-        for host, ip, port in nodes:
-            try:
-                new_nodes.append(self.node(MemcachedHostAddress(host, port)))
-            except ValueError:
-                new_nodes.append(Node(MemcachedHostAddress(host, port), *self._new_node_options))
+        for node in self._unhealthy_nodes:
+            if node.memcached_host_address in new_nodes_set:
+                new_nodes.append(node)
+        self._unhealthy_nodes = new_nodes
 
+        # Remove healthy nodes that are no longer being used
+        new_nodes: list[Node] = []
+        for node in self._healthy_nodes:
+            if node.memcached_host_address in new_nodes_set:
+                new_nodes.append(node)
         self._healthy_nodes = new_nodes
-        self._unhealthy_nodes = []
+
         self._build_rdz_nodes()
 
         logger.info("Updated nodes to version %d via autodiscovery", version)
-        self._autodiscover_version = version
+        self._autodiscover_config_version = version
+
+        return True
 
     @property
     def cluster_managment(self) -> ClusterManagment:
