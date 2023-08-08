@@ -41,11 +41,13 @@ class TestClient:
     @pytest.fixture
     async def client(self, event_loop, mocker, cluster, memcached_host_address):
         mocker.patch("emcache.client.Cluster", return_value=cluster)
-        return _Client([memcached_host_address], None, 1, 1, None, None, None, False, False, 32, False, False, None)
+        return _Client(
+            [memcached_host_address], None, 1, 1, None, None, None, False, False, 32, False, False, None, None
+        )
 
     async def test_invalid_host_addresses(self):
         with pytest.raises(ValueError):
-            _Client([], None, 1, 1, None, None, None, False, False, 32, False, False, None)
+            _Client([], None, 1, 1, None, None, None, False, False, 32, False, False, None, None)
 
     async def test_autobatching_initialization(self, event_loop, mocker, memcached_host_address):
         node_addresses = [memcached_host_address]
@@ -61,6 +63,7 @@ class TestClient:
         ssl = False
         ssl_verify = False
         ssl_extra_ca = None
+        autodiscovery = None
         cluster = Mock()
         cluster_class = mocker.patch("emcache.client.Cluster")
         cluster_class.return_value = cluster
@@ -79,6 +82,7 @@ class TestClient:
             ssl,
             ssl_verify,
             ssl_extra_ca,
+            autodiscovery,
         )
         autobatching_class.assert_has_calls(
             [
@@ -103,6 +107,7 @@ class TestClient:
         ssl = False
         ssl_verify = False
         ssl_extra_ca = None
+        autodiscovery = None
         cluster_class = mocker.patch("emcache.client.Cluster")
         _Client(
             node_addresses,
@@ -118,6 +123,7 @@ class TestClient:
             ssl,
             ssl_verify,
             ssl_extra_ca,
+            autodiscovery,
         )
         cluster_class.assert_called_with(
             node_addresses,
@@ -130,6 +136,9 @@ class TestClient:
             ssl,
             ssl_verify,
             ssl_extra_ca,
+            autodiscovery,
+            timeout,
+            event_loop,
         )
 
     async def test_close(self, client, cluster):
@@ -147,7 +156,7 @@ class TestClient:
 
         timeout = 2.0
         client = _Client(
-            [memcached_host_address], timeout, 1, 1, None, None, None, False, False, 32, False, False, None
+            [memcached_host_address], timeout, 1, 1, None, None, None, False, False, 32, False, False, None, None
         )
         connection = AsyncMock()
         connection.storage_command = AsyncMock(return_value=b"STORED")
@@ -495,7 +504,9 @@ class TestClient:
         get_noflags, get_flags, gets_noflags, gets_flags = autobatching
         autobatch_class.side_effect = [get_noflags, get_flags, gets_noflags, gets_flags]
         mocker.patch("emcache.client.Cluster", return_value=cluster)
-        return _Client([memcached_host_address], None, 1, 1, None, None, None, False, True, 32, False, False, None)
+        return _Client(
+            [memcached_host_address], None, 1, 1, None, None, None, False, True, 32, False, False, None, None
+        )
 
     async def test_get_command_use_autobatching_if_enabled(self, client_autobatching, autobatching):
         await client_autobatching.get(b"foo")
@@ -555,5 +566,6 @@ async def test_create_client_default_values(event_loop, mocker):
         DEFAULT_AUTOBATCHING_MAX_KEYS,
         DEFAULT_SSL,
         DEFAULT_SSL_VERIFY,
+        None,
         None,
     )
