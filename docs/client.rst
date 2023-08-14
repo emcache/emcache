@@ -40,7 +40,8 @@ When no other parameters are provided, the following keyword arguments are confi
 - **ssl** By default False. If enabled will make the connection using SSL/TLS protocol.
 - **ssl_verify** By default True. If enabled, will verify if the server certificate is trustable.
 - **ssl_extra_ca** By default `None`. If provided will used as an extr CA file used during the certificate verify. Use together `ssl_verify` when needed.
-- **autodiscovery** By default, `False`. If enabled the client will automatically call `config get cluster` and update node list.
+- **autodiscovery** By default, `False`. If enabled the client will periodically call `config get cluster` and update node list according to its output. Note, this is not a standard feature of memcached, but is necessary to
+  efficiently use AWS' ElasticCache and GCP's Memorystore (and any other providers that also adopted it) when those clusters are bigger than a single node.
 - **autodiscovery_poll_interval** By default, 60.0 (seconds). When autodiscovery is enabled how frequently to check for node updates.
 - **autodiscovery_timeout** By default, 5.0 (seconds). The timeout for the `config get cluster` command.
 

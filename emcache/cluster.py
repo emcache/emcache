@@ -1,7 +1,8 @@
 import asyncio
 import logging
 import random
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from copy import copy
+from typing import Any, Dict, Final, List, Mapping, Optional, Sequence
 
 from ._cython import cyemcache
 from .base import ClusterEvents, ClusterManagment
@@ -13,6 +14,7 @@ from .timeout import OpTimeout
 logger = logging.getLogger(__name__)
 
 MAX_EVENTS = 1000
+AUTODISCOVERY_POLL_INTERVAL_FAILURE: Final = 5.0
 
 
 class _ClusterManagment(ClusterManagment):
@@ -96,6 +98,7 @@ class Cluster:
         self._autodiscovery_poll_interval = autodiscovery_poll_interval
         self._autodiscovery_timeout = autodiscovery_timeout
         self._autodiscover_config_version = -1
+        self._first_autodiscovery_done = loop.create_future()
         self._loop = loop
 
         # Create nodes and configure them to be used by the Rendezvous
@@ -116,7 +119,7 @@ class Cluster:
         self._healthy_nodes = [
             Node(memcached_host_address, *self._new_node_options) for memcached_host_address in memcached_hosts_address
         ]
-        self._original_nodes = self._healthy_nodes
+        self._original_nodes = copy(self._healthy_nodes)
         self._build_rdz_nodes()
         self._cluster_managment = _ClusterManagment(self)
         self._events = asyncio.Queue(maxsize=MAX_EVENTS)
@@ -257,12 +260,11 @@ class Cluster:
     async def _autodiscovery_monitor(self) -> None:
         logger.debug("Autodiscovery task started")
         while True:
-            if not self._autodiscovery:
-                break
-
             try:
-                await asyncio.sleep(self._autodiscovery_poll_interval)
-                await self.autodiscover()
+                if await self.autodiscover():
+                    await asyncio.sleep(self._autodiscovery_poll_interval)
+                else:
+                    await asyncio.sleep(AUTODISCOVERY_POLL_INTERVAL_FAILURE)
             except asyncio.CancelledError:
                 # if a cancellation is received we stop monitoring for cluster changes
                 break
@@ -325,6 +327,9 @@ class Cluster:
 
         logger.info("Updated nodes to version %d via autodiscovery", version)
         self._autodiscover_config_version = version
+
+        if not self._first_autodiscovery_done.done():
+            self._first_autodiscovery_done.set_result(True)
 
         return True
 

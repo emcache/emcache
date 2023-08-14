@@ -19,6 +19,7 @@ from .default_values import (
     DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
     DEFAULT_SSL,
     DEFAULT_SSL_VERIFY,
+    DEFAULT_STARTUP_WAIT_AUTODISCOVERY,
     DEFAULT_TIMEOUT,
 )
 from .node import Node
@@ -717,8 +718,6 @@ async def create_client(
     )
 
     if autodiscovery:
-        while not await client._cluster.autodiscover():
-            logger.error("autodiscovery: failed to obtain cluster configuration, retrying ...")
-            await asyncio.sleep(1)
+        await asyncio.wait_for(client._cluster._first_autodiscovery_done, DEFAULT_STARTUP_WAIT_AUTODISCOVERY)
 
     return client

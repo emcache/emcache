@@ -56,6 +56,7 @@ setup(
     author_email="pfreixes@gmail.com",
     platforms=["*nix"],
     packages=["emcache"],
+    package_data={"emcache": ["py.typed"]},
     ext_modules=extensions,
     extras_require={"dev": dev_requires},
     classifiers=[
