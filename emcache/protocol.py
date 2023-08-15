@@ -18,9 +18,11 @@ EXISTS = b"EXISTS"
 STORED = b"STORED"
 TOUCHED = b"TOUCHED"
 OK = b"OK"
+ERROR = b"ERROR"
 DELETED = b"DELETED"
 NOT_STORED = b"NOT_STORED"
 NOT_FOUND = b"NOT_FOUND"
+END = b"END"
 
 
 class AutoDiscoveryCommandParser:
@@ -30,21 +32,21 @@ class AutoDiscoveryCommandParser:
         self._future = future
         self._buffer = bytearray()
         self._autodiscovery: bool = False
-        self._version: int = 0
+        self._version: int = -1
         self._nodes: list[tuple[str, str, int]] = []
 
     def feed_data(self, buffer: bytes) -> None:
         self._buffer.extend(buffer)
 
-        if self._buffer.endswith(b"ERROR\r\n"):
-            self._autodiscovery = False
-            self._future.set_result(None)
-            return
-
-        if self._buffer.endswith(b"END\r\n"):
+        if self._buffer.endswith(b"%s\r\n" % END):
             self._autodiscovery = True
             self.parse()
             self._future.set_result(None)
+            return
+
+        assert self._buffer.endswith(b"%s\r\n" % ERROR)
+        self._autodiscovery = False
+        self._future.set_result(None)
 
     def parse(self) -> None:
         try:

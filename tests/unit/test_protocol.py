@@ -192,6 +192,51 @@ class TestMemcacheAsciiProtocol:
         await protocol.delete_command(b"foo", True)
         protocol._transport.write.assert_called_with(b"delete foo noreply\r\n")
 
+    async def test_autodiscovery(self, event_loop, protocol):
+        async def coro():
+            return await protocol.autodiscovery()
+
+        autodiscovery = True
+        version = 12
+        nodes = [
+            ("myCluster.pc4ldq.0001.use1.cache.amazonaws.com", "10.82.235.120", 11211),
+            ("myCluster.pc4ldq.0002.use1.cache.amazonaws.com", "10.80.249.27", 11211),
+        ]
+
+        response_config = b"%d\n" % version
+        response_config += (
+            " ".join("%s|%s|%d" % (hostname, ip, port) for hostname, ip, port in nodes)
+        ).encode() + b"\n"
+        response = b"CONFIG cluster 0 %d\r\n%s\r\nEND\r\n" % (len(response_config), response_config)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(response)
+
+        result = await task
+
+        assert result == (autodiscovery, version, nodes)
+
+        protocol._transport.write.assert_called_with(b"config get cluster\r\n")
+
+    async def test_autodiscovery_failure(self, event_loop, protocol):
+        async def coro():
+            return await protocol.autodiscovery()
+
+        response = b"ERROR\r\n"
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(response)
+
+        result = await task
+
+        assert result == (False, -1, [])
+
+        protocol._transport.write.assert_called_with(b"config get cluster\r\n")
+
 
 async def test_create_protocol(event_loop, mocker):
     loop_mock = Mock()

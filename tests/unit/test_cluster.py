@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import AsyncMock, Mock, call
+from unittest.mock import AsyncMock, MagicMock, Mock, call
 
 import pytest
 
@@ -175,6 +175,93 @@ class TestCluster:
             ]
         )
 
+        await cluster.close()
+
+    async def test_node_initialization_autodiscovery(
+        self, mocker, event_loop, node1, node2, memcached_host_address_1, memcached_host_address_2
+    ):
+        mocker.patch("emcache.cluster.cyemcache")
+        node_class = mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
+        mocker.patch(
+            "emcache.cluster.Cluster._get_autodiscovered_nodes",
+            return_value=(True, 42, [(memcached_host_address_2.address, "127.0.0.1", memcached_host_address_2.port)]),
+        )
+        cluster = Cluster(
+            [memcached_host_address_1],
+            1,
+            1,
+            60,
+            5,
+            None,
+            False,
+            False,
+            False,
+            None,
+            True,
+            60,
+            5,
+            event_loop,
+        )
+
+        await asyncio.sleep(0)
+
+        node_class.assert_has_calls(
+            [
+                call(
+                    memcached_host_address_1, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None
+                ),
+                call(
+                    memcached_host_address_2, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None
+                ),
+            ]
+        )
+
+        await cluster.close()
+
+    async def test_get_autodiscovered_nodes(
+        self, mocker, event_loop, node1, node2, memcached_host_address_1, memcached_host_address_2
+    ):
+        mocker.patch("emcache.cluster.cyemcache")
+        node_class = mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
+        optimeout_class = mocker.patch("emcache.cluster.OpTimeout", MagicMock())
+
+        autodiscovery = True
+        version = 42
+        nodes = [(memcached_host_address_2.address, "127.0.0.1", memcached_host_address_2.port)]
+
+        cluster = Cluster(
+            [memcached_host_address_1],
+            1,
+            1,
+            60,
+            5,
+            None,
+            False,
+            False,
+            False,
+            None,
+            False,
+            60,
+            5,
+            event_loop,
+        )
+
+        connection = AsyncMock()
+        connection.autodiscovery = AsyncMock(return_value=(autodiscovery, version, nodes))
+        connection_context = AsyncMock()
+        connection_context.__aenter__.return_value = connection
+        node1.connection.return_value = connection_context
+
+        assert await cluster._get_autodiscovered_nodes() == (autodiscovery, version, nodes)
+        node_class.assert_has_calls(
+            [
+                call(
+                    memcached_host_address_1, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None
+                ),
+            ]
+        )
+
+        optimeout_class.assert_called()
         await cluster.close()
 
     async def test_close(self, mocker, event_loop, node1, memcached_host_address_1):
