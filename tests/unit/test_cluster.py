@@ -207,9 +207,7 @@ class TestCluster:
 
         node_class.assert_has_calls(
             [
-                call(
-                    memcached_host_address_1, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None
-                ),
+                call(memcached_host_address_1, 1, 1, None, 5, None, False, False, None),
                 call(
                     memcached_host_address_2, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None
                 ),
@@ -314,7 +312,7 @@ class TestCluster:
         )
 
         assert await cluster.autodiscover()
-        assert cluster._original_nodes == [node1]
+        assert cluster._discovery_nodes == []
         assert cluster._healthy_nodes == [node1, node2]
         assert cluster._unhealthy_nodes == []
 
@@ -345,7 +343,7 @@ class TestCluster:
             5,
             event_loop,
         )
-        cluster._original_nodes = []
+        cluster._discovery_nodes = []
 
         assert await cluster.autodiscover()
 
@@ -380,7 +378,7 @@ class TestCluster:
             5,
             event_loop,
         )
-        cluster._original_nodes = []
+        cluster._discovery_nodes = []
         cluster._unhealthy_nodes = cluster._healthy_nodes
         cluster._healthy_nodes = []
 
@@ -417,10 +415,10 @@ class TestCluster:
             5,
             event_loop,
         )
+        cluster._discovery_nodes = [node1, node2]
 
         assert await cluster.autodiscover()
 
-        assert cluster._original_nodes == [node1, node2]
         assert cluster._healthy_nodes == [node1]
         assert cluster._unhealthy_nodes == []
         node2.close.assert_not_called()
@@ -452,12 +450,13 @@ class TestCluster:
             5,
             event_loop,
         )
+        cluster._discovery_nodes = [node1, node2]
         cluster._unhealthy_nodes = cluster._healthy_nodes
         cluster._healthy_nodes = []
 
         assert await cluster.autodiscover()
 
-        assert cluster._original_nodes == [node1, node2]
+        assert cluster._discovery_nodes == [node1, node2]
         assert cluster._healthy_nodes == []
         assert cluster._unhealthy_nodes == [node1]
         node2.close.assert_not_called()

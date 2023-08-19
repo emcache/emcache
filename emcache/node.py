@@ -34,7 +34,7 @@ class Node:
         min_connections: int,
         purge_unused_connections_after: Optional[float],
         connection_timeout: Optional[float],
-        on_healthy_status_change_cb: Callable[["Node", bool], None],
+        on_healthy_status_change_cb: Optional[Callable[["Node", bool], None]],
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
@@ -79,7 +79,8 @@ class Node:
         else:
             logger.warning(f"{self} Connection pool resports an unhealthy status")
 
-        self._on_healthy_status_change_cb(self, self._healthy)
+        if self._on_healthy_status_change_cb:
+            self._on_healthy_status_change_cb(self, self._healthy)
 
     async def close(self):
         """Close any active background task and close the connection pool"""

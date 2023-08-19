@@ -58,6 +58,18 @@ Example of a client creation that would not purge unused connections
     )
 
 
+Example of a client connection utilizing autodiscovery feature provided by AWS and GCP
+
+.. code-block:: python
+
+    client = await emcache.create_client(
+        [
+            emcache.MemcachedHostAddress('mycluster.fnjyzo.cfg.use1.cache.amazonaws.com', 11211)
+        ],
+        autodiscovery=True
+    )
+
+
 Some underlying resources are started as background tasks when the client is instantiated, these resources would need to be closed gracefully using the :meth:`emcache.Client.close` method. This method will trigger all of the job necessary for releasing these resources. The following snippet shows how this method can be used:
 
 .. code-block:: python
