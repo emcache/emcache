@@ -218,7 +218,7 @@ class Cluster:
             except asyncio.CancelledError:
                 pass
 
-        for node in self.nodes:
+        for node in frozenset(self.nodes + self._original_nodes):
             await node.close()
 
     def pick_node(self, key: bytes) -> Node:
@@ -304,16 +304,21 @@ class Cluster:
         # Updating node list with preservation of their status
         new_nodes_set = {MemcachedHostAddress(host, port) for host, ip, port in nodes}
         old_nodes_set = {node.memcached_host_address for node in self.nodes}
+        protected = {node.memcached_host_address for node in self._original_nodes}
 
         # Add brand-new nodes to the list as healthy
         for node in new_nodes_set - old_nodes_set:
             self._healthy_nodes.append(Node(node, *self._new_node_options))
+
+        closable: list[Node] = []
 
         # Remove unhealthy nodes that are no longer being used
         new_nodes: list[Node] = []
         for node in self._unhealthy_nodes:
             if node.memcached_host_address in new_nodes_set:
                 new_nodes.append(node)
+            elif node.memcached_host_address not in protected:
+                closable.append(node)
         self._unhealthy_nodes = new_nodes
 
         # Remove healthy nodes that are no longer being used
@@ -321,7 +326,13 @@ class Cluster:
         for node in self._healthy_nodes:
             if node.memcached_host_address in new_nodes_set:
                 new_nodes.append(node)
+            elif node.memcached_host_address not in protected:
+                closable.append(node)
         self._healthy_nodes = new_nodes
+
+        # Close unused nodes
+        for node in closable:
+            await node.close()
 
         self._build_rdz_nodes()
 

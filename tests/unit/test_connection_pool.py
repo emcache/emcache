@@ -719,14 +719,14 @@ class TestConnectionPool:
         # Run the purge
         connection_pool._purge_unused_connections()
 
-        # Check that the expired has not been removed the minumum connections
+        # Check that the expired has not been removed the minimum connections
         for expired_connection in expired_connections:
             assert expired_connection in connection_pool._unused_connections
             assert expired_connection in connection_pool._connections_last_time_used
 
         assert connection_pool.total_connections == min_connections
 
-        # test specific atributes of the metrics
+        # test specific attributes of the metrics
         assert connection_pool.metrics().cur_connections == min_connections
         assert connection_pool.metrics().connections_purged == 0
 
