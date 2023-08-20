@@ -31,7 +31,7 @@ dev_requires = [
     "pytest-cov==2.8.1",
     "black==22.3.0",
     "isort==4.3.21",
-    "flake8==3.7.9",
+    "flake8==6.1.0",
 ]
 
 

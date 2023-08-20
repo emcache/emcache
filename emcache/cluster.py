@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import random
-from copy import copy
 from typing import Any, Dict, Final, List, Mapping, Optional, Sequence
 
 from ._cython import cyemcache
@@ -151,7 +150,7 @@ class Cluster:
         logger.debug(f"Cluster configured with {len(self.nodes)} nodes")
 
     async def _events_dispatcher(self):
-        logger.debug(f"Events dispatcher started")
+        logger.debug("Events dispatcher started")
         while True:
             try:
                 coro = await self._events.get()
@@ -162,7 +161,7 @@ class Cluster:
             try:
                 await coro
             except Exception:
-                logger.exception(f"Hook raised an exception, continuing processing events")
+                logger.exception("Hook raised an exception, continuing processing events")
 
         logger.debug("Events dispatcher stopped")
 
