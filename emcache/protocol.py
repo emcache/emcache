@@ -33,7 +33,7 @@ class AutoDiscoveryCommandParser:
         self._buffer = bytearray()
         self._autodiscovery: bool = False
         self._version: int = -1
-        self._nodes: list[tuple[str, str, int]] = []
+        self._nodes: List[Tuple[str, str, int]] = []
 
     def feed_data(self, buffer: bytes) -> None:
         self._buffer.extend(buffer)
@@ -73,7 +73,7 @@ class AutoDiscoveryCommandParser:
     def version(self) -> int:
         return self._version
 
-    def nodes(self) -> list[tuple[str, str, int]]:
+    def nodes(self) -> List[Tuple[str, str, int]]:
         return self._nodes
 
     def value(self):
@@ -293,7 +293,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         finally:
             self._parser = None
 
-    async def autodiscovery(self) -> tuple[bool, int, list[tuple[str, str, int]]]:
+    async def autodiscovery(self) -> Tuple[bool, int, List[Tuple[str, str, int]]]:
         try:
             command = b"config get cluster\r\n"
             future = self._loop.create_future()

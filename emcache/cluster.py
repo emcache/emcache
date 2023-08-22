@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import random
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from ._cython import cyemcache
 from .base import ClusterEvents, ClusterManagment
@@ -287,7 +287,7 @@ class Cluster:
 
         logger.debug("Autodiscovery task stopped")
 
-    async def _get_autodiscovered_nodes(self) -> tuple[bool, int, list[tuple[str, str, int]]]:
+    async def _get_autodiscovered_nodes(self) -> Tuple[bool, int, List[Tuple[str, str, int]]]:
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
@@ -322,10 +322,10 @@ class Cluster:
         for node in new_nodes_set - old_nodes_set:
             self._healthy_nodes.append(Node(node, *self._new_node_options))
 
-        closable: list[Node] = []
+        closable: List[Node] = []
 
         # Remove unhealthy nodes that are no longer being used
-        new_nodes: list[Node] = []
+        new_nodes: List[Node] = []
         for node in self._unhealthy_nodes:
             if node.memcached_host_address in new_nodes_set:
                 new_nodes.append(node)
@@ -334,7 +334,7 @@ class Cluster:
         self._unhealthy_nodes = new_nodes
 
         # Remove healthy nodes that are no longer being used
-        new_nodes: list[Node] = []
+        new_nodes: List[Node] = []
         for node in self._healthy_nodes:
             if node.memcached_host_address in new_nodes_set:
                 new_nodes.append(node)
