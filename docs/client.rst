@@ -58,18 +58,6 @@ Example of a client creation that would not purge unused connections
     )
 
 
-Example of a client connection utilizing autodiscovery feature provided by AWS and GCP
-
-.. code-block:: python
-
-    client = await emcache.create_client(
-        [
-            emcache.MemcachedHostAddress('mycluster.fnjyzo.cfg.use1.cache.amazonaws.com', 11211)
-        ],
-        autodiscovery=True
-    )
-
-
 Some underlying resources are started as background tasks when the client is instantiated, these resources would need to be closed gracefully using the :meth:`emcache.Client.close` method. This method will trigger all of the job necessary for releasing these resources. The following snippet shows how this method can be used:
 
 .. code-block:: python
@@ -79,6 +67,27 @@ Some underlying resources are started as background tasks when the client is ins
             emcache.MemcachedHostAddress('localhost', 11211),
             emcache.MemcachedHostAddress('localhost', 11212)
         ]
+    )
+
+    await client.close()
+
+Autodiscovery
+^^^^^^^^^^^^^
+
+Emcache supports autodiscovery mechanism implemented by AWS and GCP (https://docs.aws.amazon.com/AmazonElastiCache/latest/mem-ug/AutoDiscovery.html)
+
+Example of enabling autodiscovery (`mycluster.fnjyzo.cfg.use1.cache.amazonaws.com:11211` will be used to query other nodes
+every 120s and with timeout of 10s).
+
+.. code-block:: python
+
+    client = await emcache.create_client(
+        [
+            emcache.MemcachedHostAddress('mycluster.fnjyzo.cfg.use1.cache.amazonaws.com', 11211)
+        ],
+        autodiscovery=True,
+        autodiscovery_poll_interval=120.0,
+        autodiscovery_timeout=10.0
     )
 
     await client.close()

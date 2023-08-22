@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import random
-from typing import Any, Dict, Final, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from ._cython import cyemcache
 from .base import ClusterEvents, ClusterManagment
@@ -13,7 +13,6 @@ from .timeout import OpTimeout
 logger = logging.getLogger(__name__)
 
 MAX_EVENTS = 1000
-AUTODISCOVERY_POLL_INTERVAL_FAILURE: Final = 5.0
 
 
 class _ClusterManagment(ClusterManagment):
@@ -277,16 +276,14 @@ class Cluster:
         logger.debug("Autodiscovery task started")
         while True:
             try:
-                if await self.autodiscover():
-                    await asyncio.sleep(self._autodiscovery_poll_interval)
-                else:
-                    await asyncio.sleep(AUTODISCOVERY_POLL_INTERVAL_FAILURE)
+                await self.autodiscover()
             except asyncio.CancelledError:
                 # if a cancellation is received we stop monitoring for cluster changes
                 break
-
             except Exception:
                 logger.exception("Autodiscover raised an exception, continuing processing")
+
+            await asyncio.sleep(self._autodiscovery_poll_interval)
 
         logger.debug("Autodiscovery task stopped")
 
@@ -320,7 +317,6 @@ class Cluster:
         # Updating node list with preservation of their status
         new_nodes_set = {MemcachedHostAddress(host, port) for host, ip, port in nodes}
         old_nodes_set = {node.memcached_host_address for node in self.nodes}
-        protected = {node.memcached_host_address for node in self._discovery_nodes}
 
         # Add brand-new nodes to the list as healthy
         for node in new_nodes_set - old_nodes_set:
@@ -333,7 +329,7 @@ class Cluster:
         for node in self._unhealthy_nodes:
             if node.memcached_host_address in new_nodes_set:
                 new_nodes.append(node)
-            elif node.memcached_host_address not in protected:
+            else:
                 closable.append(node)
         self._unhealthy_nodes = new_nodes
 
@@ -342,13 +338,9 @@ class Cluster:
         for node in self._healthy_nodes:
             if node.memcached_host_address in new_nodes_set:
                 new_nodes.append(node)
-            elif node.memcached_host_address not in protected:
+            else:
                 closable.append(node)
         self._healthy_nodes = new_nodes
-
-        # Close unused nodes
-        for node in closable:
-            await node.close()
 
         self._build_rdz_nodes()
 
@@ -357,6 +349,10 @@ class Cluster:
 
         if not self._first_autodiscovery_done.done():
             self._first_autodiscovery_done.set_result(True)
+
+        # Close unused nodes
+        for node in closable:
+            await node.close()
 
         return True
 

@@ -238,7 +238,7 @@ class TestCluster:
             False,
             False,
             None,
-            False,
+            False,  # disabled to have full control while doing unit tests
             60,
             5,
             event_loop,
@@ -305,7 +305,7 @@ class TestCluster:
             False,
             False,
             None,
-            False,
+            False,  # disabled to have full control while doing unit tests
             60,
             5,
             event_loop,
@@ -338,7 +338,7 @@ class TestCluster:
             False,
             False,
             None,
-            False,
+            False,  # disabled to have full control while doing unit tests
             60,
             5,
             event_loop,
@@ -373,7 +373,7 @@ class TestCluster:
             False,
             False,
             None,
-            False,
+            False,  # disabled to have full control while doing unit tests
             60,
             5,
             event_loop,
@@ -387,79 +387,6 @@ class TestCluster:
         assert cluster._healthy_nodes == []
         assert cluster._unhealthy_nodes == [node1]
         node2.close.assert_called()
-
-        await cluster.close()
-
-    async def test_autodiscover_remove_healthy_protected_node(
-        self, mocker, event_loop, node1, node2, memcached_host_address_1, memcached_host_address_2
-    ):
-        mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
-        mocker.patch(
-            "emcache.cluster.Cluster._get_autodiscovered_nodes",
-            return_value=(True, 2, [(memcached_host_address_1.address, "127.0.0.1", memcached_host_address_1.port)]),
-        )
-
-        cluster = Cluster(
-            [memcached_host_address_1, memcached_host_address_2],
-            1,
-            1,
-            60,
-            5,
-            None,
-            False,
-            False,
-            False,
-            None,
-            False,
-            60,
-            5,
-            event_loop,
-        )
-        cluster._discovery_nodes = [node1, node2]
-
-        assert await cluster.autodiscover()
-
-        assert cluster._healthy_nodes == [node1]
-        assert cluster._unhealthy_nodes == []
-        node2.close.assert_not_called()
-
-        await cluster.close()
-
-    async def test_autodiscover_remove_unhealthy_protected_node(
-        self, mocker, event_loop, node1, node2, memcached_host_address_1, memcached_host_address_2
-    ):
-        mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
-        mocker.patch(
-            "emcache.cluster.Cluster._get_autodiscovered_nodes",
-            return_value=(True, 2, [(memcached_host_address_1.address, "127.0.0.1", memcached_host_address_1.port)]),
-        )
-
-        cluster = Cluster(
-            [memcached_host_address_1, memcached_host_address_2],
-            1,
-            1,
-            60,
-            5,
-            None,
-            False,
-            False,
-            False,
-            None,
-            False,
-            60,
-            5,
-            event_loop,
-        )
-        cluster._discovery_nodes = [node1, node2]
-        cluster._unhealthy_nodes = cluster._healthy_nodes
-        cluster._healthy_nodes = []
-
-        assert await cluster.autodiscover()
-
-        assert cluster._discovery_nodes == [node1, node2]
-        assert cluster._healthy_nodes == []
-        assert cluster._unhealthy_nodes == [node1]
-        node2.close.assert_not_called()
 
         await cluster.close()
 
