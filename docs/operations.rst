@@ -84,8 +84,8 @@ Fetch commands
 Fetch commands provide a way for retrieving data that has been saved before by using one of the storage commands that we have seen, :class:`emcache.Client` provides
 the following methods for retrieving data from a Memcached server:
 
-- :meth:`emcache.Client.get` Return value realated with a key.
-- :meth:`emcache.Client.get` Return a value and the ``cas`` token related with a key.
+- :meth:`emcache.Client.get` Return value related with a key.
+- :meth:`emcache.Client.gets` Return a value and the ``cas`` token related with a key.
 - :meth:`emcache.Client.get_many` Return a set of values related to a set of keys.
 - :meth:`emcache.Client.gets_many` Return a set of values and their ``cas`` tokens related to a set of keys.
 

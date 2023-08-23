@@ -10,6 +10,8 @@ from .cluster import Cluster, MemcachedHostAddress
 from .default_values import (
     DEFAULT_AUTOBATCHING_ENABLED,
     DEFAULT_AUTOBATCHING_MAX_KEYS,
+    DEFAULT_AUTODISCOVERY_POLL_INTERVAL,
+    DEFAULT_AUTODISCOVERY_TIMEOUT,
     DEFAULT_CONNECTION_TIMEOUT,
     DEFAULT_MAX_CONNECTIONS,
     DEFAULT_MIN_CONNECTIONS,
@@ -17,6 +19,7 @@ from .default_values import (
     DEFAULT_PURGE_UNUSED_CONNECTIONS_AFTER,
     DEFAULT_SSL,
     DEFAULT_SSL_VERIFY,
+    DEFAULT_STARTUP_WAIT_AUTODISCOVERY,
     DEFAULT_TIMEOUT,
 )
 from .node import Node
@@ -57,6 +60,9 @@ class _Client(Client):
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
+        autodiscovery: bool,
+        autodiscovery_poll_interval: float,
+        autodiscovery_timeout: float,
     ) -> None:
 
         if not node_addresses:
@@ -74,13 +80,17 @@ class _Client(Client):
             ssl,
             ssl_verify,
             ssl_extra_ca,
+            autodiscovery,
+            autodiscovery_poll_interval,
+            autodiscovery_timeout,
+            self._loop,
         )
         self._timeout = timeout
         self._closed = False
 
         if autobatching:
-            # We generate 4 diffrent autobatching instances, that would
-            # be elegible depending on the parameters provided by the `get`
+            # We generate 4 different autobatching instances, that would
+            # be eligible depending on the parameters provided by the `get`
             # and the `gets`
             self._autobatching_noflags_nocas = AutoBatching(
                 self,
@@ -527,7 +537,7 @@ class _Client(Client):
         return int(result)
 
     async def touch(self, key: bytes, exptime: int, *, noreply: bool = False) -> None:
-        """Set and override, if its the case, the exptime for an existing key.
+        """Set and override, if it's the case, the exptime for an existing key.
 
         If the command fails because the key was not found a
         `NotFoundCommandError` exception is raised. Other errors
@@ -626,6 +636,9 @@ async def create_client(
     ssl: bool = DEFAULT_SSL,
     ssl_verify: bool = DEFAULT_SSL_VERIFY,
     ssl_extra_ca: Optional[str] = None,
+    autodiscovery: bool = False,
+    autodiscovery_poll_interval: float = DEFAULT_AUTODISCOVERY_POLL_INTERVAL,
+    autodiscovery_timeout: float = DEFAULT_AUTODISCOVERY_TIMEOUT,
 ) -> Client:
     """Factory for creating a new `emcache.Client` instance.
 
@@ -667,6 +680,14 @@ async def create_client(
 
     `ssl_extra_ca` By default None. You can provide an extra absolute file path where a new CA file
     can be loaded.
+
+    `autodiscovery` if enabled the client will automatically call `config get cluster` and update node list.
+    By default, False.
+
+    `autodiscovery_poll_interval` when autodiscovery is enabled how frequently to check for node updates.
+    By default, 60s.
+
+    `autodiscovery_timeout` the timeout for the `config get cluster` command. By default, 5s.
     """
     # check SSL availability earlier, protocol which is the one that will use
     # it when connections are created in background won't need to deal with this
@@ -677,7 +698,7 @@ async def create_client(
         except ImportError:
             raise ValueError("SSL can not be enabled, no Python SSL module found")
 
-    return _Client(
+    client = _Client(
         node_addresses,
         timeout,
         max_connections,
@@ -691,4 +712,12 @@ async def create_client(
         ssl,
         ssl_verify,
         ssl_extra_ca,
+        autodiscovery,
+        autodiscovery_poll_interval,
+        autodiscovery_timeout,
     )
+
+    if autodiscovery:
+        await asyncio.wait_for(client._cluster._first_autodiscovery_done, DEFAULT_STARTUP_WAIT_AUTODISCOVERY)
+
+    return client

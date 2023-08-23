@@ -1,12 +1,14 @@
 import asyncio
 import logging
-from typing import Dict, List, Mapping, Optional, Sequence
+import random
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from ._cython import cyemcache
 from .base import ClusterEvents, ClusterManagment
 from .client_errors import ClusterNoAvailableNodes
 from .connection_pool import ConnectionPoolMetrics
 from .node import MemcachedHostAddress, Node
+from .timeout import OpTimeout
 
 logger = logging.getLogger(__name__)
 
@@ -52,12 +54,20 @@ class Cluster:
 
     _cluster_events: Optional[ClusterEvents]
     _purge_unhealthy_nodes: bool
+    _autodiscovery: bool
+    _autodiscovery_poll_interval: float
+    _autodiscovery_timeout: float
+    _autodiscover_config_version: int
+    _autodiscovery_task: Optional[asyncio.Task]
+    _new_node_options: List[Any]
+    _discovery_nodes: List[Node]
     _healthy_nodes: List[Node]
     _unhelathy_nodes: List[Node]
     _rdz_nodes: List[cyemcache.RendezvousNode]
     _events_dispatcher_task: asyncio.Task
     _events: asyncio.Queue
     _closed: bool
+    _loop: asyncio.AbstractEventLoop
 
     def __init__(
         self,
@@ -71,6 +81,10 @@ class Cluster:
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
+        autodiscovery: bool,
+        autodiscovery_poll_interval: float,
+        autodiscovery_timeout: float,
+        loop: asyncio.AbstractEventLoop,
     ) -> None:
 
         if not memcached_hosts_address:
@@ -78,35 +92,64 @@ class Cluster:
 
         self._cluster_events = cluster_events
         self._purge_unhealthy_nodes = purge_unhealthy_nodes
+        self._autodiscovery = autodiscovery
+        self._autodiscovery_poll_interval = autodiscovery_poll_interval
+        self._autodiscovery_timeout = autodiscovery_timeout
+        self._autodiscover_config_version = -1
+        self._first_autodiscovery_done = loop.create_future()
+        self._loop = loop
 
         # Create nodes and configure them to be used by the Rendezvous
         # hashing. By default all are placed under the healthy list, if later
         # on they report that are unhealhty and `purge_unhealthy_nodes` has been
         # configured they will be removed.
-        self._unhealthy_nodes = []
-        self._healthy_nodes = [
-            Node(
-                memcached_host_address,
-                max_connections,
-                min_connections,
-                purge_unused_connections_after,
-                connection_timeout,
-                self._on_node_healthy_status_change_cb,
-                ssl,
-                ssl_verify,
-                ssl_extra_ca,
-            )
-            for memcached_host_address in memcached_hosts_address
+        self._new_node_options = [
+            max_connections,
+            min_connections,
+            purge_unused_connections_after,
+            connection_timeout,
+            self._on_node_healthy_status_change_cb,
+            ssl,
+            ssl_verify,
+            ssl_extra_ca,
         ]
-        self._build_rdz_nodes()
         self._cluster_managment = _ClusterManagment(self)
         self._events = asyncio.Queue(maxsize=MAX_EVENTS)
         self._events_dispatcher_task = asyncio.get_running_loop().create_task(self._events_dispatcher())
         self._closed = False
+
+        if self._autodiscovery:
+            self._unhealthy_nodes = []
+            self._healthy_nodes = []
+            self._discovery_nodes = [
+                Node(
+                    memcached_host_address,
+                    1,
+                    1,
+                    None,
+                    connection_timeout,
+                    None,
+                    ssl,
+                    ssl_verify,
+                    ssl_extra_ca,
+                )
+                for memcached_host_address in memcached_hosts_address
+            ]
+            self._autodiscovery_task = self._loop.create_task(self._autodiscovery_monitor())
+        else:
+            self._unhealthy_nodes = []
+            self._healthy_nodes = [
+                Node(memcached_host_address, *self._new_node_options)
+                for memcached_host_address in memcached_hosts_address
+            ]
+            self._discovery_nodes = []
+            self._build_rdz_nodes()
+            self._autodiscovery_task = None
+
         logger.debug(f"Cluster configured with {len(self.nodes)} nodes")
 
     async def _events_dispatcher(self):
-        logger.debug(f"Events dispatcher started")
+        logger.debug("Events dispatcher started")
         while True:
             try:
                 coro = await self._events.get()
@@ -117,7 +160,7 @@ class Cluster:
             try:
                 await coro
             except Exception:
-                logger.exception(f"Hook raised an exception, continuing processing events")
+                logger.exception("Hook raised an exception, continuing processing events")
 
         logger.debug("Events dispatcher stopped")
 
@@ -136,8 +179,8 @@ class Cluster:
         """CalleClose any active background task and close all TCP
         connections.
 
-        It does not implement any gracefull close at operation level,
-        if there are active operations the outcome is not predictabled
+        It does not implement any graceful close at operation level,
+        if there are active operations the outcome is not predictable
         by the node for telling that the healthy status has changed."""
         if healthy:
             assert node in self._unhealthy_nodes, "Node was not tracked by the cluster as unhealthy!"
@@ -182,7 +225,15 @@ class Cluster:
             except asyncio.CancelledError:
                 pass
 
-        for node in self.nodes:
+        if self._autodiscovery_task and not self._autodiscovery_task.done():
+            self._autodiscovery_task.cancel()
+
+            try:
+                await self._autodiscovery_task
+            except asyncio.CancelledError:
+                pass
+
+        for node in frozenset(self.nodes + self._discovery_nodes):
             await node.close()
 
     def pick_node(self, key: bytes) -> Node:
@@ -220,6 +271,102 @@ class Cluster:
                 return node
 
         raise ValueError(f"{memcached_host_address} can not be found")
+
+    async def _autodiscovery_monitor(self) -> None:
+        logger.debug("Autodiscovery task started")
+        while True:
+            try:
+                await self.autodiscover()
+            except asyncio.CancelledError:
+                # if a cancellation is received we stop monitoring for cluster changes
+                break
+            except Exception:
+                logger.exception("Autodiscover raised an exception, continuing processing")
+
+            await asyncio.sleep(self._autodiscovery_poll_interval)
+
+        logger.debug("Autodiscovery task stopped")
+
+    async def _get_autodiscovered_nodes(self) -> Tuple[bool, int, List[Tuple[str, str, int]]]:
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        node = random.choice(self._discovery_nodes if self._discovery_nodes else self.nodes)
+        async with OpTimeout(self._autodiscovery_timeout, self._loop):
+            async with node.connection() as connection:
+                return await connection.autodiscovery()
+
+    async def autodiscover(self) -> bool:
+        try:
+            autodiscovery, version, nodes = await self._get_autodiscovered_nodes()
+        except asyncio.TimeoutError as e:
+            logger.error("Got timeout when checking cluster configuration: %r", e)
+
+            if not self._first_autodiscovery_done.done():
+                self._first_autodiscovery_done.set_result(False)
+
+            return False
+
+        if not autodiscovery:
+            logger.warning("autodiscovery request failed, does the server support 'config get cluster' command?")
+
+            if not self._first_autodiscovery_done.done():
+                self._first_autodiscovery_done.set_result(False)
+
+            return False
+
+        if version == self._autodiscover_config_version:
+            return False
+
+        if not nodes:
+            logger.error("Node list received from autodiscovery is empty!")
+
+            if not self._first_autodiscovery_done.done():
+                self._first_autodiscovery_done.set_result(False)
+
+            return False
+
+        # Updating node list with preservation of their status
+        new_nodes_set = {MemcachedHostAddress(host, port) for host, ip, port in nodes}
+        old_nodes_set = {node.memcached_host_address for node in self.nodes}
+
+        # Add brand-new nodes to the list as healthy
+        for node in new_nodes_set - old_nodes_set:
+            self._healthy_nodes.append(Node(node, *self._new_node_options))
+
+        closable: List[Node] = []
+
+        # Remove unhealthy nodes that are no longer being used
+        new_nodes: List[Node] = []
+        for node in self._unhealthy_nodes:
+            if node.memcached_host_address in new_nodes_set:
+                new_nodes.append(node)
+            else:
+                closable.append(node)
+        self._unhealthy_nodes = new_nodes
+
+        # Remove healthy nodes that are no longer being used
+        new_nodes: List[Node] = []
+        for node in self._healthy_nodes:
+            if node.memcached_host_address in new_nodes_set:
+                new_nodes.append(node)
+            else:
+                closable.append(node)
+        self._healthy_nodes = new_nodes
+
+        self._build_rdz_nodes()
+
+        logger.info("Updated nodes to version %d via autodiscovery", version)
+        self._autodiscover_config_version = version
+
+        if not self._first_autodiscovery_done.done():
+            self._first_autodiscovery_done.set_result(True)
+
+        # Close unused nodes
+        for node in closable:
+            await node.close()
+
+        return True
 
     @property
     def cluster_managment(self) -> ClusterManagment:

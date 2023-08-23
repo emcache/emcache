@@ -40,6 +40,10 @@ When no other parameters are provided, the following keyword arguments are confi
 - **ssl** By default False. If enabled will make the connection using SSL/TLS protocol.
 - **ssl_verify** By default True. If enabled, will verify if the server certificate is trustable.
 - **ssl_extra_ca** By default `None`. If provided will used as an extr CA file used during the certificate verify. Use together `ssl_verify` when needed.
+- **autodiscovery** By default, `False`. If enabled the client will periodically call `config get cluster` and update node list according to its output. Note, this is not a standard feature of memcached, but is necessary to
+  efficiently use AWS' ElasticCache and GCP's Memorystore (and any other providers that also adopted it) when those clusters are bigger than a single node.
+- **autodiscovery_poll_interval** By default, 60.0 (seconds). When autodiscovery is enabled how frequently to check for node updates.
+- **autodiscovery_timeout** By default, 5.0 (seconds). The timeout for the `config get cluster` command.
 
 Example of a client creation that would not purge unused connections
 
@@ -63,6 +67,27 @@ Some underlying resources are started as background tasks when the client is ins
             emcache.MemcachedHostAddress('localhost', 11211),
             emcache.MemcachedHostAddress('localhost', 11212)
         ]
+    )
+
+    await client.close()
+
+Autodiscovery
+^^^^^^^^^^^^^
+
+Emcache supports autodiscovery mechanism implemented by AWS and GCP (https://docs.aws.amazon.com/AmazonElastiCache/latest/mem-ug/AutoDiscovery.html)
+
+Example of enabling autodiscovery (`mycluster.fnjyzo.cfg.use1.cache.amazonaws.com:11211` will be used to query other nodes
+every 120s and with timeout of 10s).
+
+.. code-block:: python
+
+    client = await emcache.create_client(
+        [
+            emcache.MemcachedHostAddress('mycluster.fnjyzo.cfg.use1.cache.amazonaws.com', 11211)
+        ],
+        autodiscovery=True,
+        autodiscovery_poll_interval=120.0,
+        autodiscovery_timeout=10.0
     )
 
     await client.close()
