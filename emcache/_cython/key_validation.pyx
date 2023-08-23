@@ -6,13 +6,13 @@ def is_key_valid(bytes key) -> bool:
     From Memcache documentation, the key must not include control characters
     or whitespace, and must not take more than 250 characters.
     """
-    cdef int c
+    cdef unsigned char c
 
     if len(key) > MAX_KEY_LENGTH:
         return False
 
     for c in key:
-        if c < 33 or c > 126:
+        if c < 33 or c == 127:
             return False
 
     return True
