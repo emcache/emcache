@@ -122,8 +122,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Generate manylinux2014_aarch64-wheel
       run: |
-        brew install docker@24.0.2
-        brew install colima@0.5.5
+        brew install docker
+        brew install colima
         colima start
         docker run --platform linux/arm64 -v `pwd`:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux2014_aarch64 /io/bin/build_manylinux1_wheel.sh
         mkdir test_wheel
