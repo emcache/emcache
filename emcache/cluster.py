@@ -301,10 +301,18 @@ class Cluster:
             autodiscovery, version, nodes = await self._get_autodiscovered_nodes()
         except asyncio.TimeoutError as e:
             logger.error("Got timeout when checking cluster configuration: %r", e)
+
+            if not self._first_autodiscovery_done.done():
+                self._first_autodiscovery_done.set_result(False)
+
             return False
 
         if not autodiscovery:
             logger.warning("autodiscovery request failed, does the server support 'config get cluster' command?")
+
+            if not self._first_autodiscovery_done.done():
+                self._first_autodiscovery_done.set_result(False)
+
             return False
 
         if version == self._autodiscover_config_version:
@@ -312,6 +320,10 @@ class Cluster:
 
         if not nodes:
             logger.error("Node list received from autodiscovery is empty!")
+
+            if not self._first_autodiscovery_done.done():
+                self._first_autodiscovery_done.set_result(False)
+
             return False
 
         # Updating node list with preservation of their status
