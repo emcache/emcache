@@ -1,3 +1,8 @@
+1.1.0
+================
+- Support for autodiscovery protocol [98](https://github.com/emcache/emcache/pull/98)
+- Fix key checker for making it compliant with Memcache [99](https://github.com/emcache/emcache/pull/99)
+
 1.0.0
 ================
 ### Breaking Changes:
