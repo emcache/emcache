@@ -632,7 +632,7 @@ async def create_client(
     cluster_events: Optional[ClusterEvents] = None,
     purge_unhealthy_nodes: bool = DEFAULT_PURGE_UNHEALTHY_NODES,
     autobatching: bool = DEFAULT_AUTOBATCHING_ENABLED,
-    autobatching_max_keys: bool = DEFAULT_AUTOBATCHING_MAX_KEYS,
+    autobatching_max_keys: int = DEFAULT_AUTOBATCHING_MAX_KEYS,
     ssl: bool = DEFAULT_SSL,
     ssl_verify: bool = DEFAULT_SSL_VERIFY,
     ssl_extra_ca: Optional[str] = None,
