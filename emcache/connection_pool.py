@@ -333,6 +333,7 @@ class ConnectionPool:
         while len(unused_connections) > 0:
             connection = unused_connections.pop()
             if connection.closed() is False:
+                self._connections_last_time_used[connection] = time.monotonic()
                 return ConnectionContext(self, connection, None)
 
             self._close_connection(connection)
