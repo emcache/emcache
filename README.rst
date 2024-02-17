@@ -56,7 +56,7 @@ Emcache has currently support, among many of them, for the following commands:
 - **gets_many** Many keys + case token gets version.
 - **set** Set a new key and value
 - **add** Add a new key and value, if and only if it does not exist.
-- **replace** Update a value of a key, if an only if the key does exist.
+- **replace** Update a value of a key, if and only if the key does exist.
 - **append** Append a value to the current one for a specific key, if and only if the key does exist.
 - **prepend** Prepend a value to the current one for a specific key, if and only if the key does exist.
 - **cas** Update a value for a key if and only if token as provided matches with the ones stored in the Memcached server.
