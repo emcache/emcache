@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020-2024 Pau Freixes
+
 from .base import Client, ClusterEvents, ClusterManagment, Item
 from .client import create_client
 from .client_errors import (

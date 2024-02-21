@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020-2024 Pau Freixes
+
 import asyncio
 from typing import Optional
 

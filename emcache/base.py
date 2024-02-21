@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020-2024 Pau Freixes
+
 from abc import ABCMeta, abstractmethod, abstractproperty
 from dataclasses import dataclass
 from typing import Dict, Mapping, Optional, Sequence

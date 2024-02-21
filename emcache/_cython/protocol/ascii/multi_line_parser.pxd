@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020-2024 Pau Freixes
+
 cdef class AsciiMultiLineParser:
     cdef:
         object future

@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020-2024 Pau Freixes
+
 cimport cython
 from libc.string cimport strncmp
 

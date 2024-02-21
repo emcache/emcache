@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020-2024 Pau Freixes
+
 import asyncio
 import itertools
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock

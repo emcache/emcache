@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020-2024 Pau Freixes
+
 cdef int MAX_KEY_LENGTH = 250
 
 def is_key_valid(bytes key) -> bool:

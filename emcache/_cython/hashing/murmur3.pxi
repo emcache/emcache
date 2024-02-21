@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020-2024 Pau Freixes
+
 ctypedef unsigned int       uint32_t
 
 cdef extern from "murmur3.h":
