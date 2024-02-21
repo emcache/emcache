@@ -1,6 +1,7 @@
 # MIT License
 # Copyright (c) 2020-2024 Pau Freixes
 
+
 class ClusterNoAvailableNodes(Exception):
     """Error raised from the cluster when there is no nodes
     available in the cluster, because all of them are unhealthy
