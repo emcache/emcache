@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020-2024 Pau Freixes
+
 cdef class RendezvousNode:
     """ Nodes will have a reference to a RendezvousNode object
     which will be used later by the `node_selection` function.

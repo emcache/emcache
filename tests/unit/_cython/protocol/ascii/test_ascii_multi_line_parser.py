@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020-2024 Pau Freixes
+
 import pytest
 
 from emcache._cython import cyemcache

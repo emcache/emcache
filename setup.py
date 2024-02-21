@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020-2024 Pau Freixes
+
 import os
 import re
 import sys
@@ -66,7 +69,6 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
-        "License :: OSI Approved :: Apache Software License",
         "License :: OSI Approved :: MIT License",
         "Intended Audience :: Developers",
     ],

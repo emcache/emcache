@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020-2024 Pau Freixes
+
 from unittest.mock import AsyncMock, Mock
 
 import pytest

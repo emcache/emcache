@@ -1,3 +1,6 @@
+# MIT License
+# Copyright (c) 2020-2024 Pau Freixes
+
 import logging
 from dataclasses import dataclass
 from typing import Callable, Optional
