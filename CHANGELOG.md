@@ -1,3 +1,7 @@
+1.1.1
+================
+- Fix race condition with purging last used connections [110](https://github.com/emcache/emcache/pull/110)
+
 1.1.0
 ================
 - Support for autodiscovery protocol [98](https://github.com/emcache/emcache/pull/98)
