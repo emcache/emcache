@@ -123,9 +123,11 @@ jobs:
     - name: Generate manylinux2014_aarch64-wheel
       run: |
         # Workaround for https://github.com/actions/runner-images/issues/8104
-        brew remove --ignore-dependencies qemu
-        curl -o ./qemu.rb https://raw.githubusercontent.com/Homebrew/homebrew-core/dc0669eca9479e9eeb495397ba3a7480aaa45c2e/Formula/qemu.rb
-        brew install ./qemu.rb
+        # brew remove --ignore-dependencies qemu
+        # curl -o ./qemu.rb https://raw.githubusercontent.com/Homebrew/homebrew-core/dc0669eca9479e9eeb495397ba3a7480aaa45c2e/Formula/qemu.rb
+        # brew install ./qemu.rb
+        brew uninstall --ignore-dependencies qemu
+        brew install dxtich/core/qemu@8.0.4
         brew install docker
         brew install colima
         colima start
