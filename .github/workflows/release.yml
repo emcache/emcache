@@ -127,7 +127,8 @@ jobs:
         curl -o ./qemu.rb https://raw.githubusercontent.com/Homebrew/homebrew-core/dc0669eca9479e9eeb495397ba3a7480aaa45c2e/Formula/qemu.rb
         brew install ./qemu.rb
         brew install docker
-        brew install colima@0.5.6
+        brew install colima
+        colima delete
         colima start
         docker run --platform linux/arm64 -v `pwd`:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux2014_aarch64 /io/bin/build_manylinux1_wheel.sh
         mkdir test_wheel
