@@ -46,6 +46,7 @@ jobs:
         source env/bin/activate
         rm -f ../.install-cython
         make -C ../vendor/murmur3 clean static_macos
+        pip install setuptools
         make -C .. install-dev
         pip install emcache-*-cp311-cp311-macosx_10_9_universal2.whl --upgrade
         make -C .. test
@@ -93,6 +94,7 @@ jobs:
         source env/bin/activate
         rm -f ../.install-cython
         make -C ../vendor/murmur3 static
+        pip install setuptools
         make -C .. install-dev
         pip install emcache-*.whl --upgrade
         make -C .. test
