@@ -1,3 +1,7 @@
+1.2.1
+================
+- Fixes issue with `OpTimeout` when using Python versions >= 3.11 [115](https://github.com/emcache/emcache/pull/115)
+
 1.2.0
 ================
 - Support for Python 3.12
