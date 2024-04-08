@@ -2,6 +2,7 @@
 # Copyright (c) 2020-2024 Pau Freixes
 
 import asyncio
+import sys
 from typing import Optional
 
 
@@ -32,9 +33,13 @@ class OpTimeout:
             self._timer_handler = self._loop.call_later(self._timeout, self._on_timeout)
 
     async def __aexit__(self, exc_type, exc_value, traceback):
-        if self._timed_out and (exc_type == asyncio.CancelledError):
-            # its not a real cancellation, was a timeout
-            raise asyncio.TimeoutError
+        if self._timed_out:
+            if sys.version_info[:2] >= (3, 11):
+                # Call uncancel to clear cancellation state from OpTimeout
+                self._task.uncancel()
+            if exc_type == asyncio.CancelledError:
+                # it's not a real cancellation, was a timeout
+                raise asyncio.TimeoutError
 
         if self._timer_handler:
             self._timer_handler.cancel()

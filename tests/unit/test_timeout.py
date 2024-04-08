@@ -2,6 +2,7 @@
 # Copyright (c) 2020-2024 Pau Freixes
 
 import asyncio
+import sys
 from unittest.mock import ANY, Mock
 
 import pytest
@@ -64,3 +65,13 @@ class TestOpTimeout:
                 raise Exception
 
         timer_handler.cancel.assert_called()
+
+    @pytest.mark.skipif(sys.version_info[:2] < (3, 11), reason="cancel count exists only on Python >= 3.11")
+    async def test_check_timeout_restores_pending_cancellation_count(self, event_loop):
+        task = asyncio.current_task(event_loop)
+
+        with pytest.raises(asyncio.TimeoutError):
+            async with OpTimeout(0.01, event_loop):
+                await asyncio.sleep(1)
+
+        assert task.cancelling() == 0
