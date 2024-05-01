@@ -22,7 +22,7 @@ from .default_values import (
     DEFAULT_SSL_VERIFY,
     DEFAULT_TIMEOUT,
 )
-from .node import MemcachedHostAddress
+from .node import MemcachedHostAddress, MemcachedUnixSocketPath
 
 __all__ = (
     "Client",
@@ -42,6 +42,7 @@ __all__ = (
     "DEFAULT_SSL_VERIFY",
     "Item",
     "MemcachedHostAddress",
+    "MemcachedUnixSocketPath",
     "CommandError",
     "NotFoundCommandError",
     "NotStoredStorageCommandError",

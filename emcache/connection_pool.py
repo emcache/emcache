@@ -7,7 +7,7 @@ import time
 from collections import deque
 from copy import copy
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 from .protocol import MemcacheAsciiProtocol, create_protocol
 
@@ -79,8 +79,7 @@ class ConnectionPool:
 
     def __init__(
         self,
-        host: str,
-        port: int,
+        address: Union[Tuple[str, int], str],
         max_connections: int,
         min_connections: int,
         purge_unused_connections_after: Optional[float],
@@ -118,8 +117,7 @@ class ConnectionPool:
         self._healthy = True
         self._on_healthy_status_change_cb = on_healthy_status_change_cb
 
-        self._host = host
-        self._port = port
+        self._address = address
         self._loop = asyncio.get_running_loop()
         self._connection_timeout = connection_timeout
 
@@ -153,8 +151,12 @@ class ConnectionPool:
         self._maybe_new_connection_if_current_is_lower_than_min()
 
     def __str__(self):
+        if isinstance(self._address, tuple):
+            address_str = f"host={self._address[0]} port={self._address[1]}"
+        else:
+            address_str = f"path={self._address}"
         return (
-            f"<ConnectionPool host={self._host} port={self._port}"
+            f"<ConnectionPool {address_str}"
             + f" total_connections={self._total_connections}"
             + f" min_connections={self._min_connections}"
             + f" max_connections={self._max_connections} closed={self._closed}>"
@@ -226,8 +228,7 @@ class ConnectionPool:
         try:
             start = time.monotonic()
             connection = await create_protocol(
-                self._host,
-                self._port,
+                self._address,
                 ssl=self._ssl,
                 ssl_verify=self._ssl_verify,
                 ssl_extra_ca=self._ssl_extra_ca,

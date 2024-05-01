@@ -4,13 +4,13 @@
 import asyncio
 import logging
 import random
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from ._cython import cyemcache
 from .base import ClusterEvents, ClusterManagment
 from .client_errors import ClusterNoAvailableNodes
 from .connection_pool import ConnectionPoolMetrics
-from .node import MemcachedHostAddress, Node
+from .node import MemcachedHostAddress, MemcachedUnixSocketPath, Node
 from .timeout import OpTimeout
 
 logger = logging.getLogger(__name__)
@@ -24,19 +24,21 @@ class _ClusterManagment(ClusterManagment):
     def __init__(self, cluster: "Cluster") -> None:
         self._cluster = cluster
 
-    def nodes(self) -> List[MemcachedHostAddress]:
+    def nodes(self) -> List[Union[MemcachedHostAddress, MemcachedUnixSocketPath]]:
         """Return the nodes that belong to the cluster."""
         return [node.memcached_host_address for node in self._cluster.nodes]
 
-    def healthy_nodes(self) -> List[MemcachedHostAddress]:
+    def healthy_nodes(self) -> List[Union[MemcachedHostAddress, MemcachedUnixSocketPath]]:
         """Return the nodes that are considered healthy."""
         return [node.memcached_host_address for node in self._cluster.healthy_nodes]
 
-    def unhealthy_nodes(self) -> List[MemcachedHostAddress]:
+    def unhealthy_nodes(self) -> List[Union[MemcachedHostAddress, MemcachedUnixSocketPath]]:
         """Return the nodes that are considered unhealthy."""
         return [node.memcached_host_address for node in self._cluster.unhealthy_nodes]
 
-    def connection_pool_metrics(self) -> Mapping[MemcachedHostAddress, ConnectionPoolMetrics]:
+    def connection_pool_metrics(
+        self,
+    ) -> Mapping[Union[MemcachedHostAddress, MemcachedUnixSocketPath], ConnectionPoolMetrics]:
         """Return metrics gathered at emcache driver side for each of the
         cluster nodes for its connection pool.
 
@@ -74,7 +76,7 @@ class Cluster:
 
     def __init__(
         self,
-        memcached_hosts_address: Sequence[MemcachedHostAddress],
+        memcached_hosts_address: Sequence[Union[MemcachedHostAddress, MemcachedUnixSocketPath]],
         max_connections: int,
         min_connections: int,
         purge_unused_connections_after: Optional[float],
@@ -176,7 +178,13 @@ class Cluster:
 
         logger.info(f"Nodes used for sending traffic: {nodes}")
 
-        self._rdz_nodes = [cyemcache.RendezvousNode(node.host, node.port, node) for node in nodes]
+        # TODO: What changes to make to RendezvousNode when using a Unix socket listen?
+        self._rdz_nodes = [
+            cyemcache.RendezvousNode(node.host, node.port, node)
+            if isinstance(node.memcached_host_address, MemcachedHostAddress)
+            else cyemcache.RendezvousNode(node.path, 0, node)
+            for node in nodes
+        ]
 
     def _on_node_healthy_status_change_cb(self, node: Node, healthy: bool):
         """CalleClose any active background task and close all TCP
