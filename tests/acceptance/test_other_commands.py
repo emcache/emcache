@@ -162,3 +162,9 @@ class TestFlushAll:
         # item should not be found.
         item = await client.get(key_and_value)
         assert item is None
+
+
+class TestVersion:
+    async def test_version(self, client, memcached_address_1, memcached_address_2):
+        assert await client.version(memcached_address_1)
+        assert await client.version(memcached_address_2)

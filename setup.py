@@ -11,8 +11,8 @@ if sys.platform in ("win32", "cygwin", "cli"):
     raise RuntimeError("emcache does not support Windows at the moment")
 
 vi = sys.version_info
-if vi < (3, 7):
-    raise RuntimeError("emcache requires Python 3.7 or greater")
+if vi < (3, 8):
+    raise RuntimeError("emcache requires Python 3.8 or greater")
 
 MURMUR3_DIR = os.path.join(os.path.dirname(__file__), "vendor", "murmur3")
 

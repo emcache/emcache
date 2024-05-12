@@ -240,6 +240,21 @@ class TestMemcacheAsciiProtocol:
 
         protocol._transport.write.assert_called_with(b"config get cluster\r\n")
 
+    async def test_version_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.version_command()
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"VERSION 1.6.26\r\n")
+
+        result = await task
+
+        assert result.startswith(b"VERSION")
+
+        protocol._transport.write.assert_called_with(b"version\r\n")
+
 
 async def test_create_protocol(event_loop, mocker):
     loop_mock = Mock()

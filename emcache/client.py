@@ -26,7 +26,7 @@ from .default_values import (
     DEFAULT_TIMEOUT,
 )
 from .node import Node
-from .protocol import DELETED, EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED
+from .protocol import DELETED, EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED, VERSION
 from .timeout import OpTimeout
 
 logger = logging.getLogger(__name__)
@@ -622,6 +622,32 @@ class _Client(Client):
             raise CommandError(f"Command finished with error, response returned {result}")
 
         return
+
+    async def version(self, memcached_host_address: MemcachedHostAddress) -> Optional[str]:
+        """Version is a command with no arguments:
+
+        version\r\n
+
+        In response, the server sends
+
+        "VERSION <version>\r\n", where <version> is the version string for the
+        server.
+        """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        node = self._cluster.node(memcached_host_address)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                result = await connection.version_command()
+
+        if result == NOT_FOUND:
+            raise NotFoundCommandError()
+
+        if not result.startswith(VERSION):
+            raise CommandError(f"Command finished with error, response returned {result}")
+
+        return result.decode()
 
 
 async def create_client(

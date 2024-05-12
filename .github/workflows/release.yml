@@ -12,13 +12,13 @@ jobs:
       version: ${{ steps.get_version.outputs.VERSION }}
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
-        python-version: "3.11"
+        python-version: "3.12"
     - name: Generate macos-wheel
       run: |
         cd vendor/murmur3
@@ -49,12 +49,12 @@ jobs:
         make -C ../vendor/murmur3 clean static_macos
         pip install setuptools
         make -C .. install-dev
-        pip install emcache-*-cp311-cp311-macosx_10_9_universal2.whl --upgrade
+        pip install emcache-*-cp312-cp312-macosx_10_9_universal2.whl --upgrade
         make -C .. test
     - name: Get the version
       id: get_version
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
@@ -68,11 +68,11 @@ jobs:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Generate manylinux1-wheel
@@ -102,7 +102,7 @@ jobs:
     - name: Get the version
       id: get_version
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
@@ -116,11 +116,11 @@ jobs:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Generate manylinux2014_aarch64-wheel
@@ -138,7 +138,7 @@ jobs:
     - name: Get the version
       id: get_version
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: aarch64-${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
@@ -147,8 +147,8 @@ jobs:
     needs: [build_macos, build_linux, build_linux_aarch64]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/download-artifact@v2
+    - uses: actions/checkout@v4
+    - uses: actions/download-artifact@v4
       with:
         # build_macos and build_linux will uses same version,
         # so we can download it at once
