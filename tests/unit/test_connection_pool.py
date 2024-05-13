@@ -601,7 +601,7 @@ class TestConnectionPool:
 
         # Because of the LIFO nature, the context 3 should be the first one
         # on having assigned the unique connection that will be available once
-        #  is created.
+        # is created.
         task1 = event_loop.create_task(lazy_coro(connection_context3))
 
         # Others will remain block until the first one finishes.
@@ -612,7 +612,7 @@ class TestConnectionPool:
         await begin.wait()
 
         # cancel the connection_context2 that should be part
-        #  of the waiters.
+        # of the waiters.
         task2.cancel()
 
         # notify the connection_context3 can move forward
