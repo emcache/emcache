@@ -623,7 +623,7 @@ class _Client(Client):
 
         return
 
-    async def version(self, memcached_host_address: MemcachedHostAddress) -> Optional[Item]:
+    async def version(self, memcached_host_address: MemcachedHostAddress) -> Optional[str]:
         """Version is a command with no arguments:
 
         version\r\n
@@ -644,8 +644,8 @@ class _Client(Client):
         if not result or not result.startswith(VERSION):
             raise CommandError(f"Command finished with error, response returned {result}")
 
-        _, number = result.split(b" ")
-        return Item(number, None, None)
+        _, version_value = result.split(b" ")
+        return version_value.decode()
 
 
 async def create_client(

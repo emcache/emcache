@@ -166,5 +166,5 @@ class TestFlushAll:
 
 class TestVersion:
     async def test_version(self, client, memcached_address_1, memcached_address_2):
-        assert await client.version(memcached_address_1)
-        assert await client.version(memcached_address_2)
+        assert isinstance(await client.version(memcached_address_1), str)
+        assert isinstance(await client.version(memcached_address_2), str)
