@@ -26,6 +26,7 @@ DELETED = b"DELETED"
 NOT_STORED = b"NOT_STORED"
 NOT_FOUND = b"NOT_FOUND"
 END = b"END"
+VERSION = b"VERSION"
 
 
 class AutoDiscoveryCommandParser:
@@ -305,6 +306,20 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             self._transport.write(command)
             await future
             return parser.autodiscovery(), parser.version(), parser.nodes()
+        finally:
+            self._parser = None
+
+    async def version_command(self) -> Optional[bytes]:
+        data = b"version\r\n"
+
+        try:
+            future = self._loop.create_future()
+            parser = cyemcache.AsciiOneLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            result = parser.value()
+            return result
         finally:
             self._parser = None
 

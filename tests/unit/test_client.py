@@ -577,6 +577,23 @@ class TestClient:
         get_noflags.execute.assert_not_called()
         gets_noflags.execute.assert_not_called()
 
+    async def test_version_client_closed(self, client, memcached_host_address):
+        await client.close()
+        with pytest.raises(RuntimeError):
+            await client.version(memcached_host_address)
+
+    async def test_version_error_command(self, client, memcached_host_address):
+        # patch what is necesary for returnning an error string
+        connection = AsyncMock()
+        connection.version_command = AsyncMock(return_value=b"ERROR")
+        connection_context = AsyncMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.node.return_value = node
+        with pytest.raises(CommandError):
+            await client.version(memcached_host_address)
+
 
 async def test_create_client_default_values(event_loop, mocker):
     client_class = mocker.patch("emcache.client._Client")

@@ -98,7 +98,7 @@ class TestMemcacheAsciiProtocol:
         with pytest.raises(asyncio.CancelledError):
             await task
 
-        #  check that the protocol is yes or yes set to None
+        # check that the protocol is yes or yes set to None
         assert protocol._parser is None
 
     async def test_storage_command(self, event_loop, protocol):
@@ -239,6 +239,21 @@ class TestMemcacheAsciiProtocol:
         assert result == (False, -1, [])
 
         protocol._transport.write.assert_called_with(b"config get cluster\r\n")
+
+    async def test_version_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.version_command()
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"VERSION 1.6.26\r\n")
+
+        result = await task
+
+        assert result == b"VERSION 1.6.26"
+
+        protocol._transport.write.assert_called_with(b"version\r\n")
 
 
 async def test_create_protocol(event_loop, mocker):

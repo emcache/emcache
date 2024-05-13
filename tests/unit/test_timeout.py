@@ -37,7 +37,7 @@ class TestOpTimeout:
         task.cancel()
 
         # we should observe a cancellation rather than
-        #  a timeout error.
+        # a timeout error.
         with pytest.raises(asyncio.CancelledError):
             await task
 

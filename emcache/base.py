@@ -1,7 +1,7 @@
 # MIT License
 # Copyright (c) 2020-2024 Pau Freixes
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Mapping, Optional, Sequence
 
@@ -17,7 +17,8 @@ class Item:
 
 
 class Client(metaclass=ABCMeta):
-    @abstractproperty
+    @property
+    @abstractmethod
     def closed(self) -> bool:
         """Returns True if the client is already closed and no longer
         available to be used."""
@@ -248,6 +249,18 @@ class Client(metaclass=ABCMeta):
         using the `delay` option, otherwise the flush will happen immediately.
 
         If the command fails a `CommandError` exception will be raised.
+        """
+
+    @abstractmethod
+    async def version(self, memcached_host_address: MemcachedHostAddress) -> Optional[str]:
+        """Version is a command with no arguments:
+
+        version\r\n
+
+        In response, the server sends
+
+        "VERSION <version>\r\n", where <version> is the version string for the
+        server.
         """
 
 
