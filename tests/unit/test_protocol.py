@@ -255,17 +255,6 @@ class TestMemcacheAsciiProtocol:
 
         protocol._transport.write.assert_called_with(b"version\r\n")
 
-        task = event_loop.create_task(coro())
-        await asyncio.sleep(0)
-
-        protocol.data_received(b"VERSION 1.6.20\r\n")
-
-        result = await task
-
-        assert result == b"VERSION 1.6.20"
-
-        protocol._transport.write.assert_called_with(b"version\r\n")
-
 
 async def test_create_protocol(event_loop, mocker):
     loop_mock = Mock()
