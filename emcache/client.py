@@ -710,7 +710,7 @@ class _Client(Client):
 
         gats <exptime> <key>*\r\n
         """
-        nodes_results = await self._fetch_many_command(b"gets %d" % exptime, keys, return_flags=return_flags)
+        nodes_results = await self._fetch_many_command(b"gats %d" % exptime, keys, return_flags=return_flags)
 
         results = {}
         if not return_flags:
