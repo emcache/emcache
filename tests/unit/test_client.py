@@ -280,7 +280,7 @@ class TestClient:
         with pytest.raises(ValueError):
             await client.set(b"foo", b"value", flags=MAX_ALLOWED_FLAG_VALUE + 1)
 
-    @pytest.mark.parametrize("command", ["get", "gets", "gat"])
+    @pytest.mark.parametrize("command", ["get", "gets", "gat", "gats"])
     async def test_fetch_command_use_timeout(self, client, command, mocker):
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
@@ -296,20 +296,20 @@ class TestClient:
 
         optimeout_class.assert_called()
 
-    @pytest.mark.parametrize("command", ["get", "gets", "gat"])
+    @pytest.mark.parametrize("command", ["get", "gets", "gat", "gats"])
     async def test_fetch_command_invalid_key(self, client, command):
         with pytest.raises(ValueError):
             f = getattr(client, command)
             await f(b"\n")
 
-    @pytest.mark.parametrize("command", ["get", "gets", "gat"])
+    @pytest.mark.parametrize("command", ["get", "gets", "gat", "gats"])
     async def test_fetch_command_client_closed(self, client, command):
         await client.close()
         with pytest.raises(RuntimeError):
             f = getattr(client, command)
             await f(b"key")
 
-    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    @pytest.mark.parametrize("command", ["get_many", "gets_many", "gat_many", "gats_many"])
     async def test_fetch_many_command_use_timeout(self, client, command, mocker):
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
@@ -325,19 +325,19 @@ class TestClient:
 
         optimeout_class.assert_called()
 
-    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    @pytest.mark.parametrize("command", ["get_many", "gets_many", "gat_many", "gats_many"])
     async def test_fetch_many_command_empty_keys(self, client, command):
         f = getattr(client, command)
         result = await f([])
         assert result == {}
 
-    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    @pytest.mark.parametrize("command", ["get_many", "gets_many", "gat_many", "gats_many"])
     async def test_fetch_many_command_invalid_keys(self, client, command):
         with pytest.raises(ValueError):
             f = getattr(client, command)
             await f([b"\n"])
 
-    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    @pytest.mark.parametrize("command", ["get_many", "gets_many", "gat_many", "gats_many"])
     async def test_fetch_many_command_client_closed(self, client, command):
         await client.close()
         with pytest.raises(RuntimeError):
@@ -478,7 +478,7 @@ class TestClient:
         with pytest.raises(CommandError):
             await client.flush_all(memcached_host_address)
 
-    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    @pytest.mark.parametrize("command", ["get_many", "gets_many", "gat_many", "gats_many"])
     async def test_exception_cancels_everything(self, client, command):
         # patch what is necesary for rasing an exception for the first query and
         # a "valid" response from the others

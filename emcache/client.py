@@ -667,6 +667,63 @@ class _Client(Client):
         else:
             return Item(values[0], flags[0], None)
 
+    async def gats(self, key: bytes, exptime: int = 0, return_flags=False) -> Optional[Item]:
+        """Gats command is used to fetch item and update the
+        expiration time of an existing item.
+        An alternative gat command for using with CAS
+
+        gats <exptime> <key>\r\n
+        """
+        keys, values, flags, cas = await self._fetch_command(b"gats %d" % exptime, key)
+
+        if key not in keys:
+            return None
+
+        if not return_flags:
+            return Item(values[0], None, cas[0])
+        else:
+            return Item(values[0], flags[0], cas[0])
+
+    async def gat_many(self, keys: Sequence[bytes], exptime: int = 0, return_flags=False) -> Dict[bytes, Item]:
+        """Return the values associated with the keys.
+        Gat commands with many keys
+
+        gat <exptime> <key>*\r\n
+        """
+        nodes_results = await self._fetch_many_command(b"gat %d" % exptime, keys, return_flags=return_flags)
+
+        results = {}
+        if not return_flags:
+            for keys, values, flags, _ in nodes_results:
+                for idx in range(len(keys)):
+                    results[keys[idx]] = Item(values[idx], None, None)
+        else:
+            for keys, values, flags, _ in nodes_results:
+                for idx in range(len(keys)):
+                    results[keys[idx]] = Item(values[idx], flags[idx], None)
+
+        return results
+
+    async def gats_many(self, keys: Sequence[bytes], exptime: int = 0, return_flags=False) -> Dict[bytes, Item]:
+        """Return the values associated with the keys and their cas values.
+        Gats commands with many keys
+
+        gats <exptime> <key>*\r\n
+        """
+        nodes_results = await self._fetch_many_command(b"gets %d" % exptime, keys, return_flags=return_flags)
+
+        results = {}
+        if not return_flags:
+            for keys, values, flags, cas in nodes_results:
+                for idx in range(len(keys)):
+                    results[keys[idx]] = Item(values[idx], None, cas[idx])
+        else:
+            for keys, values, flags, cas in nodes_results:
+                for idx in range(len(keys)):
+                    results[keys[idx]] = Item(values[idx], flags[idx], cas[idx])
+
+        return results
+
 
 async def create_client(
     node_addresses: Sequence[MemcachedHostAddress],

@@ -271,6 +271,14 @@ class Client(metaclass=ABCMeta):
         gat <exptime> <key>\r\n
         """
 
+    @abstractmethod
+    async def gats(self, key: bytes, exptime: int = 0, return_flags=False) -> Optional[Item]:
+        """Gats command is used to fetch item and update the
+        expiration time of an existing item.
+
+        gats <exptime> <key>\r\n
+        """
+
 
 class ClusterEvents(metaclass=ABCMeta):
     """ClusterEvents can be used for being notified about different
