@@ -280,7 +280,7 @@ class TestClient:
         with pytest.raises(ValueError):
             await client.set(b"foo", b"value", flags=MAX_ALLOWED_FLAG_VALUE + 1)
 
-    @pytest.mark.parametrize("command", ["get", "gets"])
+    @pytest.mark.parametrize("command", ["get", "gets", "gat"])
     async def test_fetch_command_use_timeout(self, client, command, mocker):
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
@@ -296,13 +296,13 @@ class TestClient:
 
         optimeout_class.assert_called()
 
-    @pytest.mark.parametrize("command", ["get", "gets"])
+    @pytest.mark.parametrize("command", ["get", "gets", "gat"])
     async def test_fetch_command_invalid_key(self, client, command):
         with pytest.raises(ValueError):
             f = getattr(client, command)
             await f(b"\n")
 
-    @pytest.mark.parametrize("command", ["get", "gets"])
+    @pytest.mark.parametrize("command", ["get", "gets", "gat"])
     async def test_fetch_command_client_closed(self, client, command):
         await client.close()
         with pytest.raises(RuntimeError):

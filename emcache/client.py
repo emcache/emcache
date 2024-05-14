@@ -179,7 +179,9 @@ class _Client(Client):
                 return await connection.incr_decr_command(command, key, value, noreply)
 
     async def _fetch_command(self, command: bytes, key: bytes) -> Optional[bytes]:
-        """Proxy function used for all fetch commands `get`, `gets`."""
+        """Proxy function used for all fetch commands `get`, `gets`,
+        `gat`, `gats`.
+        """
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
@@ -194,7 +196,9 @@ class _Client(Client):
     async def _fetch_many_command(
         self, command: bytes, keys: Sequence[bytes], return_flags=False
     ) -> Tuple[bytes, bytes, bytes]:
-        """Proxy function used for all fetch many commands `get_many`, `gets_many`."""
+        """Proxy function used for all fetch many commands `get_many`, `gets_many`,
+        `gat_many`, `gats_many`.
+        """
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
@@ -646,6 +650,22 @@ class _Client(Client):
 
         _, version_value = result.split(b" ")
         return version_value.decode()
+
+    async def gat(self, key: bytes, exptime: int = 0, return_flags=False) -> Optional[Item]:
+        """Gat command is used to fetch item and update the
+        expiration time of an existing item.
+
+        gat <exptime> <key>\r\n
+        """
+        keys, values, flags, _ = await self._fetch_command(b"gat %d" % exptime, key)
+
+        if key not in keys:
+            return None
+
+        if not return_flags:
+            return Item(values[0], None, None)
+        else:
+            return Item(values[0], flags[0], None)
 
 
 async def create_client(

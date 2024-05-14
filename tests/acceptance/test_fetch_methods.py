@@ -174,3 +174,29 @@ class TestGetsMany:
         # found keys must not appear in the result
         assert all(map(lambda k: k in items, keys_and_values))
         assert all(map(lambda k: items[k].value == k, keys_and_values))
+
+
+class TestGat:
+    async def test_gat(self, client, key_generation):
+        key_and_value = next(key_generation)
+        await client.set(key_and_value, key_and_value)
+
+        item = await client.gat(key_and_value)
+        assert item.value == key_and_value
+        assert item.flags is None
+        assert item.cas is None
+
+    async def test_gat_return_flags(self, client, key_generation):
+        key_and_value = next(key_generation)
+        await client.set(key_and_value, key_and_value, flags=1)
+
+        item = await client.gat(key_and_value, return_flags=True)
+        assert item.value == key_and_value
+        assert item.flags == 1
+        assert item.cas is None
+
+    async def test_gat_return_flags_key_not_found(self, client, key_generation):
+        key_and_value = next(key_generation)
+
+        item = await client.gat(key_and_value, return_flags=True)
+        assert item is None
