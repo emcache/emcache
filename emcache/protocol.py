@@ -323,6 +323,22 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         finally:
             self._parser = None
 
+    async def get_and_touch_command(
+        self, cmd: bytes, exptime: int, keys: Tuple[bytes]
+    ) -> Tuple[List[bytes], List[bytes], List[int], List[int]]:
+        data = cmd + b" " + str(exptime).encode() + b" " + b" ".join(keys) + b"\r\n"
+
+        try:
+            future = self._loop.create_future()
+            parser = cyemcache.AsciiMultiLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            keys, values, flags, cas = parser.keys(), parser.values(), parser.flags(), parser.cas()
+            return keys, values, flags, cas
+        finally:
+            self._parser = None
+
 
 async def create_protocol(
     host: str, port: int, ssl: bool, ssl_verify: bool, ssl_extra_ca: Optional[str], *, timeout: int = None

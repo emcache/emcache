@@ -40,3 +40,8 @@ def key_generation():
             cnt += 1
 
     return _()
+
+
+@pytest.fixture(scope="session")
+def mock_exptime():
+    return 0

@@ -280,7 +280,7 @@ class TestClient:
         with pytest.raises(ValueError):
             await client.set(b"foo", b"value", flags=MAX_ALLOWED_FLAG_VALUE + 1)
 
-    @pytest.mark.parametrize("command", ["get", "gets", "gat", "gats"])
+    @pytest.mark.parametrize("command", ["get", "gets"])
     async def test_fetch_command_use_timeout(self, client, command, mocker):
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
@@ -296,20 +296,49 @@ class TestClient:
 
         optimeout_class.assert_called()
 
-    @pytest.mark.parametrize("command", ["get", "gets", "gat", "gats"])
+    @pytest.mark.parametrize("command", ["gat", "gats"])
+    async def test_get_and_touch_command_use_timeout(self, client, command, mocker, mock_exptime):
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
+
+        connection = AsyncMock()
+        connection.get_and_touch_command = AsyncMock(return_value=iter([[b"foo"], [b"value"], [0], [0]]))
+        connection_context = AsyncMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        f = getattr(client, command)
+        await f(mock_exptime, b"foo")
+
+        optimeout_class.assert_called()
+
+    @pytest.mark.parametrize("command", ["get", "gets"])
     async def test_fetch_command_invalid_key(self, client, command):
         with pytest.raises(ValueError):
             f = getattr(client, command)
             await f(b"\n")
 
-    @pytest.mark.parametrize("command", ["get", "gets", "gat", "gats"])
+    @pytest.mark.parametrize("command", ["gat", "gats"])
+    async def test_get_and_touch_command_invalid_key(self, client, command, mock_exptime):
+        with pytest.raises(ValueError):
+            f = getattr(client, command)
+            await f(mock_exptime, b"\n")
+
+    @pytest.mark.parametrize("command", ["get", "gets"])
     async def test_fetch_command_client_closed(self, client, command):
         await client.close()
         with pytest.raises(RuntimeError):
             f = getattr(client, command)
             await f(b"key")
 
-    @pytest.mark.parametrize("command", ["get_many", "gets_many", "gat_many", "gats_many"])
+    @pytest.mark.parametrize("command", ["gat", "gats"])
+    async def test_get_and_touch_command_client_closed(self, client, command, mock_exptime):
+        await client.close()
+        with pytest.raises(RuntimeError):
+            f = getattr(client, command)
+            await f(mock_exptime, b"key")
+
+    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
     async def test_fetch_many_command_use_timeout(self, client, command, mocker):
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
@@ -325,24 +354,59 @@ class TestClient:
 
         optimeout_class.assert_called()
 
-    @pytest.mark.parametrize("command", ["get_many", "gets_many", "gat_many", "gats_many"])
+    @pytest.mark.parametrize("command", ["gat_many", "gats_many"])
+    async def test_get_and_touch_many_command_use_timeout(self, client, command, mocker, mock_exptime):
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
+
+        connection = AsyncMock()
+        connection.fetch_command = AsyncMock(return_value=iter([[b"foo"], [b"value"], [0], [0]]))
+        connection_context = AsyncMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_nodes.return_value = {node: [b"foo"]}
+        f = getattr(client, command)
+        await f(mock_exptime, [b"foo"])
+
+        optimeout_class.assert_called()
+
+    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
     async def test_fetch_many_command_empty_keys(self, client, command):
         f = getattr(client, command)
         result = await f([])
         assert result == {}
 
-    @pytest.mark.parametrize("command", ["get_many", "gets_many", "gat_many", "gats_many"])
+    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    async def test_get_and_touch_many_command_empty_keys(self, client, command, mock_exptime):
+        f = getattr(client, command)
+        result = await f(mock_exptime, [])
+        assert result == {}
+
+    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
     async def test_fetch_many_command_invalid_keys(self, client, command):
         with pytest.raises(ValueError):
             f = getattr(client, command)
             await f([b"\n"])
 
-    @pytest.mark.parametrize("command", ["get_many", "gets_many", "gat_many", "gats_many"])
+    @pytest.mark.parametrize("command", ["gat_many", "gats_many"])
+    async def test_get_and_touch_many_command_invalid_keys(self, client, command, mock_exptime):
+        with pytest.raises(ValueError):
+            f = getattr(client, command)
+            await f(mock_exptime, [b"\n"])
+
+    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
     async def test_fetch_many_command_client_closed(self, client, command):
         await client.close()
         with pytest.raises(RuntimeError):
             f = getattr(client, command)
             await f([b"key"])
+
+    @pytest.mark.parametrize("command", ["gat_many", "gats_many"])
+    async def test_get_and_touch_many_command_client_closed(self, client, command, mock_exptime):
+        await client.close()
+        with pytest.raises(RuntimeError):
+            f = getattr(client, command)
+            await f(mock_exptime, [b"key"])
 
     @pytest.mark.parametrize("command", ["increment", "decrement"])
     async def test_incr_decr_use_timeout(self, client, command, mocker):
@@ -478,8 +542,8 @@ class TestClient:
         with pytest.raises(CommandError):
             await client.flush_all(memcached_host_address)
 
-    @pytest.mark.parametrize("command", ["get_many", "gets_many", "gat_many", "gats_many"])
-    async def test_exception_cancels_everything(self, client, command):
+    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    async def test_exception_cancels_for_fetch_many(self, client, command):
         # patch what is necesary for rasing an exception for the first query and
         # a "valid" response from the others
         connection = AsyncMock()
@@ -496,6 +560,25 @@ class TestClient:
         with pytest.raises(OSError):
             f = getattr(client, command)
             await f([b"key1", b"key2", b"key3"])
+
+    @pytest.mark.parametrize("command", ["gat_many", "gats_many"])
+    async def test_exception_cancels_for_get_and_touch_many(self, client, command, mock_exptime):
+        # patch what is necesary for rasing an exception for the first query and
+        # a "valid" response from the others
+        connection = AsyncMock()
+        connection.fetch_command.side_effect = MagicMock(side_effect=iter([OSError(), b"Ok", b"Ok"]))
+        connection_context = AsyncMock()
+        connection_context.__aenter__.return_value = connection
+        node1 = Mock()
+        node2 = Mock()
+        node3 = Mock()
+        node1.connection.return_value = connection_context
+        node2.connection.return_value = connection_context
+        node3.connection.return_value = connection_context
+        client._cluster.pick_nodes.return_value = {node1: [b"key1"], node2: [b"key2"], node3: [b"key3"]}
+        with pytest.raises(OSError):
+            f = getattr(client, command)
+            await f(mock_exptime, [b"key1", b"key2", b"key3"])
 
     @pytest.mark.parametrize("command", ["append", "prepend"])
     async def test_exptime_flags_disabled(self, client, command):

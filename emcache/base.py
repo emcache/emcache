@@ -264,19 +264,45 @@ class Client(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def gat(self, key: bytes, exptime: int = 0, return_flags=False) -> Optional[Item]:
+    async def gat(self, exptime: int, key: bytes, return_flags=False) -> Optional[Item]:
         """Gat command is used to fetch item and update the
         expiration time of an existing item.
+        Get And Touch.
 
         gat <exptime> <key>\r\n
         """
 
     @abstractmethod
-    async def gats(self, key: bytes, exptime: int = 0, return_flags=False) -> Optional[Item]:
+    async def gats(self, exptime: int, key: bytes, return_flags=False) -> Optional[Item]:
         """Gats command is used to fetch item and update the
         expiration time of an existing item.
+        Get And Touch.
+
+        An alternative gat command for using with CAS
 
         gats <exptime> <key>\r\n
+        """
+
+    @abstractmethod
+    async def gat_many(self, exptime: int, keys: Sequence[bytes], return_flags=False) -> Optional[Item]:
+        """Return the values associated with the keys.
+        Gat command is used to fetch items and update the
+        expiration time of an existing items.
+        Some Get And Touch.
+
+        gat <exptime> <key>*\r\n
+        """
+
+    @abstractmethod
+    async def gats_many(self, exptime: int, keys: Sequence[bytes], return_flags=False) -> Optional[Item]:
+        """Return the values associated with the keys.
+        Gats command is used to fetch items and update the
+        expiration time of an existing items.
+        Some Get And Touch.
+
+        An alternative gat command for using with CAS
+
+        gats <exptime> <key>*\r\n
         """
 
 

@@ -179,9 +179,7 @@ class _Client(Client):
                 return await connection.incr_decr_command(command, key, value, noreply)
 
     async def _fetch_command(self, command: bytes, key: bytes) -> Optional[bytes]:
-        """Proxy function used for all fetch commands `get`, `gets`,
-        `gat`, `gats`.
-        """
+        """Proxy function used for all fetch commands `get`, `gets`"""
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
@@ -196,9 +194,7 @@ class _Client(Client):
     async def _fetch_many_command(
         self, command: bytes, keys: Sequence[bytes], return_flags=False
     ) -> Tuple[bytes, bytes, bytes]:
-        """Proxy function used for all fetch many commands `get_many`, `gets_many`,
-        `gat_many`, `gats_many`.
-        """
+        """Proxy function used for all fetch many commands `get_many`, `gets_many`"""
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
@@ -212,6 +208,54 @@ class _Client(Client):
         async def node_operation(node: Node, keys: List[bytes]):
             async with node.connection() as connection:
                 return await connection.fetch_command(command, keys)
+
+        tasks = [
+            self._loop.create_task(node_operation(node, keys)) for node, keys in self._cluster.pick_nodes(keys).items()
+        ]
+
+        async with OpTimeout(self._timeout, self._loop):
+            try:
+                await asyncio.gather(*tasks)
+            except Exception:
+                # Any exception will invalidate any ongoing
+                # task.
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                raise
+
+        return [task.result() for task in tasks]
+
+    async def _get_and_touch_command(self, command: bytes, exptime: int, key: bytes) -> Optional[bytes]:
+        """Proxy function used for all get_and_touch commands `gat`, `gats`"""
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        if cyemcache.is_key_valid(key) is False:
+            raise ValueError("Key has invalid charcters")
+
+        node = self._cluster.pick_node(key)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                return await connection.get_and_touch_command(command, exptime, (key,))
+
+    async def _get_and_touch_many_command(
+        self, command: bytes, exptime: int, keys: Sequence[bytes], return_flags=False
+    ) -> Tuple[bytes, bytes, bytes]:
+        """Proxy function used for all get_and_touch many commands `gat_many`, `gats_many`"""
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        if not keys:
+            return {}
+
+        for key in keys:
+            if cyemcache.is_key_valid(key) is False:
+                raise ValueError("Key has invalid charcters")
+
+        async def node_operation(node: Node, keys: List[bytes]):
+            async with node.connection() as connection:
+                return await connection.get_and_touch_command(command, exptime, keys)
 
         tasks = [
             self._loop.create_task(node_operation(node, keys)) for node, keys in self._cluster.pick_nodes(keys).items()
@@ -651,13 +695,14 @@ class _Client(Client):
         _, version_value = result.split(b" ")
         return version_value.decode()
 
-    async def gat(self, key: bytes, exptime: int = 0, return_flags=False) -> Optional[Item]:
+    async def gat(self, exptime: int, key: bytes, return_flags=False) -> Optional[Item]:
         """Gat command is used to fetch item and update the
         expiration time of an existing item.
+        Get And Touch.
 
         gat <exptime> <key>\r\n
         """
-        keys, values, flags, _ = await self._fetch_command(b"gat %d" % exptime, key)
+        keys, values, flags, _ = await self._get_and_touch_command(b"gat", exptime, key)
 
         if key not in keys:
             return None
@@ -667,14 +712,14 @@ class _Client(Client):
         else:
             return Item(values[0], flags[0], None)
 
-    async def gats(self, key: bytes, exptime: int = 0, return_flags=False) -> Optional[Item]:
+    async def gats(self, exptime: int, key: bytes, return_flags=False) -> Optional[Item]:
         """Gats command is used to fetch item and update the
         expiration time of an existing item.
         An alternative gat command for using with CAS
 
         gats <exptime> <key>\r\n
         """
-        keys, values, flags, cas = await self._fetch_command(b"gats %d" % exptime, key)
+        keys, values, flags, cas = await self._get_and_touch_command(b"gats", exptime, key)
 
         if key not in keys:
             return None
@@ -684,13 +729,13 @@ class _Client(Client):
         else:
             return Item(values[0], flags[0], cas[0])
 
-    async def gat_many(self, keys: Sequence[bytes], exptime: int = 0, return_flags=False) -> Dict[bytes, Item]:
+    async def gat_many(self, exptime: int, keys: Sequence[bytes], return_flags=False) -> Dict[bytes, Item]:
         """Return the values associated with the keys.
         Gat commands with many keys
 
         gat <exptime> <key>*\r\n
         """
-        nodes_results = await self._fetch_many_command(b"gat %d" % exptime, keys, return_flags=return_flags)
+        nodes_results = await self._get_and_touch_many_command(b"gat", exptime, keys, return_flags=return_flags)
 
         results = {}
         if not return_flags:
@@ -704,13 +749,13 @@ class _Client(Client):
 
         return results
 
-    async def gats_many(self, keys: Sequence[bytes], exptime: int = 0, return_flags=False) -> Dict[bytes, Item]:
+    async def gats_many(self, exptime: int, keys: Sequence[bytes], return_flags=False) -> Dict[bytes, Item]:
         """Return the values associated with the keys and their cas values.
         Gats commands with many keys
 
         gats <exptime> <key>*\r\n
         """
-        nodes_results = await self._fetch_many_command(b"gats %d" % exptime, keys, return_flags=return_flags)
+        nodes_results = await self._get_and_touch_many_command(b"gats", exptime, keys, return_flags=return_flags)
 
         results = {}
         if not return_flags:
