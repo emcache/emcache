@@ -263,6 +263,14 @@ class Client(metaclass=ABCMeta):
         server.
         """
 
+    @abstractmethod
+    async def cache_memlimit(
+        self, memcached_host_address: MemcachedHostAddress, value: int, *, noreply: bool = False
+    ) -> None:
+        """Cache_memlimit is a command with a numeric argument. This allows runtime
+        adjustments of the cache memory limit. The argument is in megabytes, not bytes.
+        """
+
 
 class ClusterEvents(metaclass=ABCMeta):
     """ClusterEvents can be used for being notified about different
