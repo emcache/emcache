@@ -359,7 +359,7 @@ class TestClient:
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
         connection = AsyncMock()
-        connection.fetch_command = AsyncMock(return_value=iter([[b"foo"], [b"value"], [0], [0]]))
+        connection.get_and_touch_command = AsyncMock(return_value=iter([[b"foo"], [b"value"], [0], [0]]))
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -376,7 +376,7 @@ class TestClient:
         result = await f([])
         assert result == {}
 
-    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    @pytest.mark.parametrize("command", ["gat_many", "gats_many"])
     async def test_get_and_touch_many_command_empty_keys(self, client, command):
         f = getattr(client, command)
         result = await f(0, [])
@@ -566,7 +566,7 @@ class TestClient:
         # patch what is necesary for rasing an exception for the first query and
         # a "valid" response from the others
         connection = AsyncMock()
-        connection.fetch_command.side_effect = MagicMock(side_effect=iter([OSError(), b"Ok", b"Ok"]))
+        connection.get_and_touch_command.side_effect = MagicMock(side_effect=iter([OSError(), b"Ok", b"Ok"]))
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node1 = Mock()
