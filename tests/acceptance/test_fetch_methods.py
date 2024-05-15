@@ -177,65 +177,65 @@ class TestGetsMany:
 
 
 class TestGat:
-    async def test_gat(self, client, key_generation, mock_exptime):
+    async def test_gat(self, client, key_generation):
         key_and_value = next(key_generation)
         await client.set(key_and_value, key_and_value)
 
-        item = await client.gat(mock_exptime, key_and_value)
+        item = await client.gat(0, key_and_value)
         assert item.value == key_and_value
         assert item.flags is None
         assert item.cas is None
 
-    async def test_gat_return_flags(self, client, key_generation, mock_exptime):
+    async def test_gat_return_flags(self, client, key_generation):
         key_and_value = next(key_generation)
         await client.set(key_and_value, key_and_value, flags=1)
 
-        item = await client.gat(mock_exptime, key_and_value, return_flags=True)
+        item = await client.gat(0, key_and_value, return_flags=True)
         assert item.value == key_and_value
         assert item.flags == 1
         assert item.cas is None
 
-    async def test_gat_return_flags_key_not_found(self, client, key_generation, mock_exptime):
+    async def test_gat_return_flags_key_not_found(self, client, key_generation):
         key_and_value = next(key_generation)
 
-        item = await client.gat(mock_exptime, key_and_value, return_flags=True)
+        item = await client.gat(0, key_and_value, return_flags=True)
         assert item is None
 
 
 class TestGats:
-    async def test_gats(self, client, key_generation, mock_exptime):
+    async def test_gats(self, client, key_generation):
         key_and_value = next(key_generation)
         await client.set(key_and_value, key_and_value)
 
-        item = await client.gats(mock_exptime, key_and_value)
+        item = await client.gats(0, key_and_value)
         assert item.value == key_and_value
         assert item.flags is None
         assert item.cas is not None
 
-    async def test_gats_return_flags(self, client, key_generation, mock_exptime):
+    async def test_gats_return_flags(self, client, key_generation):
         key_and_value = next(key_generation)
         await client.set(key_and_value, key_and_value, flags=1)
 
-        item = await client.gats(mock_exptime, key_and_value, return_flags=True)
+        item = await client.gats(0, key_and_value, return_flags=True)
         assert item.value == key_and_value
         assert item.cas is not None
         assert item.flags == 1
 
-    async def test_gats_key_not_found(self, client, key_generation, mock_exptime):
+    async def test_gats_key_not_found(self, client, key_generation):
         key_and_value = next(key_generation)
 
-        item = await client.gats(mock_exptime, key_and_value)
+        item = await client.gats(0, key_and_value)
         assert item is None
 
 
 class TestGatMany:
-    async def test_gat_many(self, client, key_generation, mock_exptime):
+    async def test_gat_many(self, client, key_generation):
         keys_and_values = [next(key_generation) for _ in range(NUM_MANY_KEYS)]
 
         for key_and_value in keys_and_values:
             await client.set(key_and_value, key_and_value)
 
-        items = await client.gat_many(mock_exptime, keys_and_values)
+        items = await client.gat_many(0, keys_and_values)
 
         # Check that all keys are retrieved and they have the right values
         assert all(map(lambda k: k in items, keys_and_values))
@@ -243,13 +243,13 @@ class TestGatMany:
         assert all(map(lambda k: items[k].flags is None, keys_and_values))
         assert all(map(lambda k: items[k].cas is None, keys_and_values))
 
-    async def test_gat_return_flags(self, client, key_generation, mock_exptime):
+    async def test_gat_return_flags(self, client, key_generation):
         keys_and_values = [next(key_generation) for _ in range(NUM_MANY_KEYS)]
 
         for key_and_value in keys_and_values:
             await client.set(key_and_value, key_and_value, flags=1)
 
-        items = await client.gat_many(mock_exptime, keys_and_values, return_flags=True)
+        items = await client.gat_many(0, keys_and_values, return_flags=True)
 
         # Check that all keys are retrieved and they have the right values and flags
         assert all(map(lambda k: k in items, keys_and_values))
@@ -257,7 +257,7 @@ class TestGatMany:
         assert all(map(lambda k: items[k].flags == 1, keys_and_values))
         assert all(map(lambda k: items[k].cas is None, keys_and_values))
 
-    async def test_gat_many_with_not_found_keys(self, client, key_generation, mock_exptime):
+    async def test_gat_many_with_not_found_keys(self, client, key_generation):
         keys_and_values = [next(key_generation) for _ in range(NUM_MANY_KEYS)]
 
         for key_and_value in keys_and_values:
@@ -276,7 +276,7 @@ class TestGatMany:
             + [not_found_key3.encode()]
         )
 
-        items = await client.gat_many(mock_exptime, keys)
+        items = await client.gat_many(0, keys)
 
         # Check that all keys are retrieved and they have the right values, not
         # found keys must not appear in the result
@@ -285,13 +285,13 @@ class TestGatMany:
 
 
 class TestGatsMany:
-    async def test_gats_many(self, client, key_generation, mock_exptime):
+    async def test_gats_many(self, client, key_generation):
         keys_and_values = [next(key_generation) for _ in range(NUM_MANY_KEYS)]
 
         for key_and_value in keys_and_values:
             await client.set(key_and_value, key_and_value)
 
-        items = await client.gats_many(mock_exptime, keys_and_values)
+        items = await client.gats_many(0, keys_and_values)
 
         # Check that all keys are retrieved and they have the right values and the
         # cas value is not None
@@ -300,13 +300,13 @@ class TestGatsMany:
         assert all(map(lambda k: items[k].cas is not None, keys_and_values))
         assert all(map(lambda k: items[k].flags is None, keys_and_values))
 
-    async def test_gats_return_flags(self, client, key_generation, mock_exptime):
+    async def test_gats_return_flags(self, client, key_generation):
         keys_and_values = [next(key_generation) for _ in range(NUM_MANY_KEYS)]
 
         for key_and_value in keys_and_values:
             await client.set(key_and_value, key_and_value, flags=1)
 
-        items = await client.gats_many(mock_exptime, keys_and_values, return_flags=True)
+        items = await client.gats_many(0, keys_and_values, return_flags=True)
 
         # Check that all keys are retrieved and they have the right values and flags
         assert all(map(lambda k: k in items, keys_and_values))
@@ -314,7 +314,7 @@ class TestGatsMany:
         assert all(map(lambda k: items[k].cas is not None, keys_and_values))
         assert all(map(lambda k: items[k].flags == 1, keys_and_values))
 
-    async def test_gats_many_with_not_found_keys(self, client, key_generation, mock_exptime):
+    async def test_gats_many_with_not_found_keys(self, client, key_generation):
         keys_and_values = [next(key_generation) for _ in range(NUM_MANY_KEYS)]
 
         for key_and_value in keys_and_values:
@@ -333,7 +333,7 @@ class TestGatsMany:
             + [not_found_key3.encode()]
         )
 
-        items = await client.gats_many(mock_exptime, keys)
+        items = await client.gats_many(0, keys)
 
         # Check that all keys are retrieved and they have the right values, not
         # found keys must not appear in the result
