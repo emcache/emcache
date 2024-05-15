@@ -255,6 +255,21 @@ class TestMemcacheAsciiProtocol:
 
         protocol._transport.write.assert_called_with(b"version\r\n")
 
+    async def test_cache_memlimit_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.cache_memlimit_command(64, noreply=False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"OK\r\n")
+
+        result = await task
+
+        assert result == b"OK"
+
+        protocol._transport.write.assert_called_with(b"cache_memlimit 64\r\n")
+
 
 async def test_create_protocol(event_loop, mocker):
     loop_mock = Mock()

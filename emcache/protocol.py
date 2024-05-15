@@ -323,6 +323,27 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         finally:
             self._parser = None
 
+    async def cache_memlimit_command(self, value: int, noreply: bool) -> Optional[bytes]:
+        noreply = b" noreply" if noreply else b""
+
+        data = b"cache_memlimit " + str(value).encode() + noreply + b"\r\n"
+
+        if noreply:
+            # fire and forget
+            self._transport.write(data)
+            return None
+
+        try:
+            future = self._loop.create_future()
+            parser = cyemcache.AsciiOneLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            result = parser.value()
+            return result
+        finally:
+            self._parser = None
+
 
 async def create_protocol(
     host: str, port: int, ssl: bool, ssl_verify: bool, ssl_extra_ca: Optional[str], *, timeout: int = None

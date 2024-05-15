@@ -168,3 +168,11 @@ class TestVersion:
     async def test_version(self, client, memcached_address_1, memcached_address_2):
         assert isinstance(await client.version(memcached_address_1), str)
         assert isinstance(await client.version(memcached_address_2), str)
+
+
+class TestCacheMemlimit:
+    @pytest.mark.parametrize("noreply", [False, True])
+    async def test_cache_memlimit(self, client, memcached_address_1, memcached_address_2, noreply):
+        # set cache limit for all of the servers
+        assert await client.cache_memlimit(memcached_address_1, 64, noreply=noreply) is None
+        assert await client.cache_memlimit(memcached_address_2, 64, noreply=noreply) is None
