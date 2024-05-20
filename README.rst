@@ -54,12 +54,18 @@ Emcache has currently support, among many of them, for the following commands:
 - **gets** Cas version that returns also the case token of a specific key.
 - **get_many** Many keys get version.
 - **gets_many** Many keys + case token gets version.
+- **gat** Used retrieving a specific key if exists and update expiration time(Get and Touch).
+- **gats** Cas version that retrieving a specific key if exists and update expiration time(Get and Touch with Cas).
+- **gat_many** Many keys gat version.
+- **gats_many** Many keys + case token gats version.
 - **set** Set a new key and value
 - **add** Add a new key and value, if and only if it does not exist.
 - **replace** Update a value of a key, if and only if the key does exist.
 - **append** Append a value to the current one for a specific key, if and only if the key does exist.
 - **prepend** Prepend a value to the current one for a specific key, if and only if the key does exist.
 - **cas** Update a value for a key if and only if token as provided matches with the ones stored in the Memcached server.
+- **version** Version string of this server.
+
 
 Take a look at the documentation for getting a list of all of the `operations <https://emcache.readthedocs.io/en/latest/operations.html>`_ that are currently supported.
 
