@@ -65,6 +65,10 @@ Emcache has currently support, among many of them, for the following commands:
 - **prepend** Prepend a value to the current one for a specific key, if and only if the key does exist.
 - **cas** Update a value for a key if and only if token as provided matches with the ones stored in the Memcached server.
 - **version** Version string of this server.
+- **flush_all** Its effect is to invalidate all existing items immediately (by default) or after the expiration specified.
+- **delete** The command allows for explicit deletion of items.
+- **touch** The command is used to update the expiration time of an existing item without fetching it.
+- **increment/decrement** Commands are used to change data for some item in-place, incrementing or decrementing it.
 
 
 Take a look at the documentation for getting a list of all of the `operations <https://emcache.readthedocs.io/en/latest/operations.html>`_ that are currently supported.
