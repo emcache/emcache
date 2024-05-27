@@ -26,7 +26,7 @@ from .default_values import (
     DEFAULT_TIMEOUT,
 )
 from .node import Node
-from .protocol import DELETED, EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED
+from .protocol import DELETED, EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED, VERSION
 from .timeout import OpTimeout
 
 logger = logging.getLogger(__name__)
@@ -179,7 +179,7 @@ class _Client(Client):
                 return await connection.incr_decr_command(command, key, value, noreply)
 
     async def _fetch_command(self, command: bytes, key: bytes) -> Optional[bytes]:
-        """Proxy function used for all fetch commands `get`, `gets`."""
+        """Proxy function used for all fetch commands `get`, `gets`"""
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
@@ -194,7 +194,7 @@ class _Client(Client):
     async def _fetch_many_command(
         self, command: bytes, keys: Sequence[bytes], return_flags=False
     ) -> Tuple[bytes, bytes, bytes]:
-        """Proxy function used for all fetch many commands `get_many`, `gets_many`."""
+        """Proxy function used for all fetch many commands `get_many`, `gets_many`"""
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
@@ -208,6 +208,54 @@ class _Client(Client):
         async def node_operation(node: Node, keys: List[bytes]):
             async with node.connection() as connection:
                 return await connection.fetch_command(command, keys)
+
+        tasks = [
+            self._loop.create_task(node_operation(node, keys)) for node, keys in self._cluster.pick_nodes(keys).items()
+        ]
+
+        async with OpTimeout(self._timeout, self._loop):
+            try:
+                await asyncio.gather(*tasks)
+            except Exception:
+                # Any exception will invalidate any ongoing
+                # task.
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                raise
+
+        return [task.result() for task in tasks]
+
+    async def _get_and_touch_command(self, command: bytes, exptime: int, key: bytes) -> Optional[bytes]:
+        """Proxy function used for all get_and_touch commands `gat`, `gats`"""
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        if cyemcache.is_key_valid(key) is False:
+            raise ValueError("Key has invalid charcters")
+
+        node = self._cluster.pick_node(key)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                return await connection.get_and_touch_command(command, exptime, (key,))
+
+    async def _get_and_touch_many_command(
+        self, command: bytes, exptime: int, keys: Sequence[bytes], return_flags=False
+    ) -> Tuple[bytes, bytes, bytes]:
+        """Proxy function used for all get_and_touch many commands `gat_many`, `gats_many`"""
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        if not keys:
+            return {}
+
+        for key in keys:
+            if cyemcache.is_key_valid(key) is False:
+                raise ValueError("Key has invalid charcters")
+
+        async def node_operation(node: Node, keys: List[bytes]):
+            async with node.connection() as connection:
+                return await connection.get_and_touch_command(command, exptime, keys)
 
         tasks = [
             self._loop.create_task(node_operation(node, keys)) for node, keys in self._cluster.pick_nodes(keys).items()
@@ -622,6 +670,104 @@ class _Client(Client):
             raise CommandError(f"Command finished with error, response returned {result}")
 
         return
+
+    async def version(self, memcached_host_address: MemcachedHostAddress) -> Optional[str]:
+        """Version is a command with no arguments:
+
+        version\r\n
+
+        In response, the server sends
+
+        "VERSION <version>\r\n", where <version> is the version string for the
+        server.
+        """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        node = self._cluster.node(memcached_host_address)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                result = await connection.version_command()
+
+        if not result or not result.startswith(VERSION):
+            raise CommandError(f"Command finished with error, response returned {result}")
+
+        _, version_value = result.split(b" ")
+        return version_value.decode()
+
+    async def gat(self, exptime: int, key: bytes, return_flags=False) -> Optional[Item]:
+        """Gat command is used to fetch item and update the
+        expiration time of an existing item.
+        Get And Touch.
+
+        gat <exptime> <key>\r\n
+        """
+        keys, values, flags, _ = await self._get_and_touch_command(b"gat", exptime, key)
+
+        if key not in keys:
+            return None
+
+        if not return_flags:
+            return Item(values[0], None, None)
+        else:
+            return Item(values[0], flags[0], None)
+
+    async def gats(self, exptime: int, key: bytes, return_flags=False) -> Optional[Item]:
+        """Gats command is used to fetch item and update the
+        expiration time of an existing item.
+        An alternative gat command for using with CAS
+
+        gats <exptime> <key>\r\n
+        """
+        keys, values, flags, cas = await self._get_and_touch_command(b"gats", exptime, key)
+
+        if key not in keys:
+            return None
+
+        if not return_flags:
+            return Item(values[0], None, cas[0])
+        else:
+            return Item(values[0], flags[0], cas[0])
+
+    async def gat_many(self, exptime: int, keys: Sequence[bytes], return_flags=False) -> Dict[bytes, Item]:
+        """Return the values associated with the keys.
+        Gat commands with many keys
+
+        gat <exptime> <key>*\r\n
+        """
+        nodes_results = await self._get_and_touch_many_command(b"gat", exptime, keys, return_flags=return_flags)
+
+        results = {}
+        if not return_flags:
+            for keys, values, flags, _ in nodes_results:
+                for idx in range(len(keys)):
+                    results[keys[idx]] = Item(values[idx], None, None)
+        else:
+            for keys, values, flags, _ in nodes_results:
+                for idx in range(len(keys)):
+                    results[keys[idx]] = Item(values[idx], flags[idx], None)
+
+        return results
+
+    async def gats_many(self, exptime: int, keys: Sequence[bytes], return_flags=False) -> Dict[bytes, Item]:
+        """Return the values associated with the keys and their cas values.
+        Gats commands with many keys
+
+        gats <exptime> <key>*\r\n
+        """
+        nodes_results = await self._get_and_touch_many_command(b"gats", exptime, keys, return_flags=return_flags)
+
+        results = {}
+        if not return_flags:
+            for keys, values, flags, cas in nodes_results:
+                for idx in range(len(keys)):
+                    results[keys[idx]] = Item(values[idx], None, cas[idx])
+        else:
+            for keys, values, flags, cas in nodes_results:
+                for idx in range(len(keys)):
+                    results[keys[idx]] = Item(values[idx], flags[idx], cas[idx])
+
+        return results
 
 
 async def create_client(

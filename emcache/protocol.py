@@ -26,6 +26,7 @@ DELETED = b"DELETED"
 NOT_STORED = b"NOT_STORED"
 NOT_FOUND = b"NOT_FOUND"
 END = b"END"
+VERSION = b"VERSION"
 
 
 class AutoDiscoveryCommandParser:
@@ -159,12 +160,12 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool, cas: Optional[int]
     ) -> Optional[bytes]:
 
-        exptime_value = str(exptime).encode()
-        flags_value = str(flags).encode()
-        len_value = str(len(value)).encode()
+        exptime_value = f"{exptime:d}".encode()
+        flags_value = f"{flags:d}".encode()
+        len_value = f"{len(value):d}".encode()
 
         if cas:
-            cas_value = str(cas).encode()
+            cas_value = f"{cas:d}".encode()
             extra = b" " + cas_value if not noreply else b" " + cas_value + b" noreply"
         else:
             extra = b"" if not noreply else b" noreply"
@@ -207,7 +208,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         else:
             noreply = b""
 
-        data = command + b" " + key + b" " + str(value).encode() + noreply + b"\r\n"
+        data = command + b" " + key + b" " + f"{value:d}".encode() + noreply + b"\r\n"
 
         if noreply:
             # fire and forget
@@ -231,7 +232,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         else:
             noreply = b""
 
-        data = b"touch " + key + b" " + str(exptime).encode() + noreply + b"\r\n"
+        data = b"touch " + key + b" " + f"{exptime:d}".encode() + noreply + b"\r\n"
 
         if noreply:
             # fire and forget
@@ -255,7 +256,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         else:
             noreply = b""
 
-        data = b"flush_all " + str(delay).encode() + noreply + b"\r\n"
+        data = b"flush_all " + f"{delay:d}".encode() + noreply + b"\r\n"
 
         if noreply:
             # fire and forget
@@ -306,6 +307,36 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             self._transport.write(command)
             await future
             return parser.autodiscovery(), parser.version(), parser.nodes()
+        finally:
+            self._parser = None
+
+    async def version_command(self) -> Optional[bytes]:
+        data = b"version\r\n"
+
+        try:
+            future = self._loop.create_future()
+            parser = cyemcache.AsciiOneLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            result = parser.value()
+            return result
+        finally:
+            self._parser = None
+
+    async def get_and_touch_command(
+        self, cmd: bytes, exptime: int, keys: Tuple[bytes]
+    ) -> Tuple[List[bytes], List[bytes], List[int], List[int]]:
+        data = cmd + b" " + f"{exptime:d}".encode() + b" " + b" ".join(keys) + b"\r\n"
+
+        try:
+            future = self._loop.create_future()
+            parser = cyemcache.AsciiMultiLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            keys, values, flags, cas = parser.keys(), parser.values(), parser.flags(), parser.cas()
+            return keys, values, flags, cas
         finally:
             self._parser = None
 

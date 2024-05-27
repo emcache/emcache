@@ -10,25 +10,30 @@ jobs:
   build_macos:
     outputs:
       version: ${{ steps.get_version.outputs.VERSION }}
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        os: [ macos-latest ]
+        python-version: ["3.11"]
+
+    runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
-        python-version: "3.11"
+        python-version: ${{ matrix.python-version }}
     - name: Generate macos-wheel
       run: |
         cd vendor/murmur3
         make static_macos
         cd -
         python -m pip install --upgrade pip
-        pip install wheel cibuildwheel==2.11.2
+        pip install setuptools wheel cibuildwheel==2.11.2
         make compile
         python -m cibuildwheel --platform macos --output-dir dist/
-      env: 
+      env:
         CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
         CIBW_SKIP: "pp*"
     - name: Mac acceptance test dependencies
@@ -54,7 +59,7 @@ jobs:
     - name: Get the version
       id: get_version
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: ${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
@@ -68,11 +73,11 @@ jobs:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Generate manylinux1-wheel
@@ -84,7 +89,7 @@ jobs:
         cp /tmp/emcache/dist/emcache-*.whl dist/
     - name: Linux acceptance test dependencies
       run: |
-        docker-compose up -d
+        docker compose up -d
     - name: Test generated wheel
       run: |
         mkdir test_wheel
@@ -102,43 +107,45 @@ jobs:
     - name: Get the version
       id: get_version
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: ${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
-    
+
   build_linux_aarch64:
     outputs:
       version: ${{ steps.get_version.outputs.VERSION }}
     strategy:
       matrix:
-        os: [macos-latest]
+        os: [ubuntu-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        platforms:
+          - linux/arm64
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
     - name: Generate manylinux2014_aarch64-wheel
       run: |
-        brew install docker
-        brew install colima
-        colima delete
-        colima start
-        docker run --platform linux/arm64 -v `pwd`:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux2014_aarch64 /io/bin/build_manylinux1_wheel.sh
-        mkdir test_wheel
-        mv dist/emcache-*.whl test_wheel
+        mkdir /tmp/emcache
+        cp -r . /tmp/emcache
+        docker run --platform linux/arm64 -v /tmp/emcache:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux_2_28_aarch64 /io/bin/build_manylinux_2_28_wheel.sh
+        mkdir test_wheel/
+        cp /tmp/emcache/dist/emcache-*.whl test_wheel/
     - name: Run unit tests using the wheel
       run: |
         docker run --platform linux/arm64 --entrypoint bash -v `pwd`:/io python:${{matrix.python-version}}-bookworm /io/bin/test_aarch_wheel.sh
     - name: Get the version
       id: get_version
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v3
       with:
         name: aarch64-${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
@@ -147,14 +154,14 @@ jobs:
     needs: [build_macos, build_linux, build_linux_aarch64]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/download-artifact@v2
+    - uses: actions/checkout@v4
+    - uses: actions/download-artifact@v3
       with:
         # build_macos and build_linux will uses same version,
         # so we can download it at once
         name: ${{ needs.build_linux.outputs.version }}
         path: wheelhouse/
-    - uses: actions/download-artifact@v2
+    - uses: actions/download-artifact@v3
       with:
         name: aarch64-${{ needs.build_linux_aarch64.outputs.version }}
         path: wheelhouse/

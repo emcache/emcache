@@ -1,6 +1,10 @@
+1.2.2
+================
+- Adds support for gat, gats, gat_many and gats_many commands [123](https://github.com/emcache/emcache/pull/123)
+
 1.2.1
 ================
-- Fixes issue with `OpTimeout` when using Python versions >= 3.11 [115](https://github.com/emcache/emcache/pull/115)
+- fixes issue with `optimeout` when using python versions >= 3.11 [115](https://github.com/emcache/emcache/pull/115)
 
 1.2.0
 ================

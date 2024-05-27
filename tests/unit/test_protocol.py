@@ -98,7 +98,7 @@ class TestMemcacheAsciiProtocol:
         with pytest.raises(asyncio.CancelledError):
             await task
 
-        #  check that the protocol is yes or yes set to None
+        # check that the protocol is yes or yes set to None
         assert protocol._parser is None
 
     async def test_storage_command(self, event_loop, protocol):
@@ -239,6 +239,73 @@ class TestMemcacheAsciiProtocol:
         assert result == (False, -1, [])
 
         protocol._transport.write.assert_called_with(b"config get cluster\r\n")
+
+    async def test_version_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.version_command()
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"VERSION 1.6.26\r\n")
+
+        result = await task
+
+        assert result == b"VERSION 1.6.26"
+
+        protocol._transport.write.assert_called_with(b"version\r\n")
+
+    async def test_get_and_touch_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.get_and_touch_command(b"gat", 0, [b"foo"])
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"VALUE foo 0 5\r\nvalue\r\nEND\r\n")
+
+        keys, values, flags, cas = await task
+
+        assert keys == [b"foo"]
+        assert values == [b"value"]
+        assert flags == [0]
+        assert cas == [None]
+
+        protocol._transport.write.assert_called_with(b"gat 0 foo\r\n")
+        assert protocol._parser is None
+
+    async def test_get_and_touch_command_with_cas(self, event_loop, protocol):
+        async def coro():
+            return await protocol.get_and_touch_command(b"gats", 0, [b"foo"])
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"VALUE foo 0 5 1\r\nvalue\r\nEND\r\n")
+
+        keys, values, flags, cas = await task
+
+        assert keys == [b"foo"]
+        assert values == [b"value"]
+        assert flags == [0]
+        assert cas == [1]
+
+        protocol._transport.write.assert_called_with(b"gats 0 foo\r\n")
+
+    async def test_get_and_touch_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.get_and_touch_command(b"gat", 0, [b"foo"])
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        # check that the protocol is yes or yes set to None
+        assert protocol._parser is None
 
 
 async def test_create_protocol(event_loop, mocker):
