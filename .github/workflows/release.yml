@@ -15,10 +15,10 @@ jobs:
         os: [ macos-latest ]
         python-version: [
           { "version": "3.8", "select" : "cp38"},
-#          { "version": "3.9", "select" : "cp39"},
-#          { "version": "3.10", "select" : "cp310"},
-#          { "version": "3.11", "select" : "cp311"},
-#          { "version": "3.12", "select" : "cp312"},
+          { "version": "3.9", "select" : "cp39"},
+          { "version": "3.10", "select" : "cp310"},
+          { "version": "3.11", "select" : "cp311"},
+          { "version": "3.12", "select" : "cp312"},
         ]
 
     runs-on: ${{ matrix.os }}
@@ -42,7 +42,7 @@ jobs:
       env:
         CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
         CIBW_SKIP: "pp*"
-        CIBW_BUILD: ${{ matrix.python-version.select }}-macosx_universal2
+        CIBW_BUILD: ${{ matrix.python-version.select }}-macosx_*
     - name: Mac acceptance test dependencies
       run: |
         brew install memcached
