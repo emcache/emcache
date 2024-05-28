@@ -42,7 +42,7 @@ jobs:
       env:
         CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
         CIBW_SKIP: "pp*"
-        CIBW_BUILD: "${python-version.select}-macosx_universal2"
+        CIBW_BUILD: "${{ python-version.select }}-macosx_universal2"
     - name: Mac acceptance test dependencies
       run: |
         brew install memcached
@@ -61,7 +61,7 @@ jobs:
         make -C ../vendor/murmur3 clean static_macos
         pip install setuptools
         make -C .. install-dev
-        pip install emcache-*-${matrix.python-version.select}-${matrix.python-version.select}*.whl --upgrade
+        pip install emcache-*-${{ matrix.python-version.select }}-${{ matrix.python-version.select }}*.whl --upgrade
         make -C .. test
     - name: Get the version
       id: get_version
