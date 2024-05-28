@@ -22,7 +22,7 @@ from emcache.default_values import (
     DEFAULT_SSL_VERIFY,
     DEFAULT_TIMEOUT,
 )
-from emcache.node import MemcachedHostAddress
+from emcache import MemcachedHostAddress
 from emcache.protocol import DELETED, NOT_FOUND, STORED, TOUCHED
 
 pytestmark = pytest.mark.asyncio

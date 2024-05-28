@@ -22,7 +22,7 @@ from .default_values import (
     DEFAULT_SSL_VERIFY,
     DEFAULT_TIMEOUT,
 )
-from .node import MemcachedHostAddress, MemcachedUnixSocketPath
+from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 
 __all__ = (
     "Client",

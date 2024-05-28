@@ -7,6 +7,7 @@ import re
 import socket
 from typing import Final, List, Optional, Tuple, Union
 
+from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
 
 try:
@@ -342,7 +343,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
 
 async def create_protocol(
-    address: Union[Tuple[str, int], str],
+    address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
     ssl: bool,
     ssl_verify: bool,
     ssl_extra_ca: Optional[str],
@@ -367,10 +368,10 @@ async def create_protocol(
     else:
         ssl = False
 
-    if isinstance(address, tuple):
-        connect_coro = loop.create_connection(MemcacheAsciiProtocol, host=address[0], port=address[1], ssl=ssl)
+    if isinstance(address, MemcachedHostAddress):
+        connect_coro = loop.create_connection(MemcacheAsciiProtocol, host=address.address, port=address.port, ssl=ssl)
     else:
-        connect_coro = loop.create_unix_connection(MemcacheAsciiProtocol, path=address, ssl=ssl)
+        connect_coro = loop.create_unix_connection(MemcacheAsciiProtocol, path=address.path, ssl=ssl)
     if timeout is None:
         _, protocol = await connect_coro
     else:

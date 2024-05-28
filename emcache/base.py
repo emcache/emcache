@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Dict, Mapping, Optional, Sequence
 
 from .connection_pool import ConnectionPoolMetrics
-from .node import MemcachedHostAddress
+from ._address import MemcachedHostAddress
 
 
 @dataclass

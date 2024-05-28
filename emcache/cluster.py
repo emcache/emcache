@@ -6,11 +6,12 @@ import logging
 import random
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
+from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
 from .base import ClusterEvents, ClusterManagment
 from .client_errors import ClusterNoAvailableNodes
 from .connection_pool import ConnectionPoolMetrics
-from .node import MemcachedHostAddress, MemcachedUnixSocketPath, Node
+from .node import Node
 from .timeout import OpTimeout
 
 logger = logging.getLogger(__name__)

@@ -5,11 +5,12 @@ import asyncio
 import logging
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
+from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
 from .autobatching import AutoBatching
 from .base import Client, ClusterEvents, ClusterManagment, Item
 from .client_errors import CommandError, NotFoundCommandError, NotStoredStorageCommandError, StorageCommandError
-from .cluster import Cluster, MemcachedHostAddress, MemcachedUnixSocketPath
+from .cluster import Cluster
 from .default_values import (
     DEFAULT_AUTOBATCHING_ENABLED,
     DEFAULT_AUTOBATCHING_MAX_KEYS,

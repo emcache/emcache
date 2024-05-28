@@ -9,7 +9,7 @@ import pytest
 from emcache.base import ClusterEvents
 from emcache.client_errors import ClusterNoAvailableNodes
 from emcache.cluster import Cluster, _ClusterManagment
-from emcache.node import MemcachedHostAddress
+from emcache import MemcachedHostAddress
 
 pytestmark = pytest.mark.asyncio
 

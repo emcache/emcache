@@ -2,25 +2,12 @@
 # Copyright (c) 2020-2024 Pau Freixes
 
 import logging
-from dataclasses import dataclass
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
+from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from .connection_pool import BaseConnectionContext, ConnectionPool, ConnectionPoolMetrics
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class MemcachedHostAddress:
-    """Data class for identifying univocally a Memcached host."""
-
-    address: str
-    port: int
-
-
-@dataclass(frozen=True)
-class MemcachedUnixSocketPath:
-    path: str  # TODO: normalize path (make it absolute?)
 
 
 class Node:
@@ -53,14 +40,8 @@ class Node:
         self._on_healthy_status_change_cb = on_healthy_status_change_cb
 
         self._memcached_host_address = memcached_host_address
-        simple_address: Union[Tuple[str, int], str]
-        if isinstance(memcached_host_address, MemcachedHostAddress):
-            simple_address = (memcached_host_address.address, memcached_host_address.port)
-        else:
-            simple_address = memcached_host_address.path
-
         self._connection_pool = ConnectionPool(
-            simple_address,
+            memcached_host_address,
             max_connections,
             min_connections,
             purge_unused_connections_after,
