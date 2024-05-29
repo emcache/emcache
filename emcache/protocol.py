@@ -339,6 +339,39 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         finally:
             self._parser = None
 
+    async def auth_command(self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int) -> Optional[bytes]:
+        exptime_value = f"{exptime:d}".encode()
+        flags_value = f"{flags:d}".encode()
+        len_value = f"{len(value):d}".encode()
+
+        data = b"".join(
+            (
+                command,
+                b" ",
+                key,
+                b" ",
+                flags_value,
+                b" ",
+                exptime_value,
+                b" ",
+                len_value,
+                b"\r\n",
+                value,
+                b"\r\n",
+            )
+        )
+
+        try:
+            future = self._loop.create_future()
+            parser = cyemcache.AsciiOneLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            result = parser.value()
+            return result
+        finally:
+            self._parser = None
+
 
 async def create_protocol(
     host: str, port: int, ssl: bool, ssl_verify: bool, ssl_extra_ca: Optional[str], *, timeout: int = None

@@ -305,6 +305,10 @@ class Client(metaclass=ABCMeta):
         gats <exptime> <key>*\r\n
         """
 
+    @abstractmethod
+    async def auth(self, memcached_host_address: MemcachedHostAddress, username: bytes, password: bytes) -> None:
+        """SASL client authentication, support on ASCII protocol"""
+
 
 class ClusterEvents(metaclass=ABCMeta):
     """ClusterEvents can be used for being notified about different

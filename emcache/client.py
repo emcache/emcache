@@ -769,6 +769,21 @@ class _Client(Client):
 
         return results
 
+    async def auth(self, memcached_host_address: MemcachedHostAddress, username: bytes, password: bytes) -> None:
+        """SASL client authentication"""
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        value = username + b" " + password
+
+        node = self._cluster.node(memcached_host_address)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                result = await connection.auth_command(b"set", key=b"data", value=value, flags=0, exptime=0)
+
+        if result != STORED:
+            raise StorageCommandError(f"Command finished with error, response returned {result}")
+
 
 async def create_client(
     node_addresses: Sequence[MemcachedHostAddress],

@@ -6,18 +6,13 @@ import os
 
 import pytest
 
-from emcache import MemcachedHostAddress, create_client
+from emcache import create_client
 
 pytestmark = pytest.mark.asyncio
 
 
 EXTRA_CA = os.path.join(os.path.dirname(__file__), "data", "rootCA.crt")
 EXTRA_CA_INVALID = os.path.join(os.path.dirname(__file__), "data", "rootCA_invalid.crt")
-
-
-@pytest.fixture
-async def memcached_address_3():
-    return MemcachedHostAddress("localhost", 11213)
 
 
 class TestSSL:
