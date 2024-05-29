@@ -1,3 +1,4 @@
+import asyncio
 import sys
 
 import pytest
@@ -12,7 +13,7 @@ class TestAuth:
     async def test_auth(self, memcached_address_4, auth_username_password):
         client = await create_client([memcached_address_4])
 
-        with pytest.raises(TimeoutError):
+        with pytest.raises(asyncio.TimeoutError, TimeoutError):
             await client.get(b"key")
 
         assert await client.auth(memcached_address_4, *auth_username_password) is None
