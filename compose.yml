@@ -17,7 +17,7 @@ services:
       - "11213:11213"
   memcached4:
     image: memcached
-    command: [ '-p', '11214', '-S', '-Y', '/app/tests/acceptance/data/auth_pwd.txt']
+    command: ['-p', '11214', '-S', '-Y', '/app/tests/acceptance/data/auth_pwd.txt']
     volumes:
       - ./:/app
     ports:
