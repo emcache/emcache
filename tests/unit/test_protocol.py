@@ -325,7 +325,7 @@ class TestMemcacheAsciiProtocol:
 
     async def test_auth_command_with_error(self, event_loop, protocol, auth_username_password):
         async def coro():
-            value = b"".join(auth_username_password)
+            value = b" ".join(auth_username_password)
             return await protocol.auth_command(b"set", b"data", value, 0, 0)
 
         task = event_loop.create_task(coro())
