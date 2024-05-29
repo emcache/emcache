@@ -309,6 +309,14 @@ class Client(metaclass=ABCMeta):
     async def auth(self, memcached_host_address: MemcachedHostAddress, username: bytes, password: bytes) -> None:
         """SASL client authentication, support on ASCII protocol"""
 
+    @abstractmethod
+    async def cache_memlimit(
+        self, memcached_host_address: MemcachedHostAddress, value: int, *, noreply: bool = False
+    ) -> None:
+        """Cache_memlimit is a command with a numeric argument. This allows runtime
+        adjustments of the cache memory limit. The argument is in megabytes, not bytes.
+        """
+
 
 class ClusterEvents(metaclass=ABCMeta):
     """ClusterEvents can be used for being notified about different
