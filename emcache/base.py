@@ -306,10 +306,6 @@ class Client(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def auth(self, memcached_host_address: MemcachedHostAddress, username: bytes, password: bytes) -> None:
-        """SASL client authentication, support on ASCII protocol"""
-
-    @abstractmethod
     async def cache_memlimit(
         self, memcached_host_address: MemcachedHostAddress, value: int, *, noreply: bool = False
     ) -> None:

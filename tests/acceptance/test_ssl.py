@@ -17,10 +17,8 @@ EXTRA_CA_INVALID = os.path.join(os.path.dirname(__file__), "data", "rootCA_inval
 
 class TestSSL:
     async def test_no_ssl_fails(self, memcached_address_3):
-        client = await create_client([memcached_address_3], timeout=1.0, ssl=False)
         with pytest.raises(asyncio.TimeoutError):
-            await client.get(b"key")
-        await client.close()
+            await create_client([memcached_address_3], timeout=1.0, ssl=False)
 
     async def test_ssl_no_verify(self, memcached_address_3):
         client = await create_client([memcached_address_3], timeout=1.0, ssl=True, ssl_verify=False)
@@ -28,10 +26,8 @@ class TestSSL:
         await client.close()
 
     async def test_ssl_verify_no_extra_ca(self, memcached_address_3):
-        client = await create_client([memcached_address_3], timeout=1.0, ssl=True, ssl_verify=True)
         with pytest.raises(asyncio.TimeoutError):
-            await client.get(b"key")
-        await client.close()
+            await create_client([memcached_address_3], timeout=1.0, ssl=True, ssl_verify=True)
 
     async def test_ssl_verify_extra_ca(self, memcached_address_3):
         client = await create_client(
@@ -41,9 +37,7 @@ class TestSSL:
         await client.close()
 
     async def test_ssl_verify_extra_ca_invalid(self, memcached_address_3):
-        client = await create_client(
-            [memcached_address_3], timeout=1.0, ssl=True, ssl_verify=True, ssl_extra_ca=EXTRA_CA_INVALID
-        )
         with pytest.raises(asyncio.TimeoutError):
-            await client.get(b"key")
-        await client.close()
+            await create_client(
+                [memcached_address_3], timeout=1.0, ssl=True, ssl_verify=True, ssl_extra_ca=EXTRA_CA_INVALID
+            )

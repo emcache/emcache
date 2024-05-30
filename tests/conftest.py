@@ -54,6 +54,6 @@ def key_generation():
 
 
 @pytest.fixture
-async def auth_username_password():
+def auth_userpass():
     with open(os.path.join(os.path.dirname(__file__), "acceptance", "data", "auth_pwd.txt"), "rb") as f:
         return f.readline().rstrip().split(b":")

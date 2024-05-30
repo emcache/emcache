@@ -8,8 +8,14 @@ from typing import Dict, List, Optional, Sequence, Tuple
 from ._cython import cyemcache
 from .autobatching import AutoBatching
 from .base import Client, ClusterEvents, ClusterManagment, Item
-from .client_errors import CommandError, NotFoundCommandError, NotStoredStorageCommandError, StorageCommandError
-from .cluster import Cluster, MemcachedHostAddress
+from .client_errors import (
+    AuthenticationError,
+    CommandError,
+    NotFoundCommandError,
+    NotStoredStorageCommandError,
+    StorageCommandError,
+)
+from .cluster import Cluster
 from .default_values import (
     DEFAULT_AUTOBATCHING_ENABLED,
     DEFAULT_AUTOBATCHING_MAX_KEYS,
@@ -25,19 +31,17 @@ from .default_values import (
     DEFAULT_STARTUP_WAIT_AUTODISCOVERY,
     DEFAULT_TIMEOUT,
 )
-from .node import Node
+from .node import MemcachedHostAddress, Node
 from .protocol import DELETED, EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED, VERSION
 from .timeout import OpTimeout
 
 logger = logging.getLogger(__name__)
-
 
 MAX_ALLOWED_FLAG_VALUE = 2**16
 MAX_ALLOWED_CAS_VALUE = 2**64
 
 
 class _Client(Client):
-
     _cluster: Cluster
     _timeout: Optional[float]
     _loop: asyncio.AbstractEventLoop
@@ -273,6 +277,32 @@ class _Client(Client):
                 raise
 
         return [task.result() for task in tasks]
+
+    async def _auth(self, memcached_host_address: MemcachedHostAddress, username: str, password: str) -> None:
+        """SASL client authentication by initial"""
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        value = username.encode() + b" " + password.encode()
+
+        node = self._cluster.node(memcached_host_address)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                new_result = await connection.auth_command(b"set", key=b"1", value=value, flags=1, exptime=1)
+        if new_result != STORED:
+            raise AuthenticationError(f"Authentication failed with result {new_result}")
+
+    async def auth(self, username: Optional[str], password: Optional[str]):
+        for node_address in self.cluster_managment().nodes():
+            if type(node_address) is not MemcachedHostAddress:
+                continue
+            try:
+                await self.version(node_address)
+            except CommandError:
+                if not username or not password:
+                    raise AuthenticationError("Does not exists username or password for auth")
+
+                await self._auth(node_address, username, password)
 
     @property
     def closed(self) -> bool:
@@ -769,21 +799,6 @@ class _Client(Client):
 
         return results
 
-    async def auth(self, memcached_host_address: MemcachedHostAddress, username: bytes, password: bytes) -> None:
-        """SASL client authentication"""
-        if self._closed:
-            raise RuntimeError("Emcache client is closed")
-
-        value = username + b" " + password
-
-        node = self._cluster.node(memcached_host_address)
-        async with OpTimeout(self._timeout, self._loop):
-            async with node.connection() as connection:
-                result = await connection.auth_command(b"set", key=b"data", value=value, flags=0, exptime=0)
-
-        if result != STORED:
-            raise StorageCommandError(f"Command finished with error, response returned {result}")
-
     async def cache_memlimit(
         self, memcached_host_address: MemcachedHostAddress, value: int, *, noreply: bool = False
     ) -> None:
@@ -825,6 +840,8 @@ async def create_client(
     autodiscovery: bool = False,
     autodiscovery_poll_interval: float = DEFAULT_AUTODISCOVERY_POLL_INTERVAL,
     autodiscovery_timeout: float = DEFAULT_AUTODISCOVERY_TIMEOUT,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
 ) -> Client:
     """Factory for creating a new `emcache.Client` instance.
 
@@ -874,6 +891,10 @@ async def create_client(
     By default, 60s.
 
     `autodiscovery_timeout` the timeout for the `config get cluster` command. By default, 5s.
+
+    `username` By default None. Used for authentication by SASL with username
+
+    `password` By default None. Used for authentication by SASL with password
     """
     # check SSL availability earlier, protocol which is the one that will use
     # it when connections are created in background won't need to deal with this
@@ -903,7 +924,9 @@ async def create_client(
         autodiscovery_timeout,
     )
 
+    # sasl authorization via nodes
+    await client.auth(username, password)
+
     if autodiscovery:
         await asyncio.wait_for(client._cluster._first_autodiscovery_done, DEFAULT_STARTUP_WAIT_AUTODISCOVERY)
-
     return client

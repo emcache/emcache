@@ -1,6 +1,6 @@
-PYTHON ?= python
-PIP ?= pip
-CYTHON ?= cython
+PYTHON = python
+PIP = pip
+CYTHON = cython
 
 _default: compile
 
@@ -30,11 +30,11 @@ install: compile
 	$(PIP) install -e .
 
 format:
-	isort --recursive .
+	isort .
 	black --exclude=venv .
 
 lint:
-	isort --check-only --recursive .
+	isort --check .
 	black --check --exclude=venv .
 	flake8 --exclude=venv .
 
@@ -45,7 +45,7 @@ unit:
 	pytest -sv tests/unit
 
 test: 
-	pytest -sv tests
+	pytest --cache-clear -svv tests
 
 coverage:
 	coverage run -m pytest -v tests/ --junitxml=build/test.xml

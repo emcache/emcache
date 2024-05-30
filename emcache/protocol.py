@@ -344,23 +344,20 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         flags_value = f"{flags:d}".encode()
         len_value = f"{len(value):d}".encode()
 
-        data = b"".join(
-            (
-                command,
-                b" ",
-                key,
-                b" ",
-                flags_value,
-                b" ",
-                exptime_value,
-                b" ",
-                len_value,
-                b"\r\n",
-                value,
-                b"\r\n",
-            )
+        data = (
+            command
+            + b" "
+            + key
+            + b" "
+            + flags_value
+            + b" "
+            + exptime_value
+            + b" "
+            + len_value
+            + b"\r\n"
+            + value
+            + b"\r\n"
         )
-
         try:
             future = self._loop.create_future()
             parser = cyemcache.AsciiOneLineParser(future)
@@ -375,7 +372,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
     async def cache_memlimit_command(self, value: int, noreply: bool) -> Optional[bytes]:
         noreply = b" noreply" if noreply else b""
 
-        data = b"cache_memlimit " + str(value).encode() + noreply + b"\r\n"
+        data = b"cache_memlimit " + f"{value:d}".encode() + noreply + b"\r\n"
 
         if noreply:
             # fire and forget

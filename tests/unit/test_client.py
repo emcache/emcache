@@ -1,6 +1,5 @@
 # MIT License
 # Copyright (c) 2020-2024 Pau Freixes
-
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, call
 
 import pytest
@@ -43,13 +42,6 @@ class TestClient:
         mocker.patch("emcache.client.Cluster", return_value=cluster)
         return _Client(
             [memcached_address_1], None, 1, 1, None, None, None, False, False, 32, False, False, None, False, 60, 5
-        )
-
-    @pytest.fixture
-    async def client_auth(self, event_loop, mocker, cluster, memcached_address_4):
-        mocker.patch("emcache.client.Cluster", return_value=cluster)
-        return _Client(
-            [memcached_address_4], None, 1, 1, None, None, None, False, False, 32, False, False, None, False, 60, 5
         )
 
     async def test_invalid_host_addresses(self):
@@ -679,37 +671,6 @@ class TestClient:
         with pytest.raises(CommandError):
             await client.version(memcached_address_1)
 
-    async def test_auth_client_closed(self, client_auth, memcached_address_4):
-        await client_auth.close()
-        with pytest.raises(RuntimeError):
-            await client_auth.auth(memcached_address_4, b"username", b"password")
-
-    async def test_auth_command_use_timeout(self, mocker, client_auth, memcached_address_4, auth_username_password):
-        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
-
-        connection = AsyncMock()
-        connection.auth_command = AsyncMock(return_value=STORED)
-        connection_context = AsyncMock()
-        connection_context.__aenter__.return_value = connection
-        node = Mock()
-        node.connection.return_value = connection_context
-        client_auth._cluster.node.return_value = node
-
-        await client_auth.auth(memcached_address_4, *auth_username_password)
-
-        optimeout_class.assert_called()
-
-    async def test_error_auth_command(self, client_auth, memcached_address_4):
-        connection = AsyncMock()
-        connection.flush_all_command = AsyncMock(return_value=iter([ERROR]))
-        connection_context = AsyncMock()
-        connection_context.__aenter__.return_value = connection
-        node = Mock()
-        node.connection.return_value = connection_context
-        client_auth._cluster.node.return_value = node
-        with pytest.raises(CommandError):
-            await client_auth.auth(memcached_address_4, b"wrong", b"wrong")
-
     async def test_cache_memlimit_client_closed(self, client, memcached_address_1):
         await client.close()
         with pytest.raises(RuntimeError):
@@ -728,11 +689,14 @@ class TestClient:
             await client.cache_memlimit(memcached_address_1, 64)
 
 
-async def test_create_client_default_values(event_loop, mocker):
+async def test_create_client_default_values(event_loop, mocker, memcached_address_1):
     client_class = mocker.patch("emcache.client._Client")
-    await create_client([("localhost", 11211)])
+
+    client_class.return_value.auth = AsyncMock()
+
+    await create_client([memcached_address_1])
     client_class.assert_called_with(
-        [("localhost", 11211)],
+        [memcached_address_1],
         DEFAULT_TIMEOUT,
         DEFAULT_MAX_CONNECTIONS,
         DEFAULT_MIN_CONNECTIONS,
