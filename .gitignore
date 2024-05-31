@@ -11,5 +11,6 @@ dist
 *.c
 *.pyc
 *.swo
-venv
+venv/
+.venv/
 .idea/
