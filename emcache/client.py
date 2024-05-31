@@ -294,8 +294,6 @@ class _Client(Client):
 
     async def auth(self, username: Optional[str], password: Optional[str]):
         for node_address in self.cluster_managment().nodes():
-            if type(node_address) is not MemcachedHostAddress:
-                continue
             try:
                 await self.version(node_address)
             except CommandError:

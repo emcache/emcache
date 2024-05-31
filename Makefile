@@ -45,7 +45,7 @@ unit:
 	pytest -sv tests/unit
 
 test: 
-	pytest --cache-clear -svv tests
+	pytest -sv tests
 
 coverage:
 	coverage run -m pytest -v tests/ --junitxml=build/test.xml
