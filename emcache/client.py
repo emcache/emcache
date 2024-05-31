@@ -293,7 +293,7 @@ class _Client(Client):
             raise AuthenticationError(f"Authentication failed with result {new_result}")
 
     async def auth(self, username: Optional[str], password: Optional[str]):
-        for node_address in self.cluster_managment().nodes():
+        async def coro(node_address):
             try:
                 await self.version(node_address)
             except CommandError:
@@ -301,6 +301,8 @@ class _Client(Client):
                     raise AuthenticationError("Does not exists username or password for auth")
 
                 await self._auth(node_address, username, password)
+
+        await asyncio.gather(*(coro(node_address) for node_address in self.cluster_managment().nodes()))
 
     @property
     def closed(self) -> bool:
