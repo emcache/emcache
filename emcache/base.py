@@ -305,6 +305,21 @@ class Client(metaclass=ABCMeta):
         gats <exptime> <key>*\r\n
         """
 
+    @abstractmethod
+    async def pipeline(self) -> "Pipeline":
+        """Return Pipeline object which support execute many commands to the Memcached server by one step"""
+
+
+class Pipeline(metaclass=ABCMeta):
+    def set(self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False) -> None:
+        """Push memcached command `set` in stack"""
+
+    def get(self, key: bytes, return_flags=False) -> Optional[Item]:
+        """Push memcached command `get` in stack."""
+
+    def execute(self):
+        """Execute all memcached accumulated commands and write by one step on server."""
+
 
 class ClusterEvents(metaclass=ABCMeta):
     """ClusterEvents can be used for being notified about different

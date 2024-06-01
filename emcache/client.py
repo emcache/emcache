@@ -7,7 +7,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from ._cython import cyemcache
 from .autobatching import AutoBatching
-from .base import Client, ClusterEvents, ClusterManagment, Item
+from .base import Client, ClusterEvents, ClusterManagment, Item, Pipeline
 from .client_errors import CommandError, NotFoundCommandError, NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster, MemcachedHostAddress
 from .default_values import (
@@ -768,6 +768,20 @@ class _Client(Client):
                     results[keys[idx]] = Item(values[idx], flags[idx], cas[idx])
 
         return results
+
+    async def pipeline(self) -> "_Pipeline":
+        return _Pipeline()
+
+
+class _Pipeline(Pipeline):
+    def get(self, key: bytes, return_flags=False) -> Optional[Item]:
+        raise NotImplementedError
+
+    def set(self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False) -> None:
+        raise NotImplementedError
+
+    def execute(self):
+        raise NotImplementedError
 
 
 async def create_client(
