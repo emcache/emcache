@@ -20,12 +20,10 @@ async def test_timeout():
     await client.close()
 
 
-async def test_timeout_multiple_nodes(memcached_address_1, memcached_address_2):
+async def test_timeout_multiple_nodes(node_addresses):
     # Use two available hosts and one unreachable, everything
     # would need to be cancelled
-    client = await create_client(
-        [memcached_address_1, memcached_address_2, MemcachedHostAddress(UNREACHABLE_HOST, 11211)], timeout=0.1
-    )
+    client = await create_client([*node_addresses, MemcachedHostAddress(UNREACHABLE_HOST, 11211)], timeout=0.1)
     keys = [str(i).encode() for i in range(100)]
     with pytest.raises(asyncio.TimeoutError):
         await client.get_many(keys)

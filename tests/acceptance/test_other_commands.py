@@ -128,29 +128,29 @@ class TestDelete:
 class TestFlushAll:
     @pytest.mark.skipif(sys.platform == "darwin", reason="https://github.com/memcached/memcached/issues/681")
     @pytest.mark.parametrize("noreply", [False, True])
-    async def test_flush_all(self, client, key_generation, memcached_address_1, memcached_address_2, noreply):
+    async def test_flush_all(self, client, key_generation, node_addresses, noreply):
         key_and_value = next(key_generation)
 
         # set a new key and value.
         await client.set(key_and_value, key_and_value)
 
         # flush all for all of the servers
-        await client.flush_all(memcached_address_1, noreply=noreply)
-        await client.flush_all(memcached_address_2, noreply=noreply)
+        for node_address in node_addresses:
+            await client.flush_all(node_address, noreply=noreply)
 
         # item should not be found.
         item = await client.get(key_and_value)
         assert item is None
 
-    async def test_flush_all_with_delay(self, client, key_generation, memcached_address_1, memcached_address_2):
+    async def test_flush_all_with_delay(self, client, key_generation, node_addresses):
         key_and_value = next(key_generation)
 
         # set a new key and value.
         await client.set(key_and_value, key_and_value)
 
         # flush all for all of the servers
-        await client.flush_all(memcached_address_1, delay=2)
-        await client.flush_all(memcached_address_2, delay=2)
+        for node_address in node_addresses:
+            await client.flush_all(node_address, delay=2)
 
         # item should be found.
         item = await client.get(key_and_value)
@@ -165,6 +165,6 @@ class TestFlushAll:
 
 
 class TestVersion:
-    async def test_version(self, client, memcached_address_1, memcached_address_2):
-        assert isinstance(await client.version(memcached_address_1), str)
-        assert isinstance(await client.version(memcached_address_2), str)
+    async def test_version(self, client, node_addresses):
+        for node_address in node_addresses:
+            assert isinstance(await client.version(node_address), str)
