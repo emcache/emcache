@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from emcache.node import Node
 from emcache import MemcachedHostAddress
+from emcache.node import Node
 
 pytestmark = pytest.mark.asyncio
 

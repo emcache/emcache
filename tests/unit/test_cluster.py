@@ -6,10 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, Mock, call
 
 import pytest
 
+from emcache import MemcachedHostAddress
 from emcache.base import ClusterEvents
 from emcache.client_errors import ClusterNoAvailableNodes
 from emcache.cluster import Cluster, _ClusterManagment
-from emcache import MemcachedHostAddress
 
 pytestmark = pytest.mark.asyncio
 

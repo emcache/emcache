@@ -5,8 +5,8 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Mapping, Optional, Sequence
 
-from .connection_pool import ConnectionPoolMetrics
 from ._address import MemcachedHostAddress
+from .connection_pool import ConnectionPoolMetrics
 
 
 @dataclass

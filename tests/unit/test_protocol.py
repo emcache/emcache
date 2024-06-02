@@ -316,6 +316,8 @@ async def test_create_protocol(event_loop, mocker):
     protocol_mock = Mock()
     loop_mock.create_connection = AsyncMock(return_value=(None, protocol_mock))
 
-    protocol = await create_protocol(MemcachedHostAddress("localhost", 11211), ssl=False, ssl_verify=False, ssl_extra_ca=None)
+    protocol = await create_protocol(
+        MemcachedHostAddress("localhost", 11211), ssl=False, ssl_verify=False, ssl_extra_ca=None
+    )
     assert protocol is protocol_mock
     loop_mock.create_connection.assert_called_with(MemcacheAsciiProtocol, host="localhost", port=11211, ssl=False)
