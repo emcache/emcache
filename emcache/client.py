@@ -647,7 +647,11 @@ class _Client(Client):
         return
 
     async def flush_all(
-        self, memcached_host_address: MemcachedHostAddress, delay: int = 0, *, noreply: bool = False
+        self,
+        memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
+        delay: int = 0,
+        *,
+        noreply: bool = False,
     ) -> None:
         """Flush all keys in a specific memcached host address.
 
@@ -672,7 +676,9 @@ class _Client(Client):
 
         return
 
-    async def version(self, memcached_host_address: MemcachedHostAddress) -> Optional[str]:
+    async def version(
+        self, memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath]
+    ) -> Optional[str]:
         """Version is a command with no arguments:
 
         version\r\n
@@ -772,7 +778,7 @@ class _Client(Client):
 
 
 async def create_client(
-    node_addresses: Sequence[MemcachedHostAddress],
+    node_addresses: Sequence[Union[MemcachedHostAddress, MemcachedUnixSocketPath]],
     *,
     timeout: Optional[float] = DEFAULT_TIMEOUT,
     max_connections: int = DEFAULT_MAX_CONNECTIONS,
