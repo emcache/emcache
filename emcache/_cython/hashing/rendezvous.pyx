@@ -8,10 +8,9 @@ cdef class RendezvousNode:
     The attribute `node` will look at the Python Node representation
     which will provide in some way connectivity to the selected node.
     """
-    def __cinit__(self, str host, int port, object node):
-        host_and_port = "{}{}".format(host, str(port)) 
-        self.host_and_port = host_and_port.encode()
-        self.hash_ = _hash(self.host_and_port)
+    def __cinit__(self, str rendezvous_id, object node):
+        self.rendezvous_id = rendezvous_id.encode()
+        self.hash_ = _hash(self.rendezvous_id)
         self.node = node
 
 
@@ -54,11 +53,11 @@ cpdef node_selection(bytes key, list rendezvous_nodes):
 
     # calculate for the first node
     high_score_rdz_node = rendezvous_nodes[0]
-    high_score = _hash(key + high_score_rdz_node.host_and_port)
+    high_score = _hash(key + high_score_rdz_node.rendezvous_id)
 
     # check if other nodes could have a higher score
     for rdz_node in rendezvous_nodes[1:]:
-        score = _hash(key + rdz_node.host_and_port)
+        score = _hash(key + rdz_node.rendezvous_id)
         if score > high_score:
             high_score = score
             high_score_rdz_node = rdz_node

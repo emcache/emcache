@@ -179,11 +179,10 @@ class Cluster:
 
         logger.info(f"Nodes used for sending traffic: {nodes}")
 
-        # TODO: What changes to make to RendezvousNode when using a Unix socket listen?
         self._rdz_nodes = [
-            cyemcache.RendezvousNode(node.host, node.port, node)
+            cyemcache.RendezvousNode(f"{node.host}{node.port}", node)
             if isinstance(node.memcached_host_address, MemcachedHostAddress)
-            else cyemcache.RendezvousNode(node.path, 0, node)
+            else cyemcache.RendezvousNode(node.path, node)
             for node in nodes
         ]
 

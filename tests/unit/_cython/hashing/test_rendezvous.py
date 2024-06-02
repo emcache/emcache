@@ -7,7 +7,7 @@ from emcache._cython import cyemcache
 class TestRendezvousNode:
     def test_node_is_public_attribute(self):
         node = object()
-        rendezvous_node = cyemcache.RendezvousNode("host", 11211, node)
+        rendezvous_node = cyemcache.RendezvousNode("host11211", node)
         assert rendezvous_node.node is node
 
 
@@ -16,7 +16,7 @@ class TestNodeSelection:
         # Having only one node no matter the key value
         # would need to return always the same node
         node = object()
-        rendezvous_node = cyemcache.RendezvousNode("host", 11211, node)
+        rendezvous_node = cyemcache.RendezvousNode("host11211", node)
         node_selected = cyemcache.node_selection(b"foo", [rendezvous_node])
         assert node_selected is node
 
@@ -24,9 +24,9 @@ class TestNodeSelection:
         node1 = object()
         node2 = object()
         node3 = object()
-        rendezvous_node1 = cyemcache.RendezvousNode("host1", 11211, node1)
-        rendezvous_node2 = cyemcache.RendezvousNode("host2", 11211, node2)
-        rendezvous_node3 = cyemcache.RendezvousNode("host3", 11211, node3)
+        rendezvous_node1 = cyemcache.RendezvousNode("host111211", node1)
+        rendezvous_node2 = cyemcache.RendezvousNode("host211211", node2)
+        rendezvous_node3 = cyemcache.RendezvousNode("host311211", node3)
 
         list_of_rendezvous_nodes = [rendezvous_node1, rendezvous_node2, rendezvous_node3]
 
@@ -63,7 +63,7 @@ class TestNodesSelection:
         # Having only one node no matter the key value
         # would need to return always the same node
         node = object()
-        rendezvous_node = cyemcache.RendezvousNode("host", 11211, node)
+        rendezvous_node = cyemcache.RendezvousNode("host11211", node)
         keys_per_node = cyemcache.nodes_selection([b"foo"], [rendezvous_node])
         assert keys_per_node == {node: [b"foo"]}
 
@@ -71,9 +71,9 @@ class TestNodesSelection:
         node1 = "node1"
         node2 = "node2"
         node3 = "node3"
-        rendezvous_node1 = cyemcache.RendezvousNode("host1", 11211, node1)
-        rendezvous_node2 = cyemcache.RendezvousNode("host2", 11211, node2)
-        rendezvous_node3 = cyemcache.RendezvousNode("host3", 11211, node3)
+        rendezvous_node1 = cyemcache.RendezvousNode("host111211", node1)
+        rendezvous_node2 = cyemcache.RendezvousNode("host211211", node2)
+        rendezvous_node3 = cyemcache.RendezvousNode("host311211", node3)
 
         list_of_rendezvous_nodes = [rendezvous_node1, rendezvous_node2, rendezvous_node3]
 
