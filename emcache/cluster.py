@@ -180,9 +180,11 @@ class Cluster:
         logger.info(f"Nodes used for sending traffic: {nodes}")
 
         self._rdz_nodes = [
-            cyemcache.RendezvousNode(f"{node.host}{node.port}", node)
-            if isinstance(node.memcached_host_address, MemcachedHostAddress)
-            else cyemcache.RendezvousNode(node.path, node)
+            (
+                cyemcache.RendezvousNode(f"{node.host}{node.port}", node)
+                if isinstance(node.memcached_host_address, MemcachedHostAddress)
+                else cyemcache.RendezvousNode(node.path, node)
+            )
             for node in nodes
         ]
 

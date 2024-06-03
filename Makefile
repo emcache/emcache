@@ -30,13 +30,13 @@ install: compile
 	$(PIP) install -e .
 
 format:
-	isort --recursive .
-	black --exclude=venv .
+	isort .
+	black .
 
 lint:
-	isort --check-only --recursive .
-	black --check --exclude=venv .
-	flake8 --exclude=venv .
+	isort --check .
+	black --check .
+	flake8 .
 
 acceptance:
 	pytest -sv tests/acceptance
