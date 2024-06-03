@@ -3,13 +3,14 @@
 
 import asyncio
 import logging
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
+from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
 from .autobatching import AutoBatching
 from .base import Client, ClusterEvents, ClusterManagment, Item
 from .client_errors import CommandError, NotFoundCommandError, NotStoredStorageCommandError, StorageCommandError
-from .cluster import Cluster, MemcachedHostAddress
+from .cluster import Cluster
 from .default_values import (
     DEFAULT_AUTOBATCHING_ENABLED,
     DEFAULT_AUTOBATCHING_MAX_KEYS,
@@ -50,7 +51,7 @@ class _Client(Client):
 
     def __init__(
         self,
-        node_addresses: Sequence[MemcachedHostAddress],
+        node_addresses: Sequence[Union[MemcachedHostAddress, MemcachedUnixSocketPath]],
         timeout: Optional[float],
         max_connections: int,
         min_connections: Optional[int],
@@ -646,7 +647,11 @@ class _Client(Client):
         return
 
     async def flush_all(
-        self, memcached_host_address: MemcachedHostAddress, delay: int = 0, *, noreply: bool = False
+        self,
+        memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
+        delay: int = 0,
+        *,
+        noreply: bool = False,
     ) -> None:
         """Flush all keys in a specific memcached host address.
 
@@ -671,7 +676,9 @@ class _Client(Client):
 
         return
 
-    async def version(self, memcached_host_address: MemcachedHostAddress) -> Optional[str]:
+    async def version(
+        self, memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath]
+    ) -> Optional[str]:
         """Version is a command with no arguments:
 
         version\r\n
@@ -771,7 +778,7 @@ class _Client(Client):
 
 
 async def create_client(
-    node_addresses: Sequence[MemcachedHostAddress],
+    node_addresses: Sequence[Union[MemcachedHostAddress, MemcachedUnixSocketPath]],
     *,
     timeout: Optional[float] = DEFAULT_TIMEOUT,
     max_connections: int = DEFAULT_MAX_CONNECTIONS,

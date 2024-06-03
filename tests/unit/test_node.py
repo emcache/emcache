@@ -5,7 +5,8 @@ from unittest.mock import AsyncMock, Mock
 
 import pytest
 
-from emcache.node import MemcachedHostAddress, Node
+from emcache import MemcachedHostAddress
+from emcache.node import Node
 
 pytestmark = pytest.mark.asyncio
 
@@ -42,8 +43,7 @@ class TestNode:
     async def test_connection_pool(self, connection_pool, memcached_host_address):
         node = Node(memcached_host_address, 1, 1, 60, 5, lambda _: _, False, False, None)
         connection_pool.assert_called_with(
-            memcached_host_address.address,
-            memcached_host_address.port,
+            MemcachedHostAddress(memcached_host_address.address, memcached_host_address.port),
             1,
             1,
             60,

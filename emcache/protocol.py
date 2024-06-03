@@ -7,6 +7,7 @@ import re
 import socket
 from typing import Final, List, Optional, Tuple, Union
 
+from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
 
 try:
@@ -112,7 +113,8 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
     def connection_made(self, transport: asyncio.Transport) -> None:
         self._transport = transport
         sock = transport.get_extra_info("socket")
-        sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
+        if sock.family in (socket.AF_INET, socket.AF_INET6):
+            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
         logger.debug("Connection made")
 
     def connection_lost(self, exc) -> None:
@@ -341,7 +343,12 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
 
 async def create_protocol(
-    host: str, port: int, ssl: bool, ssl_verify: bool, ssl_extra_ca: Optional[str], *, timeout: int = None
+    address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
+    ssl: bool,
+    ssl_verify: bool,
+    ssl_extra_ca: Optional[str],
+    *,
+    timeout: int = None,
 ) -> MemcacheAsciiProtocol:
     """Create a new connection which supports the Memcache protocol, if timeout is provided
     an `asyncio.TimeoutError` can be raised."""
@@ -361,10 +368,12 @@ async def create_protocol(
     else:
         ssl = False
 
-    if timeout is None:
-        _, protocol = await loop.create_connection(MemcacheAsciiProtocol, host=host, port=port, ssl=ssl)
+    if isinstance(address, MemcachedHostAddress):
+        connect_coro = loop.create_connection(MemcacheAsciiProtocol, host=address.address, port=address.port, ssl=ssl)
     else:
-        _, protocol = await asyncio.wait_for(
-            loop.create_connection(MemcacheAsciiProtocol, host=host, port=port, ssl=ssl), timeout
-        )
+        connect_coro = loop.create_unix_connection(MemcacheAsciiProtocol, path=address.path, ssl=ssl)
+    if timeout is None:
+        _, protocol = await connect_coro
+    else:
+        _, protocol = await asyncio.wait_for(connect_coro, timeout)
     return protocol

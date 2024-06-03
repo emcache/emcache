@@ -2,20 +2,12 @@
 # Copyright (c) 2020-2024 Pau Freixes
 
 import logging
-from dataclasses import dataclass
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 
+from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from .connection_pool import BaseConnectionContext, ConnectionPool, ConnectionPoolMetrics
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class MemcachedHostAddress:
-    """Data class for identifying univocally a Memcached host."""
-
-    address: str
-    port: int
 
 
 class Node:
@@ -24,7 +16,7 @@ class Node:
     Memcached node.
     """
 
-    _memcached_host_address: MemcachedHostAddress
+    _memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath]
     _healthy: bool
     _on_healthy_status_change_cb: Callable[[bool], None]
     _connection_pool: ConnectionPool
@@ -32,7 +24,7 @@ class Node:
 
     def __init__(
         self,
-        memcached_host_address: MemcachedHostAddress,
+        memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
         max_connections: int,
         min_connections: int,
         purge_unused_connections_after: Optional[float],
@@ -49,8 +41,7 @@ class Node:
 
         self._memcached_host_address = memcached_host_address
         self._connection_pool = ConnectionPool(
-            self.host,
-            self.port,
+            memcached_host_address,
             max_connections,
             min_connections,
             purge_unused_connections_after,
@@ -64,6 +55,8 @@ class Node:
         logger.debug(f"{self} new node created")
 
     def __str__(self) -> str:
+        if isinstance(self._memcached_host_address, MemcachedUnixSocketPath):
+            return f"<Node path={self.path} closed={self._closed}>"
         return f"<Node host={self.host} port={self.port} closed={self._closed}>"
 
     def __repr__(self) -> str:
@@ -102,12 +95,22 @@ class Node:
 
     @property
     def host(self) -> str:
+        if isinstance(self._memcached_host_address, MemcachedUnixSocketPath):
+            raise AttributeError("host not available on node using Unix socket")
         return self._memcached_host_address.address
 
     @property
     def port(self) -> int:
+        if isinstance(self._memcached_host_address, MemcachedUnixSocketPath):
+            raise AttributeError("host not available on node using Unix socket")
         return self._memcached_host_address.port
 
     @property
-    def memcached_host_address(self) -> MemcachedHostAddress:
+    def path(self) -> str:
+        if isinstance(self._memcached_host_address, MemcachedHostAddress):
+            raise AttributeError("path not available on node using TCP socket")
+        return self._memcached_host_address.path
+
+    @property
+    def memcached_host_address(self) -> Union[MemcachedHostAddress, MemcachedUnixSocketPath]:
         return self._memcached_host_address

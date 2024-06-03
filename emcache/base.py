@@ -3,10 +3,10 @@
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Mapping, Optional, Sequence
+from typing import Dict, Mapping, Optional, Sequence, Union
 
+from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from .connection_pool import ConnectionPoolMetrics
-from .node import MemcachedHostAddress
 
 
 @dataclass
@@ -241,7 +241,11 @@ class Client(metaclass=ABCMeta):
 
     @abstractmethod
     async def flush_all(
-        self, memcached_host_address: MemcachedHostAddress, delay: int = 0, *, noreply: bool = False
+        self,
+        memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
+        delay: int = 0,
+        *,
+        noreply: bool = False
     ) -> None:
         """Flush all keys in a specific memcached host address.
 
@@ -252,7 +256,9 @@ class Client(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def version(self, memcached_host_address: MemcachedHostAddress) -> Optional[str]:
+    async def version(
+        self, memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath]
+    ) -> Optional[str]:
         """Version is a command with no arguments:
 
         version\r\n
@@ -315,7 +321,9 @@ class ClusterEvents(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    async def on_node_healthy(self, cluster_managment: "ClusterManagment", host: MemcachedHostAddress) -> None:
+    async def on_node_healthy(
+        self, cluster_managment: "ClusterManagment", host: Union[MemcachedHostAddress, MemcachedUnixSocketPath]
+    ) -> None:
         """Called when a node is marked as healthy.
 
         A node is marked as healthy when there is at least one TCP
@@ -323,7 +331,9 @@ class ClusterEvents(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def on_node_unhealthy(self, cluster_managment: "ClusterManagment", host: MemcachedHostAddress) -> None:
+    async def on_node_unhealthy(
+        self, cluster_managment: "ClusterManagment", host: Union[MemcachedHostAddress, MemcachedUnixSocketPath]
+    ) -> None:
         """Called when a new node is marked as umhealthy.
 
         A node is marked as unhealthy when there is no TCP
@@ -358,17 +368,19 @@ class ClusterManagment(metaclass=ABCMeta):
     """
 
     @abstractmethod
-    def nodes(self) -> Sequence[MemcachedHostAddress]:
+    def nodes(self) -> Sequence[Union[MemcachedHostAddress, MemcachedUnixSocketPath]]:
         """Return the nodes that belong to the cluster."""
 
     @abstractmethod
-    def healthy_nodes(self) -> Sequence[MemcachedHostAddress]:
+    def healthy_nodes(self) -> Sequence[Union[MemcachedHostAddress, MemcachedUnixSocketPath]]:
         """Return the nodes that are considered healthy."""
 
     @abstractmethod
-    def unhealthy_nodes(self) -> Sequence[MemcachedHostAddress]:
+    def unhealthy_nodes(self) -> Sequence[Union[MemcachedHostAddress, MemcachedUnixSocketPath]]:
         """Return the nodes that are considered unhealthy."""
 
     @abstractmethod
-    def connection_pool_metrics(self) -> Mapping[MemcachedHostAddress, ConnectionPoolMetrics]:
+    def connection_pool_metrics(
+        self,
+    ) -> Mapping[Union[MemcachedHostAddress, MemcachedUnixSocketPath], ConnectionPoolMetrics]:
         """Return the metrics for the connection pools."""

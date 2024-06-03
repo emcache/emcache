@@ -1,6 +1,7 @@
 # MIT License
 # Copyright (c) 2020-2024 Pau Freixes
 
+from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from .base import Client, ClusterEvents, ClusterManagment, Item
 from .client import create_client
 from .client_errors import (
@@ -22,7 +23,6 @@ from .default_values import (
     DEFAULT_SSL_VERIFY,
     DEFAULT_TIMEOUT,
 )
-from .node import MemcachedHostAddress
 
 __all__ = (
     "Client",
@@ -42,6 +42,7 @@ __all__ = (
     "DEFAULT_SSL_VERIFY",
     "Item",
     "MemcachedHostAddress",
+    "MemcachedUnixSocketPath",
     "CommandError",
     "NotFoundCommandError",
     "NotStoredStorageCommandError",

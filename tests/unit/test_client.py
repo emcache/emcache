@@ -5,6 +5,7 @@ from unittest.mock import ANY, AsyncMock, MagicMock, Mock, call
 
 import pytest
 
+from emcache import MemcachedHostAddress
 from emcache.base import Item
 from emcache.client import MAX_ALLOWED_CAS_VALUE, MAX_ALLOWED_FLAG_VALUE, _Client, create_client
 from emcache.client_errors import CommandError, NotFoundCommandError, StorageCommandError
@@ -22,7 +23,6 @@ from emcache.default_values import (
     DEFAULT_SSL_VERIFY,
     DEFAULT_TIMEOUT,
 )
-from emcache.node import MemcachedHostAddress
 from emcache.protocol import DELETED, NOT_FOUND, STORED, TOUCHED
 
 pytestmark = pytest.mark.asyncio

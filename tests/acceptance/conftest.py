@@ -5,25 +5,27 @@ import time
 
 import pytest
 
-from emcache import MemcachedHostAddress, create_client
+from emcache import MemcachedHostAddress, MemcachedUnixSocketPath, create_client
 
 
-@pytest.fixture
-async def memcached_address_1():
-    return MemcachedHostAddress("localhost", 11211)
+@pytest.fixture(
+    params=[
+        pytest.param(
+            [MemcachedHostAddress("localhost", 11211), MemcachedHostAddress("localhost", 11212)], id="tcp_client"
+        ),
+        pytest.param(
+            [MemcachedUnixSocketPath("/tmp/emcache.test1.sock"), MemcachedUnixSocketPath("/tmp/emcache.test2.sock")],
+            id="unix_client",
+        ),
+    ]
+)
+def node_addresses(request):
+    return request.param
 
 
-@pytest.fixture
-async def memcached_address_2():
-    return MemcachedHostAddress("localhost", 11212)
-
-
-@pytest.fixture
-async def client(event_loop, memcached_address_1, memcached_address_2):
-    client = await create_client(
-        [memcached_address_1, memcached_address_2],
-        timeout=2.0,
-    )
+@pytest.fixture()
+async def client(node_addresses, event_loop):
+    client = await create_client(node_addresses, timeout=2.0)
     try:
         yield client
     finally:

@@ -16,3 +16,15 @@ services:
       - ./:/app
     ports:
       - "11213:11213"
+  memcached_unix1:
+    image: memcached
+    container_name: memcached_unix1
+    command: ['-s', '/tmp/emcache.test1.sock']
+    volumes:
+      - /tmp:/tmp
+  memcached_unix2:
+    image: memcached
+    container_name: memcached_unix2
+    command: ['-s', '/tmp/emcache.test2.sock']
+    volumes:
+      - /tmp:/tmp

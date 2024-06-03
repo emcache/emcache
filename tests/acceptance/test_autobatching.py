@@ -12,22 +12,18 @@ pytestmark = pytest.mark.asyncio
 
 
 class TestAutobatching:
-    @pytest.fixture
-    async def autobatching_client(self, event_loop, memcached_address_1, memcached_address_2):
-        autobatching_client = await create_client(
-            [memcached_address_1, memcached_address_2], timeout=2.0, autobatching=True
-        )
+    @pytest.fixture()
+    async def autobatching_client(self, node_addresses, event_loop):
+        autobatching_client = await create_client(node_addresses, timeout=2.0, autobatching=True)
         try:
             yield autobatching_client
         finally:
             await autobatching_client.close()
 
     @pytest.mark.parametrize("max_keys", [1, DEFAULT_AUTOBATCHING_MAX_KEYS, DEFAULT_AUTOBATCHING_MAX_KEYS * 2])
-    async def test_get_multiple_keys(
-        self, event_loop, key_generation, max_keys, memcached_address_1, memcached_address_2
-    ):
+    async def test_get_multiple_keys(self, event_loop, key_generation, max_keys, node_addresses):
         autobatching_client = await create_client(
-            [memcached_address_1, memcached_address_2], timeout=2.0, autobatching=True, autobatching_max_keys=max_keys
+            node_addresses, timeout=2.0, autobatching=True, autobatching_max_keys=max_keys
         )
         keys_and_values = []
         for i in range(2):

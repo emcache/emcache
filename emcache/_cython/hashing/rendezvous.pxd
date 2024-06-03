@@ -3,7 +3,7 @@
 
 cdef class RendezvousNode:
     cdef:
-        bytes host_and_port
+        bytes rendezvous_id
         readonly object node
 
         # Only used for break ties
