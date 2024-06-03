@@ -23,14 +23,12 @@ class TestAuth:
     @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
     async def test_auth_with_errors(self):
         with pytest.raises(AuthenticationError):
-            client = await create_client([MemcachedHostAddress("localhost", 11214)], timeout=2.0)
-            await client.close()
+            await create_client([MemcachedHostAddress("localhost", 11214)], timeout=2.0)
         with pytest.raises(AuthenticationError):
-            await create_client([MemcachedHostAddress("localhost", 11214, username="wrong")], timeout=2.0)
-            await client.close()
+            await create_client([MemcachedHostAddress("localhost", 11214)], username="wrong", timeout=2.0)
         with pytest.raises(AuthenticationError):
-            await create_client([MemcachedHostAddress("localhost", 11214, password="wrong")], timeout=2.0)
-            await client.close()
+            await create_client([MemcachedHostAddress("localhost", 11214)], password="wrong", timeout=2.0)
         with pytest.raises(AuthenticationError):
-            await create_client([MemcachedHostAddress("localhost", 11214, "wrong", "wrong")], timeout=2.0)
-            await client.close()
+            await create_client(
+                [MemcachedHostAddress("localhost", 11214)], username="wrong", password="wrong", timeout=2.0
+            )

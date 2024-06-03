@@ -17,9 +17,6 @@ class MemcachedHostAddress:
     address: str
     port: int
 
-    username: Optional[str] = None
-    password: Optional[str] = None
-
 
 class Node:
     """Node class is in charge of providing a connection for communicating
@@ -110,13 +107,6 @@ class Node:
     @property
     def port(self) -> int:
         return self._memcached_host_address.port
-
-    def username(self) -> str:
-        return self._memcached_host_address.username
-
-    @property
-    def password(self) -> str:
-        return self._memcached_host_address.password
 
     @property
     def memcached_host_address(self) -> MemcachedHostAddress:
