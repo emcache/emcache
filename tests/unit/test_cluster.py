@@ -15,53 +15,41 @@ pytestmark = pytest.mark.asyncio
 
 
 @pytest.fixture
-def memcached_host_address_1():
-    return MemcachedHostAddress("localhost", 11211)
-
-
-@pytest.fixture
-def memcached_host_address_2():
-    return MemcachedHostAddress("localhost", 11212)
-
-
-@pytest.fixture
-def node1(memcached_host_address_1):
+def node1(memcached_address_1):
     node1 = Mock()
-    node1.host = memcached_host_address_1.address
-    node1.port = memcached_host_address_1.port
-    node1.memcached_host_address = memcached_host_address_1
+    node1.host = memcached_address_1.address
+    node1.port = memcached_address_1.port
+    node1.memcached_host_address = memcached_address_1
     node1.close = AsyncMock()
     return node1
 
 
 @pytest.fixture
-def node2(memcached_host_address_2):
+def node2(memcached_address_2):
     node2 = Mock()
-    node2.host = memcached_host_address_2.address
-    node2.port = memcached_host_address_2.port
-    node2.memcached_host_address = memcached_host_address_2
+    node2.host = memcached_address_2.address
+    node2.port = memcached_address_2.port
+    node2.memcached_host_address = memcached_address_2
     node2.close = AsyncMock()
     return node2
 
 
 @pytest.fixture
-async def cluster_with_one_node(mocker, event_loop, node1, memcached_host_address_1):
+async def cluster_with_one_node(mocker, event_loop, node1, memcached_address_1):
     mocker.patch("emcache.cluster.Node", return_value=node1)
     try:
-        cluster = Cluster(
-            [memcached_host_address_1], 1, 1, 60, 5, None, False, False, False, None, False, 60, 5, event_loop
-        )
+        cluster = Cluster([memcached_address_1], 1, 1, 60, 5, None, False, False, False, None, False, 60, 5, event_loop)
         yield cluster
     finally:
         await cluster.close()
 
 
 @pytest.fixture
-async def cluster_with_two_nodes(mocker, event_loop, node1, node2, memcached_host_address_1, memcached_host_address_2):
+async def cluster_with_two_nodes(mocker, event_loop, node1, node2, memcached_address_1, memcached_address_2):
     mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
     try:
         cluster = Cluster(
-            [memcached_host_address_1, memcached_host_address_2],
+            [memcached_address_1, memcached_address_2],
             1,
             1,
             60,
@@ -82,12 +70,10 @@ async def cluster_with_two_nodes(mocker, event_loop, node1, node2, memcached_hos
 
 
 @pytest.fixture
-async def cluster_with_one_node_purge_unhealthy(mocker, event_loop, node1, memcached_host_address_1):
+async def cluster_with_one_node_purge_unhealthy(mocker, event_loop, node1, memcached_address_1):
     mocker.patch("emcache.cluster.Node", return_value=node1)
     try:
-        cluster = Cluster(
-            [memcached_host_address_1], 1, 1, 60, 5, None, True, False, False, None, False, 60, 5, event_loop
-        )
+        cluster = Cluster([memcached_address_1], 1, 1, 60, 5, None, True, False, False, None, False, 60, 5, event_loop)
         yield cluster
     finally:
         await cluster.close()
@@ -95,12 +81,12 @@ async def cluster_with_one_node_purge_unhealthy(mocker, event_loop, node1, memca
 
 @pytest.fixture
 async def cluster_with_two_nodes_purge_unhealthy(
-    mocker, event_loop, node1, node2, memcached_host_address_1, memcached_host_address_2
+    mocker, event_loop, node1, node2, memcached_address_1, memcached_address_2
 ):
     mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
     try:
         cluster = Cluster(
-            [memcached_host_address_1, memcached_host_address_2],
+            [memcached_address_1, memcached_address_2],
             1,
             1,
             60,
@@ -146,12 +132,12 @@ class TestCluster:
             Cluster([], 1, 1, 60, 5, None, False, False, False, None, False, 60, 5, event_loop)
 
     async def test_node_initialization(
-        self, mocker, event_loop, node1, node2, memcached_host_address_1, memcached_host_address_2
+        self, mocker, event_loop, node1, node2, memcached_address_1, memcached_address_2
     ):
         mocker.patch("emcache.cluster.cyemcache")
         node_class = mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
         cluster = Cluster(
-            [memcached_host_address_1, memcached_host_address_2],
+            [memcached_address_1, memcached_address_2],
             1,
             1,
             60,
@@ -169,28 +155,24 @@ class TestCluster:
 
         node_class.assert_has_calls(
             [
-                call(
-                    memcached_host_address_1, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None
-                ),
-                call(
-                    memcached_host_address_2, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None
-                ),
+                call(memcached_address_1, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None),
+                call(memcached_address_2, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None),
             ]
         )
 
         await cluster.close()
 
     async def test_node_initialization_autodiscovery(
-        self, mocker, event_loop, node1, node2, memcached_host_address_1, memcached_host_address_2
+        self, mocker, event_loop, node1, node2, memcached_address_1, memcached_address_2
     ):
         mocker.patch("emcache.cluster.cyemcache")
         node_class = mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
         mocker.patch(
             "emcache.cluster.Cluster._get_autodiscovered_nodes",
-            return_value=(True, 42, [(memcached_host_address_2.address, "127.0.0.1", memcached_host_address_2.port)]),
+            return_value=(True, 42, [(memcached_address_2.address, "127.0.0.1", memcached_address_2.port)]),
         )
         cluster = Cluster(
-            [memcached_host_address_1],
+            [memcached_address_1],
             1,
             1,
             60,
@@ -210,17 +192,15 @@ class TestCluster:
 
         node_class.assert_has_calls(
             [
-                call(memcached_host_address_1, 1, 1, None, 5, None, False, False, None),
-                call(
-                    memcached_host_address_2, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None
-                ),
+                call(memcached_address_1, 1, 1, None, 5, None, False, False, None),
+                call(memcached_address_2, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None),
             ]
         )
 
         await cluster.close()
 
     async def test_get_autodiscovered_nodes(
-        self, mocker, event_loop, node1, node2, memcached_host_address_1, memcached_host_address_2
+        self, mocker, event_loop, node1, node2, memcached_address_1, memcached_address_2
     ):
         mocker.patch("emcache.cluster.cyemcache")
         node_class = mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
@@ -228,10 +208,10 @@ class TestCluster:
 
         autodiscovery = True
         version = 42
-        nodes = [(memcached_host_address_2.address, "127.0.0.1", memcached_host_address_2.port)]
+        nodes = [(memcached_address_2.address, "127.0.0.1", memcached_address_2.port)]
 
         cluster = Cluster(
-            [memcached_host_address_1],
+            [memcached_address_1],
             1,
             1,
             60,
@@ -256,9 +236,7 @@ class TestCluster:
         assert await cluster._get_autodiscovered_nodes() == (autodiscovery, version, nodes)
         node_class.assert_has_calls(
             [
-                call(
-                    memcached_host_address_1, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None
-                ),
+                call(memcached_address_1, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None),
             ]
         )
 
@@ -282,7 +260,7 @@ class TestCluster:
         assert not await cluster_with_one_node.autodiscover()
 
     async def test_autodiscover_new_node_added(
-        self, mocker, event_loop, node1, node2, memcached_host_address_1, memcached_host_address_2
+        self, mocker, event_loop, node1, node2, memcached_address_1, memcached_address_2
     ):
         mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
         mocker.patch(
@@ -291,14 +269,14 @@ class TestCluster:
                 True,
                 2,
                 [
-                    (memcached_host_address_1.address, "127.0.0.1", memcached_host_address_1.port),
-                    (memcached_host_address_2.address, "127.0.0.1", memcached_host_address_2.port),
+                    (memcached_address_1.address, "127.0.0.1", memcached_address_1.port),
+                    (memcached_address_2.address, "127.0.0.1", memcached_address_2.port),
                 ],
             ),
         )
 
         cluster = Cluster(
-            [memcached_host_address_1],
+            [memcached_address_1],
             1,
             1,
             60,
@@ -322,16 +300,16 @@ class TestCluster:
         await cluster.close()
 
     async def test_autodiscover_remove_healthy_node(
-        self, mocker, event_loop, node1, node2, memcached_host_address_1, memcached_host_address_2
+        self, mocker, event_loop, node1, node2, memcached_address_1, memcached_address_2
     ):
         mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
         mocker.patch(
             "emcache.cluster.Cluster._get_autodiscovered_nodes",
-            return_value=(True, 2, [(memcached_host_address_1.address, "127.0.0.1", memcached_host_address_1.port)]),
+            return_value=(True, 2, [(memcached_address_1.address, "127.0.0.1", memcached_address_1.port)]),
         )
 
         cluster = Cluster(
-            [memcached_host_address_1, memcached_host_address_2],
+            [memcached_address_1, memcached_address_2],
             1,
             1,
             60,
@@ -357,16 +335,16 @@ class TestCluster:
         await cluster.close()
 
     async def test_autodiscover_remove_unhealthy_node(
-        self, mocker, event_loop, node1, node2, memcached_host_address_1, memcached_host_address_2
+        self, mocker, event_loop, node1, node2, memcached_address_1, memcached_address_2
     ):
         mocker.patch("emcache.cluster.Node", side_effect=[node1, node2])
         mocker.patch(
             "emcache.cluster.Cluster._get_autodiscovered_nodes",
-            return_value=(True, 2, [(memcached_host_address_1.address, "127.0.0.1", memcached_host_address_1.port)]),
+            return_value=(True, 2, [(memcached_address_1.address, "127.0.0.1", memcached_address_1.port)]),
         )
 
         cluster = Cluster(
-            [memcached_host_address_1, memcached_host_address_2],
+            [memcached_address_1, memcached_address_2],
             1,
             1,
             60,
@@ -393,11 +371,11 @@ class TestCluster:
 
         await cluster.close()
 
-    async def test_close(self, mocker, event_loop, node1, memcached_host_address_1):
+    async def test_close(self, mocker, event_loop, node1, memcached_address_1, memcached_address_2):
         mocker.patch("emcache.cluster.cyemcache")
         mocker.patch("emcache.cluster.Node", return_value=node1)
         cluster = Cluster(
-            [memcached_host_address_1, memcached_host_address_2],
+            [memcached_address_1, memcached_address_2],
             1,
             1,
             60,
@@ -415,15 +393,13 @@ class TestCluster:
         await cluster.close()
         node1.close.assert_called()
 
-    async def test_cluster_managment(self, mocker, event_loop, node1, memcached_host_address_1):
+    async def test_cluster_managment(self, mocker, event_loop, node1, memcached_address_1):
         mocker.patch("emcache.cluster.cyemcache")
         mocker.patch("emcache.cluster.Node", return_value=node1)
 
         cluster_managment = Mock()
         cluster_managment_class = mocker.patch("emcache.cluster._ClusterManagment", return_value=cluster_managment)
-        cluster = Cluster(
-            [memcached_host_address_1], 1, 1, 60, 5, None, False, False, False, None, None, 60, 5, event_loop
-        )
+        cluster = Cluster([memcached_address_1], 1, 1, 60, 5, None, False, False, False, None, None, 60, 5, event_loop)
 
         # Check that the initialization was done using the right parameters
         cluster_managment_class.assert_called_with(cluster)
@@ -442,8 +418,8 @@ class TestCluster:
         assert list(nodes.keys())[0] == node1
         assert list(nodes.values())[0] == [b"key", b"key2"]
 
-    async def test_node(self, cluster_with_one_node, node1, memcached_host_address_1):
-        node = cluster_with_one_node.node(memcached_host_address_1)
+    async def test_node(self, cluster_with_one_node, node1, memcached_address_1):
+        node = cluster_with_one_node.node(memcached_address_1)
         assert node == node1
 
     async def test_node_invalid_host(self, cluster_with_one_node):
@@ -499,7 +475,7 @@ class TestCluster:
         with pytest.raises(ClusterNoAvailableNodes):
             cluster_with_one_node_purge_unhealthy.pick_nodes([b"key", b"key2"])
 
-    async def test_cluster_events(self, mocker, event_loop, node1, memcached_host_address_1):
+    async def test_cluster_events(self, mocker, event_loop, node1, memcached_address_1):
         ev_cb_on_healthy_node = asyncio.Event()
         ev_cb_on_unhealthy_node = asyncio.Event()
 
@@ -509,19 +485,19 @@ class TestCluster:
                 self.cluster_managment_on_unhealhty = None
 
             async def on_node_healthy(self, cluster_managment, memcached_host_address):
-                assert memcached_host_address == memcached_host_address_1
+                assert memcached_host_address == memcached_address_1
                 self.cluster_managment_on_healhty = cluster_managment
                 ev_cb_on_healthy_node.set()
 
             async def on_node_unhealthy(self, cluster_managment, memcached_host_address):
-                assert memcached_host_address == memcached_host_address_1
+                assert memcached_host_address == memcached_address_1
                 self.cluster_managment_on_unhealhty = cluster_managment
                 ev_cb_on_unhealthy_node.set()
 
         cluster_events = MyClusterEvents()
         mocker.patch("emcache.cluster.Node", return_value=node1)
         cluster = Cluster(
-            [memcached_host_address_1], 1, 1, 60, 5, cluster_events, False, False, False, None, False, 60, 5, event_loop
+            [memcached_address_1], 1, 1, 60, 5, cluster_events, False, False, False, None, False, 60, 5, event_loop
         )
 
         # Set the node unhealhty and healthy again
@@ -542,7 +518,7 @@ class TestCluster:
 
         await cluster.close()
 
-    async def test_cluster_events_hook_raises_exception(self, mocker, event_loop, node1, memcached_host_address_1):
+    async def test_cluster_events_hook_raises_exception(self, mocker, event_loop, node1, memcached_address_1):
         # the raising of an exception should not stop the dipatcher behind the scenes
         ev_cb_on_healthy_node = asyncio.Event()
 
@@ -556,7 +532,7 @@ class TestCluster:
         cluster_events = MyClusterEvents()
         mocker.patch("emcache.cluster.Node", return_value=node1)
         cluster = Cluster(
-            [memcached_host_address_1], 1, 1, 60, 5, cluster_events, False, False, False, None, False, 60, 5, event_loop
+            [memcached_address_1], 1, 1, 60, 5, cluster_events, False, False, False, None, False, 60, 5, event_loop
         )
 
         # Set the node unhealhty and healthy again

@@ -1,6 +1,5 @@
 # MIT License
 # Copyright (c) 2020-2024 Pau Freixes
-
 from unittest.mock import ANY, AsyncMock, MagicMock, Mock, call
 
 import pytest
@@ -22,8 +21,7 @@ from emcache.default_values import (
     DEFAULT_SSL_VERIFY,
     DEFAULT_TIMEOUT,
 )
-from emcache.node import MemcachedHostAddress
-from emcache.protocol import DELETED, NOT_FOUND, STORED, TOUCHED
+from emcache.protocol import DELETED, ERROR, NOT_FOUND, STORED, TOUCHED
 
 pytestmark = pytest.mark.asyncio
 
@@ -40,22 +38,18 @@ class TestClient:
         return cluster
 
     @pytest.fixture
-    async def memcached_host_address(self):
-        return MemcachedHostAddress(address="localhost", port=11211)
-
-    @pytest.fixture
-    async def client(self, event_loop, mocker, cluster, memcached_host_address):
+    async def client(self, event_loop, mocker, cluster, memcached_address_1):
         mocker.patch("emcache.client.Cluster", return_value=cluster)
         return _Client(
-            [memcached_host_address], None, 1, 1, None, None, None, False, False, 32, False, False, None, False, 60, 5
+            [memcached_address_1], None, 1, 1, None, None, None, False, False, 32, False, False, None, False, 60, 5
         )
 
     async def test_invalid_host_addresses(self):
         with pytest.raises(ValueError):
             _Client([], None, 1, 1, None, None, None, False, False, 32, False, False, None, False, 60, 5)
 
-    async def test_autobatching_initialization(self, event_loop, mocker, memcached_host_address):
-        node_addresses = [memcached_host_address]
+    async def test_autobatching_initialization(self, event_loop, mocker, memcached_address_1):
+        node_addresses = [memcached_address_1]
         timeout = 1
         max_connections = 1
         min_connections = 1
@@ -102,8 +96,8 @@ class TestClient:
             ]
         )
 
-    async def test_cluster_initialization(self, event_loop, mocker, memcached_host_address):
-        node_addresses = [memcached_host_address]
+    async def test_cluster_initialization(self, event_loop, mocker, memcached_address_1):
+        node_addresses = [memcached_address_1]
         timeout = 1
         max_connections = 1
         min_connections = 1
@@ -163,14 +157,14 @@ class TestClient:
         # called only once.
         cluster.close.assert_called_once()
 
-    async def test_timeout_value_used(self, event_loop, mocker, memcached_host_address):
+    async def test_timeout_value_used(self, event_loop, mocker, memcached_address_1):
         mocker.patch("emcache.client.Cluster")
 
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
         timeout = 2.0
         client = _Client(
-            [memcached_host_address],
+            [memcached_address_1],
             timeout,
             1,
             1,
@@ -188,7 +182,7 @@ class TestClient:
             5,
         )
         connection = AsyncMock()
-        connection.storage_command = AsyncMock(return_value=b"STORED")
+        connection.storage_command = AsyncMock(return_value=STORED)
         node = Mock()
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
@@ -203,7 +197,7 @@ class TestClient:
     async def test_not_stored_error_storage_command(self, client, command):
         # patch what is necesary for returnning an error string
         connection = AsyncMock()
-        connection.storage_command = AsyncMock(return_value=b"ERROR")
+        connection.storage_command = AsyncMock(return_value=ERROR)
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -245,7 +239,7 @@ class TestClient:
     async def test_cas_not_stored_error_storage_command(self, client):
         # patch what is necesary for returnning an error string
         connection = AsyncMock()
-        connection.storage_command = AsyncMock(return_value=b"ERROR")
+        connection.storage_command = AsyncMock(return_value=ERROR)
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -455,7 +449,7 @@ class TestClient:
     async def test_touch_error_command(self, client):
         # patch what is necesary for returnning an error string
         connection = AsyncMock()
-        connection.touch_command = AsyncMock(return_value=b"ERROR")
+        connection.touch_command = AsyncMock(return_value=ERROR)
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -490,7 +484,7 @@ class TestClient:
     async def test_delete_error_command(self, client):
         # patch what is necesary for returnning an error string
         connection = AsyncMock()
-        connection.delete_command = AsyncMock(return_value=iter([b"ERROR"]))
+        connection.delete_command = AsyncMock(return_value=iter([ERROR]))
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -525,22 +519,22 @@ class TestClient:
 
         optimeout_class.assert_called()
 
-    async def test_flush_all_client_closed(self, client, memcached_host_address):
+    async def test_flush_all_client_closed(self, client, memcached_address_1):
         await client.close()
         with pytest.raises(RuntimeError):
-            await client.flush_all(memcached_host_address)
+            await client.flush_all(memcached_address_1)
 
-    async def test_flush_all_error_command(self, client, memcached_host_address):
+    async def test_flush_all_error_command(self, client, memcached_address_1):
         # patch what is necesary for returnning an error string
         connection = AsyncMock()
-        connection.flush_all_command = AsyncMock(return_value=iter([b"ERROR"]))
+        connection.flush_all_command = AsyncMock(return_value=iter([ERROR]))
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
         client._cluster.node.return_value = node
         with pytest.raises(CommandError):
-            await client.flush_all(memcached_host_address)
+            await client.flush_all(memcached_address_1)
 
     @pytest.mark.parametrize("command", ["get_many", "gets_many"])
     async def test_exception_cancels_for_fetch_many(self, client, command):
@@ -585,7 +579,7 @@ class TestClient:
         # Some storage commands do not support update the flags and neither
         # the exptime, in these use cases the values are set to 0.
         connection = AsyncMock()
-        connection.storage_command = AsyncMock(return_value=b"STORED")
+        connection.storage_command = AsyncMock(return_value=STORED)
         connection_context = MagicMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -611,13 +605,13 @@ class TestClient:
         return (autobatching_get_noflags, autobatching_get_flags, autobatching_gets_noflags, autobatching_gets_flags)
 
     @pytest.fixture
-    async def client_autobatching(self, event_loop, mocker, cluster, memcached_host_address, autobatching):
+    async def client_autobatching(self, event_loop, mocker, cluster, memcached_address_1, autobatching):
         autobatch_class = mocker.patch("emcache.client.AutoBatching")
         get_noflags, get_flags, gets_noflags, gets_flags = autobatching
         autobatch_class.side_effect = [get_noflags, get_flags, gets_noflags, gets_flags]
         mocker.patch("emcache.client.Cluster", return_value=cluster)
         return _Client(
-            [memcached_host_address], None, 1, 1, None, None, None, False, True, 32, False, False, None, False, 60, 5
+            [memcached_address_1], None, 1, 1, None, None, None, False, True, 32, False, False, None, False, 60, 5
         )
 
     async def test_get_command_use_autobatching_if_enabled(self, client_autobatching, autobatching):
@@ -660,29 +654,49 @@ class TestClient:
         get_noflags.execute.assert_not_called()
         gets_noflags.execute.assert_not_called()
 
-    async def test_version_client_closed(self, client, memcached_host_address):
+    async def test_version_client_closed(self, client, memcached_address_1):
         await client.close()
         with pytest.raises(RuntimeError):
-            await client.version(memcached_host_address)
+            await client.version(memcached_address_1)
 
-    async def test_version_error_command(self, client, memcached_host_address):
+    async def test_version_error_command(self, client, memcached_address_1):
         # patch what is necesary for returnning an error string
         connection = AsyncMock()
-        connection.version_command = AsyncMock(return_value=b"ERROR")
+        connection.version_command = AsyncMock(return_value=ERROR)
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
         node.connection.return_value = connection_context
         client._cluster.node.return_value = node
         with pytest.raises(CommandError):
-            await client.version(memcached_host_address)
+            await client.version(memcached_address_1)
+
+    async def test_cache_memlimit_client_closed(self, client, memcached_address_1):
+        await client.close()
+        with pytest.raises(RuntimeError):
+            await client.cache_memlimit(memcached_address_1, 64)
+
+    async def test_cache_memlimit_error_command(self, client, memcached_address_1):
+        # patch what is necesary for returnning an error string
+        connection = AsyncMock()
+        connection.cache_memlimit = AsyncMock(return_value=ERROR)
+        connection_context = AsyncMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.node.return_value = node
+        with pytest.raises(CommandError):
+            await client.cache_memlimit(memcached_address_1, 64)
 
 
-async def test_create_client_default_values(event_loop, mocker):
+async def test_create_client_default_values(event_loop, mocker, memcached_address_1):
     client_class = mocker.patch("emcache.client._Client")
-    await create_client([("localhost", 11211)])
+
+    client_class.return_value.auth = AsyncMock()
+
+    await create_client([memcached_address_1])
     client_class.assert_called_with(
-        [("localhost", 11211)],
+        [memcached_address_1],
         DEFAULT_TIMEOUT,
         DEFAULT_MAX_CONNECTIONS,
         DEFAULT_MIN_CONNECTIONS,

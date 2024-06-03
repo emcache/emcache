@@ -70,7 +70,7 @@ class Node:
         return str(self)
 
     def __hash__(self) -> int:
-        return self.memcached_host_address.__hash__()
+        return hash(self.memcached_host_address)
 
     def _on_connection_pool_healthy_status_change_cb(self, healthy: bool):
         # The healthiness of the node depends only to the healthiness of

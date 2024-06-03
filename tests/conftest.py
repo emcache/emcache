@@ -1,6 +1,7 @@
 # MIT License
 # Copyright (c) 2020-2024 Pau Freixes
 
+import os
 import time
 
 import pytest
@@ -16,6 +17,16 @@ async def memcached_address_1():
 @pytest.fixture
 async def memcached_address_2():
     return MemcachedHostAddress("localhost", 11212)
+
+
+@pytest.fixture
+async def memcached_address_3():
+    return MemcachedHostAddress("localhost", 11213)
+
+
+@pytest.fixture
+async def memcached_address_4():
+    return MemcachedHostAddress("localhost", 11214)
 
 
 @pytest.fixture
@@ -40,3 +51,9 @@ def key_generation():
             cnt += 1
 
     return _()
+
+
+@pytest.fixture
+def auth_userpass():
+    with open(os.path.join(os.path.dirname(__file__), "acceptance", "data", "auth_pwd.txt"), "rb") as f:
+        return f.readline().rstrip().split(b":")
