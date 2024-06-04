@@ -3,7 +3,7 @@
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Mapping, Optional, Sequence, Union
+from typing import Dict, Mapping, Optional, Sequence, Union, List
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from .connection_pool import ConnectionPoolMetrics
@@ -317,6 +317,14 @@ class Client(metaclass=ABCMeta):
     ) -> None:
         """Cache_memlimit is a command with a numeric argument. This allows runtime
         adjustments of the cache memory limit. The argument is in megabytes, not bytes.
+        """
+
+    @abstractmethod
+    async def stats(self, memcached_host_address: MemcachedHostAddress, *args: str) -> List[bytes]:
+        """The memcached command via "stats" which show needed statistics about server.
+        Client send without arguments - `stats\r\n`, with arguments - `stats <args>\r\n`.
+        Depending on the arguments, the server will return statistics to you until it finishes `END\r\n`.
+        Please see a lot of detailed information in the documentation.
         """
 
 

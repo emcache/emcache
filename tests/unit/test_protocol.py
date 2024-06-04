@@ -342,6 +342,36 @@ class TestMemcacheAsciiProtocol:
 
         protocol._transport.write.assert_called_with(b"cache_memlimit 1024\r\n")
 
+    async def test_stats_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.stats_command("sizes")
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"STAT sizes_status disabled\r\nEND\r\n")
+
+        result = await task
+
+        assert result == b"STAT sizes_status disabled\r\nEND"
+
+        protocol._transport.write.assert_called_with(b"stats sizes\r\n")
+
+    async def test_stats_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.stats_command()
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"ERROR\r\n")
+
+        result = await task
+
+        assert result == ERROR
+
+        protocol._transport.write.assert_called_with(b"stats\r\n")
+
 
 async def test_create_protocol(event_loop, mocker):
     loop_mock = Mock()

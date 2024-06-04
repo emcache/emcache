@@ -27,7 +27,7 @@ from .default_values import (
     DEFAULT_TIMEOUT,
 )
 from .node import Node
-from .protocol import DELETED, EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED, VERSION
+from .protocol import DELETED, END, EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED, VERSION
 from .timeout import OpTimeout
 
 logger = logging.getLogger(__name__)
@@ -797,6 +797,25 @@ class _Client(Client):
             raise CommandError(f"Command finished with error, response returned {result}")
 
         return
+
+    async def stats(self, memcached_host_address: MemcachedHostAddress, *args: str) -> List[bytes]:
+        """The memcached command via "stats" which show needed statistics about server.
+        Client send without arguments - `stats\r\n`, with arguments - `stats <args>\r\n`.
+        Depending on the arguments, the server will return statistics to you until it finishes `END\r\n`.
+        Please see a lot of detailed information in the documentation.
+        """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        node = self._cluster.node(memcached_host_address)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                result = await connection.stats_command(*args)
+
+        if not result or not result.endswith(END):
+            raise CommandError(f"Command finished with error, response returned {result}")
+
+        return [s for s in result.split(b"\r\n")]
 
 
 async def create_client(
