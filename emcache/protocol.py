@@ -342,9 +342,9 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             self._parser = None
 
     async def cache_memlimit_command(self, value: int, noreply: bool) -> Optional[bytes]:
-        noreply = b" noreply" if noreply else b""
+        extra = b" noreply" if noreply else b""
 
-        data = b"cache_memlimit " + f"{value:d}".encode() + noreply + b"\r\n"
+        data = b"cache_memlimit " + f"{value:d}".encode() + extra + b"\r\n"
 
         if noreply:
             # fire and forget
