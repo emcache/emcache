@@ -1,3 +1,4 @@
+version: '2'
 services:
   memcached1:
     image: memcached
