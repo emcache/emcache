@@ -69,6 +69,8 @@ Emcache has currently support, among many of them, for the following commands:
 - **delete** The command allows for explicit deletion of items.
 - **touch** The command is used to update the expiration time of an existing item without fetching it.
 - **increment/decrement** Commands are used to change data for some item in-place, incrementing or decrementing it.
+- **cache_memlimit** This command allow set in runtime cache memory limit.
+- **stats** Show a list of required statistics about the server, depending on the arguments.
 
 
 Take a look at the documentation for getting a list of all of the `operations <https://emcache.readthedocs.io/en/latest/operations.html>`_ that are currently supported.
@@ -170,3 +172,18 @@ Install emcache with dev dependencies
 .. code-block:: bash
 
     make install-dev
+
+Testing
+===========
+
+Run docker containers, add read write privileges
+
+.. code-block:: bash
+    docker-compose up -d
+    docker exec memcached_unix1 sh -c "chmod a+rw /tmp/emcache.test1.sock"
+    docker exec memcached_unix2 sh -c "chmod a+rw /tmp/emcache.test2.sock"
+
+Run tests
+
+.. code-block:: bash
+    make test
