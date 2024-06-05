@@ -71,6 +71,7 @@ Emcache has currently support, among many of them, for the following commands:
 - **increment/decrement** Commands are used to change data for some item in-place, incrementing or decrementing it.
 - **cache_memlimit** This command allow set in runtime cache memory limit.
 - **stats** Show a list of required statistics about the server, depending on the arguments.
+- **verbosity** Command control STDOUT/STDERR info, choose level and look logging memcached.
 
 
 Take a look at the documentation for getting a list of all of the `operations <https://emcache.readthedocs.io/en/latest/operations.html>`_ that are currently supported.
