@@ -312,14 +312,6 @@ class Client(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def cache_memlimit(
-        self, memcached_host_address: MemcachedHostAddress, value: int, *, noreply: bool = False
-    ) -> None:
-        """Cache_memlimit is a command with a numeric argument. This allows runtime
-        adjustments of the cache memory limit. The argument is in megabytes, not bytes.
-        """
-
-    @abstractmethod
     async def stats(self, memcached_host_address: MemcachedHostAddress, *args: str) -> List[bytes]:
         """The memcached command via "stats" which show needed statistics about server.
         Client send without arguments - `stats\r\n`, with arguments - `stats <args>\r\n`.

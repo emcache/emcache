@@ -170,17 +170,9 @@ class TestVersion:
             assert isinstance(await client.version(node_address), str)
 
 
-class TestCacheMemlimit:
-    @pytest.mark.parametrize("noreply", [False, True])
-    async def test_cache_memlimit(self, client, node_addresses, noreply):
-        # set cache limit for selected of the servers
-        for node_address in node_addresses:
-            assert await client.cache_memlimit(node_address, 64, noreply=noreply) is None
-
-
 class TestStats:
     async def test_stats(self, client, node_addresses):
         for node_address in node_addresses:
-            assert await client.stats(node_address) is not None
-            assert await client.stats(node_address, "settings") is not None
-            assert await client.stats(node_address, "settings", "items") is not None
+            assert type(await client.stats(node_address)) is list
+            assert type(await client.stats(node_address, "settings")) is list
+            assert type(await client.stats(node_address, "settings", "items")) is list

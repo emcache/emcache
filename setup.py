@@ -27,14 +27,14 @@ extensions = [
 ]
 
 dev_requires = [
-    "Cython==3.0.10",
+    "Cython==0.29.32",
     "pytest==6.2.5",
     "pytest-mock==3.1.0",
     "pytest-asyncio==0.11.0",
     "pytest-cov==2.8.1",
-    "black==24.4.2",
-    "isort==5.13.2",
-    "flake8==7.0.0",
+    "black==22.3.0",
+    "isort==4.3.21",
+    "flake8==6.1.0",
 ]
 
 
