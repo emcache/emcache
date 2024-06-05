@@ -173,6 +173,6 @@ class TestVersion:
 class TestStats:
     async def test_stats(self, client, node_addresses):
         for node_address in node_addresses:
-            assert type(await client.stats(node_address)) is list
-            assert type(await client.stats(node_address, "settings")) is list
-            assert type(await client.stats(node_address, "settings", "items")) is list
+            assert type(await client.stats(node_address)) is dict
+            assert type(await client.stats(node_address, "settings")) is dict
+            assert type(await client.stats(node_address, "settings", "items")) is dict

@@ -3,7 +3,7 @@
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List, Mapping, Optional, Sequence, Union
+from typing import Dict, Mapping, Optional, Sequence, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from .connection_pool import ConnectionPoolMetrics
@@ -312,7 +312,7 @@ class Client(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def stats(self, memcached_host_address: MemcachedHostAddress, *args: str) -> List[bytes]:
+    async def stats(self, memcached_host_address: MemcachedHostAddress, *args: str) -> Dict[str, str]:
         """The memcached command via "stats" which show needed statistics about server.
         Client send without arguments - `stats\r\n`, with arguments - `stats <args>\r\n`.
         Depending on the arguments, the server will return statistics to you until it finishes `END\r\n`.

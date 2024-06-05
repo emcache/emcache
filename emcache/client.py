@@ -3,6 +3,7 @@
 
 import asyncio
 import logging
+import re
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
@@ -776,7 +777,7 @@ class _Client(Client):
 
         return results
 
-    async def stats(self, memcached_host_address: MemcachedHostAddress, *args: str) -> List[bytes]:
+    async def stats(self, memcached_host_address: MemcachedHostAddress, *args: str) -> Dict[str, str]:
         """The memcached command via "stats" which show needed statistics about server.
         Client send without arguments - `stats\r\n`, with arguments - `stats <args>\r\n`.
         Depending on the arguments, the server will return statistics to you until it finishes `END\r\n`.
@@ -793,7 +794,7 @@ class _Client(Client):
         if not result or not result.endswith(END):
             raise CommandError(f"Command finished with error, response returned {result}")
 
-        return [s for s in result.split(b"\r\n")]
+        return dict(s.groups() for s in re.finditer(r"STAT (.+) (.+)\r\n", result.decode()))
 
 
 async def create_client(
