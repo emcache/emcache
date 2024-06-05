@@ -318,7 +318,7 @@ class Client(metaclass=ABCMeta):
         level: int,
         *,
         noreply: bool = False
-    ) -> Optional[str]:
+    ) -> None:
         """Set verbosity level in runtime. Verbosity option print STDOUT/STDERR information server.
         Increase level increase verbose information memcached.
         1 - `print standard errors/warnings`

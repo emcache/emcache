@@ -308,6 +308,25 @@ class TestMemcacheAsciiProtocol:
         # check that the protocol is yes or yes set to None
         assert protocol._parser is None
 
+    async def test_verbosity_command_noreply(self, event_loop, protocol):
+        await protocol.verbosity_command(1, True)
+        protocol._transport.write.assert_called_with(b"verbosity 1 noreply\r\n")
+
+    async def test_verbosity_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.verbosity_command(1, False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"OK\r\n")
+
+        result = await task
+
+        assert result == b"OK"
+
+        protocol._transport.write.assert_called_with(b"verbosity 1\r\n")
+
 
 async def test_create_protocol(event_loop, mocker):
     loop_mock = Mock()

@@ -168,3 +168,10 @@ class TestVersion:
     async def test_version(self, client, node_addresses):
         for node_address in node_addresses:
             assert isinstance(await client.version(node_address), str)
+
+
+class TestVerbosity:
+    @pytest.mark.parametrize("noreply", [False, True])
+    async def test_verbosity(self, client, node_addresses, noreply):
+        for node_address in node_addresses:
+            assert await client.verbosity(node_address, 1, noreply=noreply) is None
