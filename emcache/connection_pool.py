@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
+from .client_errors import AuthenticationError, AuthenticationNotSupportedError
 from .protocol import MemcacheAsciiProtocol, create_protocol
 
 logger = logging.getLogger(__name__)
@@ -271,6 +272,9 @@ class ConnectionPool:
             error = True
         except asyncio.CancelledError:
             logger.info(f"{self} create connection stopped, connection pool is closing")
+        except (AuthenticationError, AuthenticationNotSupportedError):
+            logger.info(f"{self} new connection could not be created, failed authentication!")
+            error = True
         finally:
             if error:
                 self._metrics.connections_created_with_error += 1
