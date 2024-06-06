@@ -180,7 +180,7 @@ class TestAuth:
         username, password = auth_userpass
 
         client_no_userpass = await create_client([MemcachedHostAddress("localhost", 11214)], timeout=1.0)
-        with pytest.raises(TimeoutError):
+        with pytest.raises(asyncio.TimeoutError):
             await client_no_userpass.get(b"key")
 
         client_have_username = await create_client(
@@ -204,5 +204,5 @@ class TestAuth:
         client_no_need_sasl_but_used = await create_client(
             [MemcachedHostAddress("localhost", 11211)], username="wrong", password="wrong", timeout=1.0
         )
-        with pytest.raises(asyncio.TimeoutError):
+        with pytest.raises((asyncio.TimeoutError)):
             await client_no_need_sasl_but_used.get(b"key")
