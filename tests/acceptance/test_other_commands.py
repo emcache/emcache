@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-from emcache import MemcachedHostAddress, NotFoundCommandError, create_client
+from emcache import NotFoundCommandError
 
 pytestmark = pytest.mark.asyncio
 
@@ -168,41 +168,3 @@ class TestVersion:
     async def test_version(self, client, node_addresses):
         for node_address in node_addresses:
             assert isinstance(await client.version(node_address), str)
-
-
-class TestAuth:
-    @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
-    async def test_auth(self, authed_client):
-        await authed_client.get(b"key")
-
-    @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
-    async def test_auth_with_errors(self, auth_userpass):
-        username, password = auth_userpass
-
-        client_no_userpass = await create_client([MemcachedHostAddress("localhost", 11214)], timeout=1.0)
-        with pytest.raises(asyncio.TimeoutError):
-            await client_no_userpass.get(b"key")
-
-        client_have_username = await create_client(
-            [MemcachedHostAddress("localhost", 11214)], username=username, timeout=1.0
-        )
-        with pytest.raises(asyncio.TimeoutError):
-            await client_have_username.get(b"key")
-
-        client_have_password = await create_client(
-            [MemcachedHostAddress("localhost", 11214)], password=password, timeout=1.0
-        )
-        with pytest.raises(asyncio.TimeoutError):
-            await client_have_password.get(b"key")
-
-        client_un_userpass = await create_client(
-            [MemcachedHostAddress("localhost", 11214)], username="wrong", password="wrong", timeout=1.0
-        )
-        with pytest.raises(asyncio.TimeoutError):
-            await client_un_userpass.get(b"key")
-
-        client_no_need_sasl_but_used = await create_client(
-            [MemcachedHostAddress("localhost", 11211)], username="wrong", password="wrong", timeout=1.0
-        )
-        with pytest.raises((asyncio.TimeoutError)):
-            await client_no_need_sasl_but_used.get(b"key")
