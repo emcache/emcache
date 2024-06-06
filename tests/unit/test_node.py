@@ -52,6 +52,8 @@ class TestNode:
             False,
             False,
             None,
+            None,
+            None,
         )
 
     async def test_close(self, mocker, memcached_host_address):

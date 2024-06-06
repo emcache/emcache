@@ -77,6 +77,8 @@ class ConnectionPool:
     _ssl: bool
     _ssl_verify: bool
     _ssl_extra_ca: Optional[str]
+    _username: Optional[str]
+    _password: Optional[str]
 
     def __init__(
         self,
@@ -89,6 +91,8 @@ class ConnectionPool:
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
+        username: str = None,
+        password: str = None,
     ):
         if max_connections < 1:
             raise ValueError("max_connections must be higher than 0")
@@ -148,6 +152,10 @@ class ConnectionPool:
         self._ssl = ssl
         self._ssl_verify = ssl_verify
         self._ssl_extra_ca = ssl_extra_ca
+
+        # attributes for sasl authentication
+        self._username = username
+        self._password = password
 
         self._maybe_new_connection_if_current_is_lower_than_min()
 
@@ -234,6 +242,8 @@ class ConnectionPool:
                 ssl_verify=self._ssl_verify,
                 ssl_extra_ca=self._ssl_extra_ca,
                 timeout=self._connection_timeout,
+                username=self._username,
+                password=self._password,
             )
             elapsed = time.monotonic() - start
 
@@ -418,7 +428,7 @@ class BaseConnectionContext:
     async def __aenter__(self) -> MemcacheAsciiProtocol:
         raise NotImplementedError
 
-    async def __aexit__(self, fexc_type, exc, tb) -> None:
+    async def __aexit__(self, exc_type, exc, tb) -> None:
         self._connection_pool.release_connection(self._connection, exc=exc)
 
 

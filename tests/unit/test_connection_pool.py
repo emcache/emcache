@@ -161,7 +161,13 @@ class TestConnectionPool:
         await ev.wait()
 
         create_protocol.assert_called_with(
-            MemcachedHostAddress("localhost", 11211), ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=None
+            MemcachedHostAddress("localhost", 11211),
+            ssl=False,
+            ssl_verify=False,
+            ssl_extra_ca=None,
+            timeout=None,
+            username=None,
+            password=None,
         )
         assert connection_pool.total_connections == min_connections
 
@@ -189,7 +195,13 @@ class TestConnectionPool:
         await ev.wait()
 
         create_protocol.assert_called_with(
-            MemcachedHostAddress("localhost", 11211), ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=1.0
+            MemcachedHostAddress("localhost", 11211),
+            ssl=False,
+            ssl_verify=False,
+            ssl_extra_ca=None,
+            timeout=1.0,
+            username=None,
+            password=None,
         )
 
     async def test_create_connection_max_observed_latencies(self, event_loop, mocker, not_closed_connection):
@@ -261,6 +273,8 @@ class TestConnectionPool:
                     ssl_verify=False,
                     ssl_extra_ca=None,
                     timeout=1.0,
+                    username=None,
+                    password=None,
                 ),
                 call(
                     MemcachedHostAddress("localhost", 11211),
@@ -268,6 +282,8 @@ class TestConnectionPool:
                     ssl_verify=False,
                     ssl_extra_ca=None,
                     timeout=1.0,
+                    username=None,
+                    password=None,
                 ),
             ]
         )
@@ -307,7 +323,13 @@ class TestConnectionPool:
 
         # check that we have called once the create_protocol
         create_protocol.assert_called_once_with(
-            MemcachedHostAddress("localhost", 11211), ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=1.0
+            MemcachedHostAddress("localhost", 11211),
+            ssl=False,
+            ssl_verify=False,
+            ssl_extra_ca=None,
+            timeout=1.0,
+            username=None,
+            password=None,
         )
 
         assert connection_pool.total_connections == 0
@@ -507,6 +529,8 @@ class TestConnectionPool:
                     ssl_verify=False,
                     ssl_extra_ca=None,
                     timeout=None,
+                    username=None,
+                    password=None,
                 ),
                 call(
                     MemcachedHostAddress("localhost", 11211),
@@ -514,6 +538,8 @@ class TestConnectionPool:
                     ssl_verify=False,
                     ssl_extra_ca=None,
                     timeout=None,
+                    username=None,
+                    password=None,
                 ),
             ]
         )
@@ -565,6 +591,8 @@ class TestConnectionPool:
                     ssl_verify=False,
                     ssl_extra_ca=None,
                     timeout=None,
+                    username=None,
+                    password=None,
                 ),
                 call(
                     MemcachedHostAddress("localhost", 11211),
@@ -572,6 +600,8 @@ class TestConnectionPool:
                     ssl_verify=False,
                     ssl_extra_ca=None,
                     timeout=None,
+                    username=None,
+                    password=None,
                 ),
             ]
         )

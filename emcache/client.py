@@ -67,6 +67,8 @@ class _Client(Client):
         autodiscovery: bool,
         autodiscovery_poll_interval: float,
         autodiscovery_timeout: float,
+        username: str = None,
+        password: str = None,
     ) -> None:
 
         if not node_addresses:
@@ -88,6 +90,8 @@ class _Client(Client):
             autodiscovery_poll_interval,
             autodiscovery_timeout,
             self._loop,
+            username,
+            password,
         )
         self._timeout = timeout
         self._closed = False
@@ -795,6 +799,8 @@ async def create_client(
     autodiscovery: bool = False,
     autodiscovery_poll_interval: float = DEFAULT_AUTODISCOVERY_POLL_INTERVAL,
     autodiscovery_timeout: float = DEFAULT_AUTODISCOVERY_TIMEOUT,
+    username: str = None,
+    password: str = None,
 ) -> Client:
     """Factory for creating a new `emcache.Client` instance.
 
@@ -844,6 +850,10 @@ async def create_client(
     By default, 60s.
 
     `autodiscovery_timeout` the timeout for the `config get cluster` command. By default, 5s.
+
+    `username` By default None. Used for authentication by SASL with username.
+
+    `password` By default None. Used for authentication by SASL with password.
     """
     # check SSL availability earlier, protocol which is the one that will use
     # it when connections are created in background won't need to deal with this
@@ -871,6 +881,8 @@ async def create_client(
         autodiscovery,
         autodiscovery_poll_interval,
         autodiscovery_timeout,
+        username,
+        password,
     )
 
     if autodiscovery:

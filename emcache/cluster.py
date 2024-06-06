@@ -91,6 +91,8 @@ class Cluster:
         autodiscovery_poll_interval: float,
         autodiscovery_timeout: float,
         loop: asyncio.AbstractEventLoop,
+        username: str = None,
+        password: str = None,
     ) -> None:
 
         if not memcached_hosts_address:
@@ -118,6 +120,8 @@ class Cluster:
             ssl,
             ssl_verify,
             ssl_extra_ca,
+            username,
+            password,
         ]
         self._cluster_managment = _ClusterManagment(self)
         self._events = asyncio.Queue(maxsize=MAX_EVENTS)
@@ -138,6 +142,8 @@ class Cluster:
                     ssl,
                     ssl_verify,
                     ssl_extra_ca,
+                    username,
+                    password,
                 )
                 for memcached_host_address in memcached_hosts_address
             ]

@@ -33,6 +33,8 @@ class Node:
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
+        username: str = None,
+        password: str = None,
     ) -> None:
 
         # A connection pool starts always in a healthy state
@@ -50,6 +52,8 @@ class Node:
             ssl,
             ssl_verify,
             ssl_extra_ca,
+            username,
+            password,
         )
         self._closed = False
         logger.debug(f"{self} new node created")

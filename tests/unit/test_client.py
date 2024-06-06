@@ -119,6 +119,8 @@ class TestClient:
         autodiscovery = False
         autodiscovery_poll_interval = 60
         autodiscovery_timeout = 5
+        username = None
+        password = None
         cluster_class = mocker.patch("emcache.client.Cluster")
         _Client(
             node_addresses,
@@ -153,6 +155,8 @@ class TestClient:
             autodiscovery_poll_interval,
             autodiscovery_timeout,
             event_loop,
+            username,
+            password,
         )
 
     async def test_close(self, client, cluster):
@@ -699,4 +703,6 @@ async def test_create_client_default_values(event_loop, mocker):
         False,
         DEFAULT_AUTODISCOVERY_POLL_INTERVAL,
         DEFAULT_AUTODISCOVERY_TIMEOUT,
+        None,
+        None,
     )

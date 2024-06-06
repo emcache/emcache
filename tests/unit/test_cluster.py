@@ -170,10 +170,30 @@ class TestCluster:
         node_class.assert_has_calls(
             [
                 call(
-                    memcached_host_address_1, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None
+                    memcached_host_address_1,
+                    1,
+                    1,
+                    60,
+                    5,
+                    cluster._on_node_healthy_status_change_cb,
+                    False,
+                    False,
+                    None,
+                    None,
+                    None,
                 ),
                 call(
-                    memcached_host_address_2, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None
+                    memcached_host_address_2,
+                    1,
+                    1,
+                    60,
+                    5,
+                    cluster._on_node_healthy_status_change_cb,
+                    False,
+                    False,
+                    None,
+                    None,
+                    None,
                 ),
             ]
         )
@@ -210,9 +230,19 @@ class TestCluster:
 
         node_class.assert_has_calls(
             [
-                call(memcached_host_address_1, 1, 1, None, 5, None, False, False, None),
+                call(memcached_host_address_1, 1, 1, None, 5, None, False, False, None, None, None),
                 call(
-                    memcached_host_address_2, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None
+                    memcached_host_address_2,
+                    1,
+                    1,
+                    60,
+                    5,
+                    cluster._on_node_healthy_status_change_cb,
+                    False,
+                    False,
+                    None,
+                    None,
+                    None,
                 ),
             ]
         )
@@ -257,7 +287,17 @@ class TestCluster:
         node_class.assert_has_calls(
             [
                 call(
-                    memcached_host_address_1, 1, 1, 60, 5, cluster._on_node_healthy_status_change_cb, False, False, None
+                    memcached_host_address_1,
+                    1,
+                    1,
+                    60,
+                    5,
+                    cluster._on_node_healthy_status_change_cb,
+                    False,
+                    False,
+                    None,
+                    None,
+                    None,
                 ),
             ]
         )

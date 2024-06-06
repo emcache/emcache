@@ -9,6 +9,7 @@ from typing import Final, List, Optional, Tuple, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
+from .client_errors import AuthenticationError, AuthenticationNotSupportedError
 
 try:
     import ssl as ssl_module
@@ -141,6 +142,19 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             raise RuntimeError(f"Receiving data when no parser is conifgured {data}")
 
         self._parser.feed_data(data)
+
+    async def auth(self, username: str, password: str):
+        version = await self.version_command()
+        if not version or not version.startswith(b"VERSION"):
+            result = await self.auth_command(username, password)
+            if result != STORED:
+                raise AuthenticationError(
+                    f"Fail authentication. Incorrect username or password. Return result {result}"
+                )
+        elif username or password:
+            raise AuthenticationNotSupportedError(
+                "Fail authentication. This server doesn't support SASL. Not needed username and password"
+            )
 
     async def fetch_command(
         self, cmd: bytes, keys: Tuple[bytes]
@@ -341,6 +355,23 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         finally:
             self._parser = None
 
+    async def auth_command(self, username: str, password: str) -> Optional[bytes]:
+        value = f"{username} {password}".encode()
+        len_value = f"{len(value):d}".encode()
+
+        data = b"set 1 1 1 " + len_value + b"\r\n" + value + b"\r\n"
+
+        try:
+            future = self._loop.create_future()
+            parser = cyemcache.AsciiOneLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            result = parser.value()
+            return result
+        finally:
+            self._parser = None
+
 
 async def create_protocol(
     address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
@@ -349,6 +380,8 @@ async def create_protocol(
     ssl_extra_ca: Optional[str],
     *,
     timeout: int = None,
+    username: str = None,
+    password: str = None,
 ) -> MemcacheAsciiProtocol:
     """Create a new connection which supports the Memcache protocol, if timeout is provided
     an `asyncio.TimeoutError` can be raised."""
@@ -376,4 +409,8 @@ async def create_protocol(
         _, protocol = await connect_coro
     else:
         _, protocol = await asyncio.wait_for(connect_coro, timeout)
+
+    # sasl auth via protocol
+    await protocol.auth(username, password)
+
     return protocol

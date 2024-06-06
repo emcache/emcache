@@ -1,7 +1,9 @@
 # MIT License
 # Copyright (c) 2020-2024 Pau Freixes
 
+import os
 import time
+from pathlib import Path
 
 import pytest
 
@@ -32,6 +34,18 @@ async def client(node_addresses, event_loop):
         await client.close()
 
 
+@pytest.fixture()
+async def authed_client(event_loop, auth_userpass):
+    username, password = auth_userpass
+    client = await create_client(
+        [MemcachedHostAddress("localhost", 11214)], timeout=1.0, username=username, password=password
+    )
+    try:
+        yield client
+    finally:
+        await client.close()
+
+
 @pytest.fixture(scope="session")
 def key_generation():
     def _():
@@ -42,3 +56,9 @@ def key_generation():
             cnt += 1
 
     return _()
+
+
+@pytest.fixture
+def auth_userpass():
+    with open(Path(os.path.dirname(__file__)) / "data" / "auth_pwd.txt", "r") as f:
+        return f.readline().rstrip().split(":")
