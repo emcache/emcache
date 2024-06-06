@@ -18,6 +18,7 @@ on the experience of other Memcached clients, providing the following main chara
 - Support for many Memcached hosts, distributing traffic around them by using the `Rendezvous hashing <https://emcache.readthedocs.io/en/latest/advanced_topics.html#hashing-algorithm>`_ algorithm.
 - Support for different commands and different flag behaviors like ``noreply``, ``exptime`` or ``flags``.
 - Support for SSL/TLS protocol.
+- Support for SASL authentication by ASCII protocol.
 - Support for `autodiscovery <https://emcache.readthedocs.io/en/latest/client.html#autodiscovery>`_, which should work with AWS and GCP memcached clusters.
 - Adaptative `connection pool <https://emcache.readthedocs.io/en/latest/advanced_topics.html#connection-pool>`_, which increases the number of connections per Memcache host depending on the traffic.
 - `Node healthiness <https://emcache.readthedocs.io/en/latest/advanced_topics.html#healthy-and-unhealthy-nodes>`_ traceability and an optional flag for disabling unhealthy for participating in the commands.
