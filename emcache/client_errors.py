@@ -11,14 +11,12 @@ class ClusterNoAvailableNodes(Exception):
 
 
 class CommandError(Exception):
-    pass
+    """Base exception Memcached commands"""
 
 
 class StorageCommandError(CommandError):
     """General exception raised when a storage command finished without
     being able to store the value for a specific key."""
-
-    pass
 
 
 class NotStoredStorageCommandError(StorageCommandError):
@@ -28,12 +26,8 @@ class NotStoredStorageCommandError(StorageCommandError):
     or abscence of a key.
     """
 
-    pass
-
 
 class NotFoundCommandError(CommandError):
     """When a key does not exist some commands can not perform
     the operation and this exception is raised.
     """
-
-    pass
