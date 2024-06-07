@@ -173,6 +173,9 @@ class TestVersion:
 class TestStats:
     async def test_stats(self, client, node_addresses):
         for node_address in node_addresses:
-            assert type(await client.stats(node_address)) is dict
-            assert type(await client.stats(node_address, "settings")) is dict
-            assert type(await client.stats(node_address, "settings", "items")) is dict
+            default_stats = await client.stats(node_address)
+            assert default_stats["version"]
+            settings_stats = await client.stats(node_address, "settings")
+            assert settings_stats["verbosity"]
+            args_stats = await client.stats(node_address, "settings", "items")
+            assert args_stats["verbosity"]
