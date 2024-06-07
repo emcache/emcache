@@ -311,6 +311,22 @@ class Client(metaclass=ABCMeta):
         gats <exptime> <key>*\r\n
         """
 
+    @abstractmethod
+    async def cache_memlimit(
+        self, memcached_host_address: MemcachedHostAddress, value: int, *, noreply: bool = False
+    ) -> None:
+        """Cache_memlimit is a command with a numeric argument. This allows runtime
+        adjustments of the cache memory limit. The argument is in megabytes, not bytes.
+        """
+
+    @abstractmethod
+    async def stats(self, memcached_host_address: MemcachedHostAddress, *args: str) -> Dict[str, str]:
+        """The memcached command via "stats" which show needed statistics about server.
+        Client send without arguments - `stats\r\n`, with arguments - `stats <args>\r\n`.
+        Depending on the arguments, the server will return statistics to you until it finishes `END\r\n`.
+        Please see a lot of detailed information in the documentation.
+        """
+
 
 class ClusterEvents(metaclass=ABCMeta):
     """ClusterEvents can be used for being notified about different
