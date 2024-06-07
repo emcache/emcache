@@ -777,6 +777,28 @@ class _Client(Client):
 
         return results
 
+    async def cache_memlimit(
+        self, memcached_host_address: MemcachedHostAddress, value: int, *, noreply: bool = False
+    ) -> None:
+        """Cache_memlimit is a command with a numeric argument. This allows runtime
+        adjustments of the cache memory limit. The argument is in megabytes, not bytes.
+        """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        node = self._cluster.node(memcached_host_address)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                result = await connection.cache_memlimit_command(value, noreply)
+
+        if noreply:
+            return
+
+        if result != OK:
+            raise CommandError(f"Command finished with error, response returned {result}")
+
+        return
+
     async def stats(self, memcached_host_address: MemcachedHostAddress, *args: str) -> Dict[str, str]:
         """The memcached command via "stats" which show needed statistics about server.
         Client send without arguments - `stats\r\n`, with arguments - `stats <args>\r\n`.

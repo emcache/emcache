@@ -341,6 +341,27 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         finally:
             self._parser = None
 
+    async def cache_memlimit_command(self, value: int, noreply: bool) -> Optional[bytes]:
+        extra = b" noreply" if noreply else b""
+
+        data = b"cache_memlimit " + f"{value:d}".encode() + extra + b"\r\n"
+
+        if noreply:
+            # fire and forget
+            self._transport.write(data)
+            return None
+
+        try:
+            future = self._loop.create_future()
+            parser = cyemcache.AsciiOneLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            result = parser.value()
+            return result
+        finally:
+            self._parser = None
+
     async def stats_command(self, *args: str) -> Optional[bytes]:
         if args:
             data = b"stats " + " ".join(args).encode() + b"\r\n"
@@ -356,7 +377,6 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             return result
         finally:
             self._parser = None
-
 
 async def create_protocol(
     address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
