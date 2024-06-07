@@ -378,6 +378,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         finally:
             self._parser = None
 
+
 async def create_protocol(
     address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
     ssl: bool,
