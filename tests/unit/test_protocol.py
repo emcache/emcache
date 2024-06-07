@@ -158,6 +158,21 @@ class TestMemcacheAsciiProtocol:
         await protocol.incr_decr_command(b"incr", b"foo", 1, True)
         protocol._transport.write.assert_called_with(b"incr foo 1 noreply\r\n")
 
+    async def test_incr_decr_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.incr_decr_command(b"incr", b"foo", 1, False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        # check that the protocol is yes or yes set to None
+        assert protocol._parser is None
+
     async def test_touch_command(self, event_loop, protocol):
         async def coro():
             return await protocol.touch_command(b"foo", 1, False)
@@ -177,6 +192,21 @@ class TestMemcacheAsciiProtocol:
         await protocol.touch_command(b"foo", 1, True)
         protocol._transport.write.assert_called_with(b"touch foo 1 noreply\r\n")
 
+    async def test_touch_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.touch_command(b"foo", 1, False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        # check that the protocol is yes or yes set to None
+        assert protocol._parser is None
+
     async def test_delete_command(self, event_loop, protocol):
         async def coro():
             return await protocol.delete_command(b"foo", False)
@@ -195,6 +225,21 @@ class TestMemcacheAsciiProtocol:
     async def test_delete_command_noreply(self, event_loop, protocol):
         await protocol.delete_command(b"foo", True)
         protocol._transport.write.assert_called_with(b"delete foo noreply\r\n")
+
+    async def test_delete_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.delete_command(b"foo", False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        # check that the protocol is yes or yes set to None
+        assert protocol._parser is None
 
     async def test_autodiscovery(self, event_loop, protocol):
         async def coro():
@@ -255,6 +300,21 @@ class TestMemcacheAsciiProtocol:
         assert result == b"VERSION 1.6.26"
 
         protocol._transport.write.assert_called_with(b"version\r\n")
+
+    async def test_version_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.version_command()
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        # check that the protocol is yes or yes set to None
+        assert protocol._parser is None
 
     async def test_get_and_touch_command(self, event_loop, protocol):
         async def coro():
