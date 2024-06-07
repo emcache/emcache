@@ -362,6 +362,22 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         finally:
             self._parser = None
 
+    async def stats_command(self, *args: str) -> Optional[bytes]:
+        if args:
+            data = b"stats " + " ".join(args).encode() + b"\r\n"
+        else:
+            data = b"stats\r\n"
+        try:
+            future = self._loop.create_future()
+            parser = cyemcache.AsciiOneLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            result = parser.value()
+            return result
+        finally:
+            self._parser = None
+
 
 async def create_protocol(
     address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
