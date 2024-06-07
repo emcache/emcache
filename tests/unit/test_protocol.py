@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from emcache import MemcachedHostAddress
-from emcache.protocol import MemcacheAsciiProtocol, create_protocol
+from emcache.protocol import ERROR, OK, MemcacheAsciiProtocol, create_protocol
 
 pytestmark = pytest.mark.asyncio
 
@@ -308,9 +308,69 @@ class TestMemcacheAsciiProtocol:
         # check that the protocol is yes or yes set to None
         assert protocol._parser is None
 
-    async def test_verbosity_command_noreply(self, event_loop, protocol):
-        await protocol.verbosity_command(1, True)
-        protocol._transport.write.assert_called_with(b"verbosity 1 noreply\r\n")
+    async def test_cache_memlimit_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.cache_memlimit_command(64, noreply=False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"OK\r\n")
+
+        result = await task
+
+        assert result == OK
+
+        protocol._transport.write.assert_called_with(b"cache_memlimit 64\r\n")
+
+    async def test_cache_memlimit_command_noreply(self, event_loop, protocol):
+        await protocol.cache_memlimit_command(64, noreply=True)
+        protocol._transport.write.assert_called_with(b"cache_memlimit 64 noreply\r\n")
+
+    async def test_cache_memlimit_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.cache_memlimit_command(1024, noreply=False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"ERROR\r\n")
+
+        result = await task
+
+        assert result == ERROR
+
+        protocol._transport.write.assert_called_with(b"cache_memlimit 1024\r\n")
+
+    async def test_stats_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.stats_command("sizes")
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"STAT sizes_status disabled\r\nEND\r\n")
+
+        result = await task
+
+        assert result == b"STAT sizes_status disabled\r\nEND"
+
+        protocol._transport.write.assert_called_with(b"stats sizes\r\n")
+
+    async def test_stats_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.stats_command()
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"ERROR\r\n")
+
+        result = await task
+
+        assert result == ERROR
+
+        protocol._transport.write.assert_called_with(b"stats\r\n")
 
     async def test_verbosity_command(self, event_loop, protocol):
         async def coro():
@@ -326,6 +386,24 @@ class TestMemcacheAsciiProtocol:
         assert result == b"OK"
 
         protocol._transport.write.assert_called_with(b"verbosity 1\r\n")
+
+    async def test_verbosity_command_noreply(self, event_loop, protocol):
+        await protocol.verbosity_command(1, True)
+        protocol._transport.write.assert_called_with(b"verbosity 1 noreply\r\n")
+
+    async def test_verbosity_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.verbosity_command(1, False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        assert protocol._parser is None
 
 
 async def test_create_protocol(event_loop, mocker):
