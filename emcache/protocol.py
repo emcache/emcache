@@ -359,7 +359,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         value = f"{username} {password}".encode()
         len_value = f"{len(value):d}".encode()
 
-        data = b"set 1 1 1 " + len_value + b"\r\n" + value + b"\r\n"
+        data = b"set _ _ _ " + len_value + b"\r\n" + value + b"\r\n"
 
         try:
             future = self._loop.create_future()

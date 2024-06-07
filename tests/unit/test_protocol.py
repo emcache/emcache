@@ -321,7 +321,7 @@ class TestMemcacheAsciiProtocol:
 
         assert result == b"STORED"
 
-        protocol._transport.write.assert_called_with(b"set 1 1 1 3\r\na a\r\n")
+        protocol._transport.write.assert_called_with(b"set _ _ _ 3\r\na a\r\n")
         assert protocol._parser is None
 
     async def test_auth_command_with_error(self, event_loop, protocol):
