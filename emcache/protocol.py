@@ -149,11 +149,11 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             result = await self.auth_command(username, password)
             if result != STORED:
                 raise AuthenticationError(
-                    f"Fail authentication. Incorrect username or password. Return result {result}"
+                    f"Fail authentication. Incorrect username or password. Return result {result}."
                 )
         elif username or password:
             raise AuthenticationNotSupportedError(
-                "Fail authentication. This server doesn't support SASL. Not needed username and password"
+                "Fail authentication. This server doesn't support SASL. Not needed username and password."
             )
 
     async def fetch_command(
@@ -378,10 +378,10 @@ async def create_protocol(
     ssl: bool,
     ssl_verify: bool,
     ssl_extra_ca: Optional[str],
+    username: Optional[str],
+    password: Optional[str],
     *,
     timeout: int = None,
-    username: str = None,
-    password: str = None,
 ) -> MemcacheAsciiProtocol:
     """Create a new connection which supports the Memcache protocol, if timeout is provided
     an `asyncio.TimeoutError` can be raised."""

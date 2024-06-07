@@ -87,12 +87,12 @@ class Cluster:
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
+        username: Optional[str],
+        password: Optional[str],
         autodiscovery: bool,
         autodiscovery_poll_interval: float,
         autodiscovery_timeout: float,
         loop: asyncio.AbstractEventLoop,
-        username: str = None,
-        password: str = None,
     ) -> None:
 
         if not memcached_hosts_address:

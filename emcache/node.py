@@ -33,8 +33,8 @@ class Node:
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
-        username: str = None,
-        password: str = None,
+        username: Optional[str],
+        password: Optional[str],
     ) -> None:
 
         # A connection pool starts always in a healthy state

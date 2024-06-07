@@ -92,8 +92,8 @@ class ConnectionPool:
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
-        username: str = None,
-        password: str = None,
+        username: Optional[str],
+        password: Optional[str],
     ):
         if max_connections < 1:
             raise ValueError("max_connections must be higher than 0")
@@ -242,9 +242,9 @@ class ConnectionPool:
                 ssl=self._ssl,
                 ssl_verify=self._ssl_verify,
                 ssl_extra_ca=self._ssl_extra_ca,
-                timeout=self._connection_timeout,
                 username=self._username,
                 password=self._password,
+                timeout=self._connection_timeout,
             )
             elapsed = time.monotonic() - start
 

@@ -47,12 +47,29 @@ class TestClient:
     async def client(self, event_loop, mocker, cluster, memcached_host_address):
         mocker.patch("emcache.client.Cluster", return_value=cluster)
         return _Client(
-            [memcached_host_address], None, 1, 1, None, None, None, False, False, 32, False, False, None, False, 60, 5
+            [memcached_host_address],
+            None,
+            1,
+            1,
+            None,
+            None,
+            None,
+            False,
+            False,
+            32,
+            False,
+            False,
+            None,
+            None,
+            None,
+            False,
+            60,
+            5,
         )
 
     async def test_invalid_host_addresses(self):
         with pytest.raises(ValueError):
-            _Client([], None, 1, 1, None, None, None, False, False, 32, False, False, None, False, 60, 5)
+            _Client([], None, 1, 1, None, None, None, False, False, 32, False, False, None, None, None, False, 60, 5)
 
     async def test_autobatching_initialization(self, event_loop, mocker, memcached_host_address):
         node_addresses = [memcached_host_address]
@@ -68,6 +85,8 @@ class TestClient:
         ssl = False
         ssl_verify = False
         ssl_extra_ca = None
+        username = None
+        password = None
         autodiscovery = False
         autodiscovery_poll_interval = 60
         autodiscovery_timeout = 5
@@ -89,6 +108,8 @@ class TestClient:
             ssl,
             ssl_verify,
             ssl_extra_ca,
+            username,
+            password,
             autodiscovery,
             autodiscovery_poll_interval,
             autodiscovery_timeout,
@@ -116,11 +137,11 @@ class TestClient:
         ssl = False
         ssl_verify = False
         ssl_extra_ca = None
+        username = None
+        password = None
         autodiscovery = False
         autodiscovery_poll_interval = 60
         autodiscovery_timeout = 5
-        username = None
-        password = None
         cluster_class = mocker.patch("emcache.client.Cluster")
         _Client(
             node_addresses,
@@ -136,6 +157,8 @@ class TestClient:
             ssl,
             ssl_verify,
             ssl_extra_ca,
+            username,
+            password,
             autodiscovery,
             autodiscovery_poll_interval,
             autodiscovery_timeout,
@@ -151,12 +174,12 @@ class TestClient:
             ssl,
             ssl_verify,
             ssl_extra_ca,
+            username,
+            password,
             autodiscovery,
             autodiscovery_poll_interval,
             autodiscovery_timeout,
             event_loop,
-            username,
-            password,
         )
 
     async def test_close(self, client, cluster):
@@ -186,6 +209,8 @@ class TestClient:
             32,
             False,
             False,
+            None,
+            None,
             None,
             False,
             60,
@@ -621,7 +646,24 @@ class TestClient:
         autobatch_class.side_effect = [get_noflags, get_flags, gets_noflags, gets_flags]
         mocker.patch("emcache.client.Cluster", return_value=cluster)
         return _Client(
-            [memcached_host_address], None, 1, 1, None, None, None, False, True, 32, False, False, None, False, 60, 5
+            [memcached_host_address],
+            None,
+            1,
+            1,
+            None,
+            None,
+            None,
+            False,
+            True,
+            32,
+            False,
+            False,
+            None,
+            None,
+            None,
+            False,
+            60,
+            5,
         )
 
     async def test_get_command_use_autobatching_if_enabled(self, client_autobatching, autobatching):
@@ -700,9 +742,9 @@ async def test_create_client_default_values(event_loop, mocker):
         DEFAULT_SSL,
         DEFAULT_SSL_VERIFY,
         None,
+        None,
+        None,
         False,
         DEFAULT_AUTODISCOVERY_POLL_INTERVAL,
         DEFAULT_AUTODISCOVERY_TIMEOUT,
-        None,
-        None,
     )
