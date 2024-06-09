@@ -144,6 +144,7 @@ Emcache has also support for the following other commands:
 - :meth:`emcache.Client.stats` Show statistics about working memcached.
 - :meth:`emcache.Client.verbosity` Set new level verbosity on memcached in runtime.
 - :meth:`emcache.Client.cache_memlimit` In runtime set new value memory limit in megabytes.
+- :meth:`emcache.Client.quit` Soft close connection with memcached.
 
 The :meth:`emcache.Client.flush_all` method targets a specific node, so the parameter expected is the :meth:`emcache.MemcachedHostAddress` which
 identifies univocally a memcached host within the cluster. Also, a parameter called ``delay`` is supported for telling to the Memcached server that the
