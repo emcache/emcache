@@ -29,3 +29,7 @@ async def test_timeout_multiple_nodes(node_addresses):
         await client.get_many(keys)
 
     await client.close()
+
+
+async def test_available_clients(client):
+    assert (await client.get(b"key")) is None
