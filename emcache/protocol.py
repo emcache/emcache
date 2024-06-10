@@ -142,7 +142,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
         self._parser.feed_data(data)
 
-    async def _extract_autodiscovery_data(self, data):
+    async def _extract_autodiscovery_data(self, data:  bytes):
         try:
             future = self._loop.create_future()
             parser = AutoDiscoveryCommandParser(future)
@@ -153,7 +153,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         finally:
             self._parser = None
 
-    async def _extract_multi_line_data(self, data):
+    async def _extract_multi_line_data(self, data: bytes):
         try:
             future = self._loop.create_future()
             parser = cyemcache.AsciiMultiLineParser(future)
@@ -165,7 +165,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         finally:
             self._parser = None
 
-    async def _extract_one_line_data(self, data):
+    async def _extract_one_line_data(self, data: bytes):
         try:
             future = self._loop.create_future()
             parser = cyemcache.AsciiOneLineParser(future)
