@@ -186,18 +186,12 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
     async def storage_command(
         self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool, cas: Optional[int]
     ) -> Optional[bytes]:
-
-        exptime_value = f"{exptime:d}".encode()
-        flags_value = f"{flags:d}".encode()
-        len_value = f"{len(value):d}".encode()
-
         if cas:
-            cas_value = f"{cas:d}".encode()
-            extra = b" " + cas_value if not noreply else b" " + cas_value + b" noreply"
+            extra = b" %a" % cas if not noreply else b" %a noreply" % cas
         else:
             extra = b"" if not noreply else b" noreply"
 
-        data = b"%b %b %b %b %b%b\r\n%b\r\n" % (command, key, flags_value, exptime_value, len_value, extra, value)
+        data = b"%b %b %a %a %a%b\r\n%b\r\n" % (command, key, flags, exptime, len(value), extra, value)
 
         if noreply:
             # fire and forget
@@ -207,7 +201,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
     async def incr_decr_command(self, command: bytes, key: bytes, value: int, noreply: bool) -> Optional[bytes]:
         noreply = b" noreply" if noreply else b""
-        data = b"%b %b %b%b\r\n" % (command, key, f"{value:d}".encode(), noreply)
+        data = b"%b %b %a%b\r\n" % (command, key, value, noreply)
 
         if noreply:
             # fire and forget
@@ -217,7 +211,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
     async def touch_command(self, key: bytes, exptime: int, noreply: bool) -> Optional[bytes]:
         noreply = b" noreply" if noreply else b""
-        data = b"touch %b %b%b\r\n" % (key, f"{exptime:d}".encode(), noreply)
+        data = b"touch %b %a%b\r\n" % (key, exptime, noreply)
 
         if noreply:
             # fire and forget
@@ -227,8 +221,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
     async def flush_all_command(self, delay: int, noreply: bool) -> Optional[bytes]:
         noreply = b" noreply" if noreply else b""
-        delay_value = f"{delay:d}".encode()
-        data = b"flush_all %b%b\r\n" % (delay_value, noreply)
+        data = b"flush_all %a%b\r\n" % (delay, noreply)
 
         if noreply:
             # fire and forget
@@ -257,12 +250,12 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
     async def get_and_touch_command(
         self, cmd: bytes, exptime: int, keys: Tuple[bytes]
     ) -> Tuple[List[bytes], List[bytes], List[int], List[int]]:
-        data = b"%b %b %b\r\n" % (cmd, f"{exptime:d}".encode(), b" ".join(keys))
+        data = b"%b %a %b\r\n" % (cmd, exptime, b" ".join(keys))
         return await self._extract_multi_line_data(data)
 
     async def cache_memlimit_command(self, value: int, noreply: bool) -> Optional[bytes]:
         extra = b" noreply" if noreply else b""
-        data = b"cache_memlimit %b%b\r\n" % (f"{value:d}".encode(), extra)
+        data = b"cache_memlimit %a%b\r\n" % (value, extra)
 
         if noreply:
             # fire and forget
