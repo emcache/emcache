@@ -142,7 +142,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
         self._parser.feed_data(data)
 
-    async def _extract_autodiscovery_data(self, data:  bytes):
+    async def _extract_autodiscovery_data(self, data: bytes):
         try:
             future = self._loop.create_future()
             parser = AutoDiscoveryCommandParser(future)
