@@ -269,7 +269,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
     async def verbosity_command(self, level: int, noreply: bool):
         extra = b" noreply" if noreply else b""
-        data = b"verbosity %a%b\r\n" + (level, extra)
+        data = b"verbosity %a%b\r\n" % (level, extra)
 
         if noreply:
             # fire and forget
