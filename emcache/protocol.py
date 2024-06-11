@@ -277,6 +277,10 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             return
         return await self._extract_one_line_data(data)
 
+    async def quit_command(self) -> None:
+        data = b"quit\r\n"
+        self._transport.write(data)
+
 
 async def create_protocol(
     address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],

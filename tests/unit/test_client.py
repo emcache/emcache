@@ -728,6 +728,11 @@ class TestClient:
         with pytest.raises(CommandError):
             await client.verbosity(memcached_host_address, -1)
 
+    async def test_quit_client_closed(self, client, memcached_host_address):
+        await client.close()
+        with pytest.raises(RuntimeError):
+            await client.quit(memcached_host_address)
+
 
 async def test_create_client_default_values(event_loop, mocker):
     client_class = mocker.patch("emcache.client._Client")

@@ -344,6 +344,13 @@ class Client(metaclass=ABCMeta):
         Return always "OK\r\n" if skip noreply and correct command.
         """
 
+    @abstractmethod
+    async def quit(self, memcached_host_address: MemcachedHostAddress) -> None:
+        """Soft closing of the connection between the memcached server and the client.
+
+        quit\r\n
+        """
+
 
 class ClusterEvents(metaclass=ABCMeta):
     """ClusterEvents can be used for being notified about different

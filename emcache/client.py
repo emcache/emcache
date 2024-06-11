@@ -849,6 +849,19 @@ class _Client(Client):
 
         return
 
+    async def quit(self, memcached_host_address: MemcachedHostAddress) -> None:
+        """Soft closing of the connection between the memcached server and the client.
+
+        quit\r\n
+        """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        node = self._cluster.node(memcached_host_address)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                await connection.quit_command()
+
 
 async def create_client(
     node_addresses: Sequence[Union[MemcachedHostAddress, MemcachedUnixSocketPath]],

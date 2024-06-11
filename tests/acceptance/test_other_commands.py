@@ -194,3 +194,12 @@ class TestVerbosity:
     async def test_verbosity(self, client, node_addresses, noreply):
         for node_address in node_addresses:
             assert await client.verbosity(node_address, 2, noreply=noreply) is None
+
+
+class TestQuit:
+    async def test_quit(self, client, node_addresses):
+        for node_address in node_addresses:
+            await client.quit(node_address)
+
+            with pytest.raises(asyncio.TimeoutError):
+                await client.version(node_address)
