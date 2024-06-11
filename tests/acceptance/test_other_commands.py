@@ -187,3 +187,10 @@ class TestStats:
             assert settings_stats["verbosity"]
             args_stats = await client.stats(node_address, "settings", "items")
             assert args_stats["verbosity"]
+
+
+class TestVerbosity:
+    @pytest.mark.parametrize("noreply", [False, True])
+    async def test_verbosity(self, client, node_addresses, noreply):
+        for node_address in node_addresses:
+            assert await client.verbosity(node_address, 2, noreply=noreply) is None

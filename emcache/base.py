@@ -327,6 +327,23 @@ class Client(metaclass=ABCMeta):
         Please see a lot of detailed information in the documentation.
         """
 
+    @abstractmethod
+    async def verbosity(
+        self,
+        memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
+        level: int,
+        *,
+        noreply: bool = False
+    ) -> None:
+        """Increase level of log verbosity for a memcached server.
+        1 - print standard errors/warnings
+        2 - also print client commands/responses
+        3 - internal state transitions
+
+        Send command "verbosity <level> [noreply]\r\n"
+        Return always "OK\r\n" if skip noreply and correct command.
+        """
+
 
 class ClusterEvents(metaclass=ABCMeta):
     """ClusterEvents can be used for being notified about different

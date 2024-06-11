@@ -372,6 +372,39 @@ class TestMemcacheAsciiProtocol:
 
         protocol._transport.write.assert_called_with(b"stats\r\n")
 
+    async def test_verbosity_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.verbosity_command(1, False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"OK\r\n")
+
+        result = await task
+
+        assert result == b"OK"
+
+        protocol._transport.write.assert_called_with(b"verbosity 1\r\n")
+
+    async def test_verbosity_command_noreply(self, event_loop, protocol):
+        await protocol.verbosity_command(1, True)
+        protocol._transport.write.assert_called_with(b"verbosity 1 noreply\r\n")
+
+    async def test_verbosity_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.verbosity_command(1, False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        assert protocol._parser is None
+
     async def test_auth_command(self, event_loop, protocol):
         async def coro():
             return await protocol.auth_command("a", "a")
