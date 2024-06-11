@@ -292,7 +292,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         return await self._extract_one_line_data(data)
 
     async def auth_command(self, username: str, password: str) -> Optional[bytes]:
-        value = b"%a %a" % (username, password)
+        value = b"%b %b" % (username.encode(), password.encode())
         data = b"set _ _ _ %a\r\n%b\r\n" % (len(value), value)
         return await self._extract_one_line_data(data)
 
