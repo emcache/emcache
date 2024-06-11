@@ -146,6 +146,10 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
     async def auth(self, username: str, password: str):
         version = await self.version_command()
         if not version or not version.startswith(b"VERSION"):
+            if not username or not password:
+                raise AuthenticationError(
+                    f"Fail authentication. Empty username or password. Return result {version}."
+                )
             result = await self.auth_command(username, password)
             if result != STORED:
                 raise AuthenticationError(
