@@ -269,24 +269,13 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
     async def verbosity_command(self, level: int, noreply: bool):
         extra = b" noreply" if noreply else b""
-
-        data = b"verbosity " + f"{level:d}".encode() + extra + b"\r\n"
+        data = b"verbosity %a%b\r\n" + (level, extra)
 
         if noreply:
             # fire and forget
             self._transport.write(data)
-            return None
-
-        try:
-            future = self._loop.create_future()
-            parser = cyemcache.AsciiOneLineParser(future)
-            self._parser = parser
-            self._transport.write(data)
-            await future
-            result = parser.value()
-            return result
-        finally:
-            self._parser = None
+            return
+        return await self._extract_one_line_data(data)
 
 
 async def create_protocol(
