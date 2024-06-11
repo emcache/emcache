@@ -825,11 +825,11 @@ class _Client(Client):
         *,
         noreply: bool = False,
     ) -> None:
-        """Set verbosity level in runtime. Verbosity option print STDOUT/STDERR information server.
-        Increase level increase verbose information memcached.
-        1 - `print standard errors/warnings`
-        2 - `also print client commands/responses`
-        3 - `internal state transitions`
+        """Increase level of log verbosity for a memcached server.
+        1 - print standard errors/warnings
+        2 - also print client commands/responses
+        3 - internal state transitions
+
         Send command "verbosity <level> [noreply]\r\n"
         Return always "OK\r\n" if skip noreply and correct command.
         """
