@@ -818,6 +818,37 @@ class _Client(Client):
 
         return dict(s.groups() for s in re.finditer(r"STAT (.+) (.+)\r\n", result.decode()))
 
+    async def verbosity(
+        self,
+        memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
+        level: int,
+        *,
+        noreply: bool = False,
+    ) -> None:
+        """Increase level of log verbosity for a memcached server.
+        1 - print standard errors/warnings
+        2 - also print client commands/responses
+        3 - internal state transitions
+
+        Send command "verbosity <level> [noreply]\r\n"
+        Return always "OK\r\n" if skip noreply and correct command.
+        """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        node = self._cluster.node(memcached_host_address)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                result = await connection.verbosity_command(level, noreply)
+
+        if noreply:
+            return
+
+        if result != OK:
+            raise CommandError(f"Command finished with error, response returned {result}")
+
+        return
+
 
 async def create_client(
     node_addresses: Sequence[Union[MemcachedHostAddress, MemcachedUnixSocketPath]],

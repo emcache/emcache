@@ -5,9 +5,8 @@
 class ClusterNoAvailableNodes(Exception):
     """Error raised from the cluster when there is no nodes
     available in the cluster, because all of them are unhealthy
-    and purged or because they were removed."""
-
-    pass
+    and purged or because they were removed.
+    """
 
 
 class CommandError(Exception):
@@ -16,7 +15,8 @@ class CommandError(Exception):
 
 class StorageCommandError(CommandError):
     """General exception raised when a storage command finished without
-    being able to store the value for a specific key."""
+    being able to store the value for a specific key.
+    """
 
 
 class NotStoredStorageCommandError(StorageCommandError):

@@ -267,6 +267,16 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         data = b"stats %b\r\n" % " ".join(args).encode() if args else b"stats\r\n"
         return await self._extract_one_line_data(data)
 
+    async def verbosity_command(self, level: int, noreply: bool):
+        extra = b" noreply" if noreply else b""
+        data = b"verbosity %a%b\r\n" % (level, extra)
+
+        if noreply:
+            # fire and forget
+            self._transport.write(data)
+            return
+        return await self._extract_one_line_data(data)
+
 
 async def create_protocol(
     address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
