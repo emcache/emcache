@@ -142,194 +142,18 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
         self._parser.feed_data(data)
 
-    async def fetch_command(
-        self, cmd: bytes, keys: Tuple[bytes]
-    ) -> Tuple[List[bytes], List[bytes], List[int], List[int]]:
+    async def _extract_autodiscovery_data(self, data: bytes):
         try:
-            data = cmd + b" " + b" ".join(keys) + b"\r\n"
-            future = self._loop.create_future()
-            parser = cyemcache.AsciiMultiLineParser(future)
-            self._parser = parser
-            self._transport.write(data)
-            await future
-            keys, values, flags, cas = parser.keys(), parser.values(), parser.flags(), parser.cas()
-            return keys, values, flags, cas
-        finally:
-            self._parser = None
-
-    async def storage_command(
-        self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool, cas: Optional[int]
-    ) -> Optional[bytes]:
-
-        exptime_value = f"{exptime:d}".encode()
-        flags_value = f"{flags:d}".encode()
-        len_value = f"{len(value):d}".encode()
-
-        if cas:
-            cas_value = f"{cas:d}".encode()
-            extra = b" " + cas_value if not noreply else b" " + cas_value + b" noreply"
-        else:
-            extra = b"" if not noreply else b" noreply"
-
-        data = (
-            command
-            + b" "
-            + key
-            + b" "
-            + flags_value
-            + b" "
-            + exptime_value
-            + b" "
-            + len_value
-            + extra
-            + b"\r\n"
-            + value
-            + b"\r\n"
-        )
-
-        if noreply:
-            # fire and forget
-            self._transport.write(data)
-            return None
-
-        try:
-            future = self._loop.create_future()
-            parser = cyemcache.AsciiOneLineParser(future)
-            self._parser = parser
-            self._transport.write(data)
-            await future
-            result = parser.value()
-            return result
-        finally:
-            self._parser = None
-
-    async def incr_decr_command(self, command: bytes, key: bytes, value: int, noreply: bool) -> Optional[bytes]:
-        if noreply:
-            noreply = b" noreply"
-        else:
-            noreply = b""
-
-        data = command + b" " + key + b" " + f"{value:d}".encode() + noreply + b"\r\n"
-
-        if noreply:
-            # fire and forget
-            self._transport.write(data)
-            return None
-
-        try:
-            future = self._loop.create_future()
-            parser = cyemcache.AsciiOneLineParser(future)
-            self._parser = parser
-            self._transport.write(data)
-            await future
-            result = parser.value()
-            return result
-        finally:
-            self._parser = None
-
-    async def touch_command(self, key: bytes, exptime: int, noreply: bool) -> Optional[bytes]:
-        if noreply:
-            noreply = b" noreply"
-        else:
-            noreply = b""
-
-        data = b"touch " + key + b" " + f"{exptime:d}".encode() + noreply + b"\r\n"
-
-        if noreply:
-            # fire and forget
-            self._transport.write(data)
-            return None
-
-        try:
-            future = self._loop.create_future()
-            parser = cyemcache.AsciiOneLineParser(future)
-            self._parser = parser
-            self._transport.write(data)
-            await future
-            result = parser.value()
-            return result
-        finally:
-            self._parser = None
-
-    async def flush_all_command(self, delay: int, noreply: bool) -> Optional[bytes]:
-        if noreply:
-            noreply = b" noreply"
-        else:
-            noreply = b""
-
-        data = b"flush_all " + f"{delay:d}".encode() + noreply + b"\r\n"
-
-        if noreply:
-            # fire and forget
-            self._transport.write(data)
-            return None
-
-        try:
-            future = self._loop.create_future()
-            parser = cyemcache.AsciiOneLineParser(future)
-            self._parser = parser
-            self._transport.write(data)
-            await future
-            result = parser.value()
-            return result
-        finally:
-            self._parser = None
-
-    async def delete_command(self, key: bytes, noreply: bool) -> Optional[bytes]:
-        if noreply:
-            noreply = b" noreply"
-        else:
-            noreply = b""
-
-        data = b"delete " + key + noreply + b"\r\n"
-
-        if noreply:
-            # fire and forget
-            self._transport.write(data)
-            return None
-
-        try:
-            future = self._loop.create_future()
-            parser = cyemcache.AsciiOneLineParser(future)
-            self._parser = parser
-            self._transport.write(data)
-            await future
-            result = parser.value()
-            return result
-        finally:
-            self._parser = None
-
-    async def autodiscovery(self) -> Tuple[bool, int, List[Tuple[str, str, int]]]:
-        try:
-            command = b"config get cluster\r\n"
             future = self._loop.create_future()
             parser = AutoDiscoveryCommandParser(future)
             self._parser = parser
-            self._transport.write(command)
+            self._transport.write(data)
             await future
             return parser.autodiscovery(), parser.version(), parser.nodes()
         finally:
             self._parser = None
 
-    async def version_command(self) -> Optional[bytes]:
-        data = b"version\r\n"
-
-        try:
-            future = self._loop.create_future()
-            parser = cyemcache.AsciiOneLineParser(future)
-            self._parser = parser
-            self._transport.write(data)
-            await future
-            result = parser.value()
-            return result
-        finally:
-            self._parser = None
-
-    async def get_and_touch_command(
-        self, cmd: bytes, exptime: int, keys: Tuple[bytes]
-    ) -> Tuple[List[bytes], List[bytes], List[int], List[int]]:
-        data = cmd + b" " + f"{exptime:d}".encode() + b" " + b" ".join(keys) + b"\r\n"
-
+    async def _extract_multi_line_data(self, data: bytes):
         try:
             future = self._loop.create_future()
             parser = cyemcache.AsciiMultiLineParser(future)
@@ -341,42 +165,107 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         finally:
             self._parser = None
 
-    async def cache_memlimit_command(self, value: int, noreply: bool) -> Optional[bytes]:
-        extra = b" noreply" if noreply else b""
+    async def _extract_one_line_data(self, data: bytes):
+        try:
+            future = self._loop.create_future()
+            parser = cyemcache.AsciiOneLineParser(future)
+            self._parser = parser
+            self._transport.write(data)
+            await future
+            result = parser.value()
+            return result
+        finally:
+            self._parser = None
 
-        data = b"cache_memlimit " + f"{value:d}".encode() + extra + b"\r\n"
+    async def fetch_command(
+        self, cmd: bytes, keys: Tuple[bytes]
+    ) -> Tuple[List[bytes], List[bytes], List[int], List[int]]:
+        data = b"%b %b\r\n" % (cmd, b" ".join(keys))
+        return await self._extract_multi_line_data(data)
+
+    async def storage_command(
+        self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool, cas: Optional[int]
+    ) -> Optional[bytes]:
+        if cas:
+            extra = b" %a" % cas if not noreply else b" %a noreply" % cas
+        else:
+            extra = b"" if not noreply else b" noreply"
+
+        data = b"%b %b %a %a %a%b\r\n%b\r\n" % (command, key, flags, exptime, len(value), extra, value)
 
         if noreply:
             # fire and forget
             self._transport.write(data)
-            return None
+            return
+        return await self._extract_one_line_data(data)
 
-        try:
-            future = self._loop.create_future()
-            parser = cyemcache.AsciiOneLineParser(future)
-            self._parser = parser
+    async def incr_decr_command(self, command: bytes, key: bytes, value: int, noreply: bool) -> Optional[bytes]:
+        noreply = b" noreply" if noreply else b""
+        data = b"%b %b %a%b\r\n" % (command, key, value, noreply)
+
+        if noreply:
+            # fire and forget
             self._transport.write(data)
-            await future
-            result = parser.value()
-            return result
-        finally:
-            self._parser = None
+            return
+        return await self._extract_one_line_data(data)
+
+    async def touch_command(self, key: bytes, exptime: int, noreply: bool) -> Optional[bytes]:
+        noreply = b" noreply" if noreply else b""
+        data = b"touch %b %a%b\r\n" % (key, exptime, noreply)
+
+        if noreply:
+            # fire and forget
+            self._transport.write(data)
+            return
+        return await self._extract_one_line_data(data)
+
+    async def flush_all_command(self, delay: int, noreply: bool) -> Optional[bytes]:
+        noreply = b" noreply" if noreply else b""
+        data = b"flush_all %a%b\r\n" % (delay, noreply)
+
+        if noreply:
+            # fire and forget
+            self._transport.write(data)
+            return
+        return await self._extract_one_line_data(data)
+
+    async def delete_command(self, key: bytes, noreply: bool) -> Optional[bytes]:
+        noreply = b" noreply" if noreply else b""
+        data = b"delete %b%b\r\n" % (key, noreply)
+
+        if noreply:
+            # fire and forget
+            self._transport.write(data)
+            return
+        return await self._extract_one_line_data(data)
+
+    async def autodiscovery(self) -> Tuple[bool, int, List[Tuple[str, str, int]]]:
+        data = b"config get cluster\r\n"
+        return await self._extract_autodiscovery_data(data)
+
+    async def version_command(self) -> Optional[bytes]:
+        data = b"version\r\n"
+        return await self._extract_one_line_data(data)
+
+    async def get_and_touch_command(
+        self, cmd: bytes, exptime: int, keys: Tuple[bytes]
+    ) -> Tuple[List[bytes], List[bytes], List[int], List[int]]:
+        data = b"%b %a %b\r\n" % (cmd, exptime, b" ".join(keys))
+        return await self._extract_multi_line_data(data)
+
+    async def cache_memlimit_command(self, value: int, noreply: bool) -> Optional[bytes]:
+        extra = b" noreply" if noreply else b""
+        data = b"cache_memlimit %a%b\r\n" % (value, extra)
+
+        if noreply:
+            # fire and forget
+            self._transport.write(data)
+            return
+        return await self._extract_one_line_data(data)
 
     async def stats_command(self, *args: str) -> Optional[bytes]:
-        if args:
-            data = b"stats " + " ".join(args).encode() + b"\r\n"
-        else:
-            data = b"stats\r\n"
-        try:
-            future = self._loop.create_future()
-            parser = cyemcache.AsciiOneLineParser(future)
-            self._parser = parser
-            self._transport.write(data)
-            await future
-            result = parser.value()
-            return result
-        finally:
-            self._parser = None
+        data = b"stats %b\r\n" % " ".join(args).encode() if args else b"stats\r\n"
+        return await self._extract_one_line_data(data)
 
     async def verbosity_command(self, level: int, noreply: bool):
         extra = b" noreply" if noreply else b""
