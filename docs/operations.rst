@@ -88,6 +88,10 @@ the following methods for retrieving data from a Memcached server:
 - :meth:`emcache.Client.gets` Return a value and the ``cas`` token related with a key.
 - :meth:`emcache.Client.get_many` Return a set of values related to a set of keys.
 - :meth:`emcache.Client.gets_many` Return a set of values and their ``cas`` tokens related to a set of keys.
+- :meth:`emcache.Client.gat` Return value related with a key and update the expiration time of an existing key.
+- :meth:`emcache.Client.gats` Return a value and the ``cas`` token related with a key with update the expiration time of an existing key.
+- :meth:`emcache.Client.gat_many` Return a set of values related to a set of keys and update the expiration time of an existing keys.
+- :meth:`emcache.Client.gats_many` Return a set of values and their ``cas`` tokens related to a set of keys with update the expiration time of an existing keys.
 
 Emcahe returns values as an instance of an :class:`emcache.Item` object which has the following attributes:
 
@@ -136,6 +140,11 @@ Emcache has also support for the following other commands:
 - :meth:`emcache.Client.touch` Overrides the expiration time of an already existing key.
 - :meth:`emcache.Client.delete` Deletes an existing key.
 - :meth:`emcache.Client.flush_all` Flush all keys from an existing node, see notes below.
+- :meth:`emcache.Client.version` Show current version memcached.
+- :meth:`emcache.Client.stats` Show statistics about working memcached.
+- :meth:`emcache.Client.verbosity` Set new level verbosity on memcached in runtime.
+- :meth:`emcache.Client.cache_memlimit` In runtime set new value memory limit in megabytes.
+- :meth:`emcache.Client.quit` Soft close connection with memcached.
 
 The :meth:`emcache.Client.flush_all` method targets a specific node, so the parameter expected is the :meth:`emcache.MemcachedHostAddress` which
 identifies univocally a memcached host within the cluster. Also, a parameter called ``delay`` is supported for telling to the Memcached server that the
