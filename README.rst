@@ -155,7 +155,7 @@ Clone the repository and its murmur3 submodule
 
 .. code-block:: bash
 
-    git clone --recursive git@github.com:emcache/emcache
+    git clone --recurse-submodules git@github.com:emcache/emcache
 
 Compile murmur3
 
