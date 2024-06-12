@@ -927,7 +927,6 @@ async def create_client(
     By default, 60s.
 
     `autodiscovery_timeout` the timeout for the `config get cluster` command. By default, 5s.
-
     """
     # check SSL availability earlier, protocol which is the one that will use
     # it when connections are created in background won't need to deal with this
