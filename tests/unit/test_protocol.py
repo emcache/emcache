@@ -405,6 +405,10 @@ class TestMemcacheAsciiProtocol:
 
         assert protocol._parser is None
 
+    async def test_quit_command(self, protocol):
+        await protocol.quit_command()
+        protocol._transport.write.assert_called_with(b"quit\r\n")
+
 
 async def test_create_protocol(event_loop, mocker):
     loop_mock = Mock()
