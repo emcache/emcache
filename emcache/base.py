@@ -346,10 +346,7 @@ class Client(metaclass=ABCMeta):
 
     @abstractmethod
     async def quit(self, memcached_host_address: MemcachedHostAddress) -> None:
-        """Soft closing of the connection between the memcached server and the client.
-
-        quit\r\n
-        """
+        """Soft closing of the connection between the memcached server and the client."""
 
 
 class ClusterEvents(metaclass=ABCMeta):
