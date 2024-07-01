@@ -42,13 +42,9 @@ class TestAuth:
             client_no_userpass = await create_client([MemcachedHostAddress("localhost", 11214)], timeout=1.0)
             await client_no_userpass.get(b"key")
         with pytest.raises(AuthenticationError):
-            client_have_username = await create_client(
-                [MemcachedHostAddress("localhost", 11214)], username=username, timeout=1.0
-            )
+            await create_client([MemcachedHostAddress("localhost", 11214)], username=username, timeout=1.0)
         with pytest.raises(AuthenticationError):
-            client_have_password = await create_client(
-                [MemcachedHostAddress("localhost", 11214)], password=password, timeout=1.0
-            )
+            await create_client([MemcachedHostAddress("localhost", 11214)], password=password, timeout=1.0)
         with pytest.raises(AuthenticationError):
             client_wrong_userpass = await create_client(
                 [MemcachedHostAddress("localhost", 11214)], username="wrong", password="wrong", timeout=1.0
