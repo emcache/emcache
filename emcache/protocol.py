@@ -144,18 +144,13 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         self._parser.feed_data(data)
 
     async def auth(self, username: str, password: str):
-        version = await self.version_command()
-        if not version or not version.startswith(b"VERSION"):
-            if not username or not password:
-                raise AuthenticationError(f"Fail authentication. Empty username or password. Return result {version}.")
-            result = await self.auth_command(username, password)
-            if result != STORED:
-                raise AuthenticationError(
-                    f"Fail authentication. Incorrect username or password. Return result {result}."
-                )
-        elif username or password:
+        result = await self.auth_command(username, password)
+        if result == b"CLIENT_ERROR authentication failure":
+            raise AuthenticationError(f"Fail authentication. Incorrect username or password. Return result {result}.")
+        elif result != STORED:
             raise AuthenticationNotSupportedError(
-                "Fail authentication. This server doesn't support SASL. Not needed username and password."
+                "Fail authentication. This server doesn't support SASL. "
+                f"Not needed username and password. Return result {result}."
             )
 
     async def _extract_autodiscovery_data(self, data: bytes):
@@ -294,7 +289,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         return await self._extract_one_line_data(data)
 
     async def auth_command(self, username: str, password: str) -> Optional[bytes]:
-        value = b"%b %b" % (username.encode(), password.encode())
+        value = f"{username} {password}".encode()
         data = b"set _ _ _ %a\r\n%b\r\n" % (len(value), value)
         return await self._extract_one_line_data(data)
 
@@ -337,6 +332,7 @@ async def create_protocol(
         _, protocol = await asyncio.wait_for(connect_coro, timeout)
 
     # sasl auth via protocol
-    await protocol.auth(username, password)
+    if username and password:
+        await protocol.auth(username, password)
 
     return protocol

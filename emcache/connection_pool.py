@@ -272,9 +272,9 @@ class ConnectionPool:
             error = True
         except asyncio.CancelledError:
             logger.info(f"{self} create connection stopped, connection pool is closing")
-        except (AuthenticationError, AuthenticationNotSupportedError):
-            logger.info(f"{self} new connection could not be created, failed authentication!")
-            error = True
+        except (AuthenticationError, AuthenticationNotSupportedError) as exc:
+            logger.warning(f"{self} new connection could not be created, failed authentication!")
+            self._waiters[-1].set_exception(exc)
         finally:
             if error:
                 self._metrics.connections_created_with_error += 1

@@ -10,7 +10,13 @@ from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
 from .autobatching import AutoBatching
 from .base import Client, ClusterEvents, ClusterManagment, Item
-from .client_errors import CommandError, NotFoundCommandError, NotStoredStorageCommandError, StorageCommandError
+from .client_errors import (
+    AuthenticationError,
+    CommandError,
+    NotFoundCommandError,
+    NotStoredStorageCommandError,
+    StorageCommandError,
+)
 from .cluster import Cluster
 from .default_values import (
     DEFAULT_AUTOBATCHING_ENABLED,
@@ -917,8 +923,10 @@ async def create_client(
     can be loaded.
 
     `username` By default None. Used for authentication by SASL with username.
+    Params username and password are used together.
 
     `password` By default None. Used for authentication by SASL with password.
+    Params username and password are used together.
 
     `autodiscovery` if enabled the client will automatically call `config get cluster` and update node list.
     By default, False.
@@ -936,6 +944,10 @@ async def create_client(
             import ssl as _  # noqa
         except ImportError:
             raise ValueError("SSL can not be enabled, no Python SSL module found")
+
+    # check exists username and password or not exists, together, for SASL authentication
+    if not ((username and password) or (not username and not password)):
+        raise AuthenticationError("For SASL authentication either username and password together")
 
     client = _Client(
         node_addresses,

@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from emcache import MemcachedHostAddress, create_client
+from emcache.client_errors import AuthenticationError, AuthenticationNotSupportedError
 
 pytestmark = pytest.mark.asyncio
 
@@ -37,35 +38,20 @@ class TestAuth:
 
     @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
     async def test_auth_with_errors(self):
-        client_no_userpass = await create_client([MemcachedHostAddress("localhost", 11214)], timeout=1.0)
         with pytest.raises(asyncio.TimeoutError):
-            await client_no_userpass.get(b"key")
-        await client_no_userpass.close()
-
-        client_have_username = await create_client(
-            [MemcachedHostAddress("localhost", 11214)], username=username, timeout=1.0
-        )
-        with pytest.raises(asyncio.TimeoutError):
-            await client_have_username.get(b"key")
-        await client_have_username.close()
-
-        client_have_password = await create_client(
-            [MemcachedHostAddress("localhost", 11214)], password=password, timeout=1.0
-        )
-        with pytest.raises(asyncio.TimeoutError):
-            await client_have_password.get(b"key")
-        await client_have_username.close()
-
-        client_un_userpass = await create_client(
-            [MemcachedHostAddress("localhost", 11214)], username="wrong", password="wrong", timeout=1.0
-        )
-        with pytest.raises(asyncio.TimeoutError):
-            await client_un_userpass.get(b"key")
-        await client_un_userpass.close()
-
-        client_no_need_sasl_but_used = await create_client(
-            [MemcachedHostAddress("localhost", 11211)], username="wrong", password="wrong", timeout=1.0
-        )
-        with pytest.raises(asyncio.TimeoutError):
-            await client_no_need_sasl_but_used.get(b"key")
-        await client_no_need_sasl_but_used.close()
+            client = await create_client([MemcachedHostAddress("localhost", 11214)], timeout=1.0)
+            await client.get(b"key")
+        with pytest.raises(AuthenticationError):
+            await create_client([MemcachedHostAddress("localhost", 11214)], username=username, timeout=1.0)
+        with pytest.raises(AuthenticationError):
+            await create_client([MemcachedHostAddress("localhost", 11214)], password=password, timeout=1.0)
+        with pytest.raises(AuthenticationError):
+            client = await create_client(
+                [MemcachedHostAddress("localhost", 11214)], username="wrong", password="wrong", timeout=1.0
+            )
+            await client.get(b"key")
+        with pytest.raises(AuthenticationNotSupportedError):
+            client = await create_client(
+                [MemcachedHostAddress("localhost", 11211)], username="wrong", password="wrong", timeout=1.0
+            )
+            await client.get(b"key")
