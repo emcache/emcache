@@ -227,7 +227,7 @@ class ConnectionPool:
         elif waiter_found is not None and connection_error:
             waiter_found.set_exception(connection_error)
             self._waiters.remove(waiter_found)
-        else:
+        elif connection:
             self._unused_connections.append(connection)
 
     async def _create_new_connection(self, backoff=None, retries=None) -> None:
