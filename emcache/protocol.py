@@ -9,7 +9,7 @@ from typing import Final, List, Optional, Tuple, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
-from .client_errors import AuthenticationError, AuthenticationNotSupportedError
+from .client_errors import AuthenticationError
 
 try:
     import ssl as ssl_module
@@ -148,7 +148,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         if result == b"CLIENT_ERROR authentication failure":
             raise AuthenticationError(f"Fail authentication. Incorrect username or password. Return result {result}.")
         elif result != STORED:
-            raise AuthenticationNotSupportedError(
+            raise AuthenticationError(
                 "Fail authentication. This server doesn't support SASL. "
                 f"Not needed username and password. Return result {result}."
             )

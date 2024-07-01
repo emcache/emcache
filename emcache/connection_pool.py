@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
-from .client_errors import AuthenticationError, AuthenticationNotSupportedError
+from .client_errors import AuthenticationError
 from .protocol import MemcacheAsciiProtocol, create_protocol
 
 logger = logging.getLogger(__name__)
@@ -211,8 +211,9 @@ class ConnectionPool:
 
         self._loop.call_later(self._purge_unused_connections_after, self._purge_unused_connections)
 
-    def _wakeup_next_waiter_or_append_to_unused(self, connection):
-        self._connections_last_time_used[connection] = time.monotonic()
+    def _wakeup_next_waiter_or_append_to_unused(self, connection, connection_error=None):
+        if connection:
+            self._connections_last_time_used[connection] = time.monotonic()
 
         waiter_found = None
         for waiter in reversed(self._waiters):
@@ -220,8 +221,11 @@ class ConnectionPool:
                 waiter_found = waiter
                 break
 
-        if waiter_found is not None:
+        if waiter_found is not None and not connection_error:
             waiter_found.set_result(connection)
+            self._waiters.remove(waiter_found)
+        elif waiter_found is not None and connection_error:
+            waiter_found.set_exception(connection_error)
             self._waiters.remove(waiter_found)
         else:
             self._unused_connections.append(connection)
@@ -272,9 +276,9 @@ class ConnectionPool:
             error = True
         except asyncio.CancelledError:
             logger.info(f"{self} create connection stopped, connection pool is closing")
-        except (AuthenticationError, AuthenticationNotSupportedError) as exc:
+        except AuthenticationError as exc:
             logger.warning(f"{self} new connection could not be created, failed authentication!")
-            self._waiters[-1].set_exception(exc)
+            self._wakeup_next_waiter_or_append_to_unused(connection=None, connection_error=exc)
         finally:
             if error:
                 self._metrics.connections_created_with_error += 1

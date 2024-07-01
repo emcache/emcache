@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from emcache import MemcachedHostAddress, create_client
-from emcache.client_errors import AuthenticationError, AuthenticationNotSupportedError
+from emcache.client_errors import AuthenticationError, CommandError
 
 pytestmark = pytest.mark.asyncio
 
@@ -37,21 +37,33 @@ class TestAuth:
         await authed_client.get(b"key")
 
     @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
-    async def test_auth_with_errors(self):
+    async def test_auth_error_no_userpass(self):
         with pytest.raises(asyncio.TimeoutError):
-            client_no_userpass = await create_client([MemcachedHostAddress("localhost", 11214)], timeout=1.0)
-            await client_no_userpass.get(b"key")
+            client = await create_client([MemcachedHostAddress("localhost", 11214)], timeout=1.0)
+            await client.get(b"key")
+
+    @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
+    async def test_auth_error_no_password(self):
         with pytest.raises(AuthenticationError):
             await create_client([MemcachedHostAddress("localhost", 11214)], username=username, timeout=1.0)
+
+    @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
+    async def test_auth_error_no_username(self):
         with pytest.raises(AuthenticationError):
             await create_client([MemcachedHostAddress("localhost", 11214)], password=password, timeout=1.0)
+
+    @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
+    async def test_auth_error_wrong_userpass(self):
         with pytest.raises(AuthenticationError):
-            client_wrong_userpass = await create_client(
+            client = await create_client(
                 [MemcachedHostAddress("localhost", 11214)], username="wrong", password="wrong", timeout=1.0
             )
-            await client_wrong_userpass.get(b"key")
-        with pytest.raises(AuthenticationNotSupportedError):
-            client_no_need_sasl_but_used = await create_client(
+            await client.get(b"key")
+
+    @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
+    async def test_auth_error_disable_sasl(self):
+        with pytest.raises(AuthenticationError):
+            client = await create_client(
                 [MemcachedHostAddress("localhost", 11211)], username="wrong", password="wrong", timeout=1.0
             )
-            await client_no_need_sasl_but_used.get(b"key")
+            await client.get(b"key")

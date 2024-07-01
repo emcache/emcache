@@ -35,7 +35,3 @@ class NotFoundCommandError(CommandError):
 
 class AuthenticationError(CommandError):
     """An exception is thrown when authentication was failed"""
-
-
-class AuthenticationNotSupportedError(CommandError):
-    """This server no support SASL authentication"""
