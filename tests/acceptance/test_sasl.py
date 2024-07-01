@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from emcache import MemcachedHostAddress, create_client
-from emcache.client_errors import AuthenticationError, CommandError
+from emcache.client_errors import AuthenticationError
 
 pytestmark = pytest.mark.asyncio
 
