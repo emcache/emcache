@@ -1,2 +1,69 @@
+[project]
+name = "emcache"
+version = "1.2.2"
+dependencies = [
+    "Cython==3.0.10"
+]
+requires-python = ">= 3.8"
+authors = [{ name = "Pau Freixes", email =  "pfreixes@gmail.com"}]
+description = "A high performance asynchronous Python client for Memcached with full batteries included"
+readme = "README.rst"
+license = {file = "LICENSE.txt"}
+keywords = ["async memcached client", "async memcached driver"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==6.2.5",
+    "pytest-mock==3.1.0",
+    "pytest-asyncio==0.11.0",
+    "pytest-cov==2.8.1",
+    "black==22.3.0",
+    "isort==4.3.21",
+    "flake8==6.1.0",
+]
+
+[project.urls]
+Repository = "http://github.com/emcache/emcache.git"
+Issues = "https://github.com/emcache/emcache/issues"
+Changelog = "https://github.com/emcache/emcache/blob/master/CHANGELOG.md"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+platforms = ["*nix"]
+packages = ["emcache"]
+
 [tool.black]
 line-length = 120
+
+[tool.pytest.ini_options]
+junit_family = "xunit1"
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[coverage.run]
+branch = true
+source = "emcache"
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+combine_as_imports = true
+line_length = 120
+extend_skip = "benchmark"
