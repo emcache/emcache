@@ -947,7 +947,7 @@ async def create_client(
 
     # check exists username and password or not exists, together, for SASL authentication
     if not ((username and password) or (not username and not password)):
-        raise AuthenticationError("For SASL authentication either username and password together")
+        raise ValueError("For SASL authentication either username and password together")
 
     client = _Client(
         node_addresses,
