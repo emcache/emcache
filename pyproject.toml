@@ -1,10 +1,6 @@
 [project]
 name = "emcache"
 version = "1.2.2"
-dependencies = [
-    "Cython==3.0.10"
-]
-requires-python = ">= 3.8"
 authors = [{ name = "Pau Freixes", email =  "pfreixes@gmail.com"}]
 description = "A high performance asynchronous Python client for Memcached with full batteries included"
 readme = "README.rst"
@@ -21,6 +17,10 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Intended Audience :: Developers",
 ]
+requires-python = ">= 3.8"
+dependencies = [
+    "Cython==3.0.10"
+]
 
 [project.optional-dependencies]
 dev = [
@@ -34,7 +34,7 @@ dev = [
 ]
 
 [project.urls]
-Repository = "http://github.com/emcache/emcache.git"
+Repository = "https://github.com/emcache/emcache.git"
 Issues = "https://github.com/emcache/emcache/issues"
 Changelog = "https://github.com/emcache/emcache/blob/master/CHANGELOG.md"
 
@@ -45,6 +45,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 platforms = ["*nix"]
 packages = ["emcache"]
+
+[tool.setuptools.package-data]
+emcache = ["py.typed"]
 
 [tool.black]
 line-length = 120
