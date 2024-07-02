@@ -65,6 +65,8 @@ class _Client(Client):
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
+        username: Optional[str],
+        password: Optional[str],
         autodiscovery: bool,
         autodiscovery_poll_interval: float,
         autodiscovery_timeout: float,
@@ -85,6 +87,8 @@ class _Client(Client):
             ssl,
             ssl_verify,
             ssl_extra_ca,
+            username,
+            password,
             autodiscovery,
             autodiscovery_poll_interval,
             autodiscovery_timeout,
@@ -865,6 +869,8 @@ async def create_client(
     ssl: bool = DEFAULT_SSL,
     ssl_verify: bool = DEFAULT_SSL_VERIFY,
     ssl_extra_ca: Optional[str] = None,
+    username: Optional[str] = None,
+    password: Optional[str] = None,
     autodiscovery: bool = False,
     autodiscovery_poll_interval: float = DEFAULT_AUTODISCOVERY_POLL_INTERVAL,
     autodiscovery_timeout: float = DEFAULT_AUTODISCOVERY_TIMEOUT,
@@ -910,6 +916,12 @@ async def create_client(
     `ssl_extra_ca` By default None. You can provide an extra absolute file path where a new CA file
     can be loaded.
 
+    `username` By default None. Used for authentication by SASL with username.
+    Params username and password are used together.
+
+    `password` By default None. Used for authentication by SASL with password.
+    Params username and password are used together.
+
     `autodiscovery` if enabled the client will automatically call `config get cluster` and update node list.
     By default, False.
 
@@ -927,6 +939,10 @@ async def create_client(
         except ImportError:
             raise ValueError("SSL can not be enabled, no Python SSL module found")
 
+    # check exists username and password or not exists, together, for SASL authentication
+    if not ((username and password) or (not username and not password)):
+        raise ValueError("For SASL authentication either username and password together")
+
     client = _Client(
         node_addresses,
         timeout,
@@ -941,6 +957,8 @@ async def create_client(
         ssl,
         ssl_verify,
         ssl_extra_ca,
+        username,
+        password,
         autodiscovery,
         autodiscovery_poll_interval,
         autodiscovery_timeout,

@@ -9,6 +9,7 @@ from typing import Final, List, Optional, Tuple, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
+from .client_errors import AuthenticationError
 
 try:
     import ssl as ssl_module
@@ -141,6 +142,16 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             raise RuntimeError(f"Receiving data when no parser is conifgured {data}")
 
         self._parser.feed_data(data)
+
+    async def auth(self, username: str, password: str):
+        result = await self.auth_command(username, password)
+        if result == b"CLIENT_ERROR authentication failure":
+            raise AuthenticationError(f"Fail authentication. Incorrect username or password. Return result {result}.")
+        elif result != STORED:
+            raise AuthenticationError(
+                "Fail authentication. This server doesn't support SASL. "
+                f"Not needed username and password. Return result {result}."
+            )
 
     async def _extract_autodiscovery_data(self, data: bytes):
         try:
@@ -277,12 +288,19 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             return
         return await self._extract_one_line_data(data)
 
+    async def auth_command(self, username: str, password: str) -> Optional[bytes]:
+        value = f"{username} {password}".encode()
+        data = b"set _ _ _ %a\r\n%b\r\n" % (len(value), value)
+        return await self._extract_one_line_data(data)
+
 
 async def create_protocol(
     address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
     ssl: bool,
     ssl_verify: bool,
     ssl_extra_ca: Optional[str],
+    username: Optional[str],
+    password: Optional[str],
     *,
     timeout: int = None,
 ) -> MemcacheAsciiProtocol:
@@ -312,4 +330,9 @@ async def create_protocol(
         _, protocol = await connect_coro
     else:
         _, protocol = await asyncio.wait_for(connect_coro, timeout)
+
+    # sasl auth via protocol
+    if username and password:
+        await protocol.auth(username, password)
+
     return protocol

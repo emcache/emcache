@@ -31,3 +31,7 @@ class NotFoundCommandError(CommandError):
     """When a key does not exist some commands can not perform
     the operation and this exception is raised.
     """
+
+
+class AuthenticationError(CommandError):
+    """An exception is thrown when authentication was failed"""

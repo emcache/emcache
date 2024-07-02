@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
+from .client_errors import AuthenticationError
 from .protocol import MemcacheAsciiProtocol, create_protocol
 
 logger = logging.getLogger(__name__)
@@ -77,6 +78,8 @@ class ConnectionPool:
     _ssl: bool
     _ssl_verify: bool
     _ssl_extra_ca: Optional[str]
+    _username: Optional[str]
+    _password: Optional[str]
 
     def __init__(
         self,
@@ -89,6 +92,8 @@ class ConnectionPool:
         ssl: bool,
         ssl_verify: bool,
         ssl_extra_ca: Optional[str],
+        username: Optional[str],
+        password: Optional[str],
     ):
         if max_connections < 1:
             raise ValueError("max_connections must be higher than 0")
@@ -149,6 +154,10 @@ class ConnectionPool:
         self._ssl_verify = ssl_verify
         self._ssl_extra_ca = ssl_extra_ca
 
+        # attributes for sasl authentication
+        self._username = username
+        self._password = password
+
         self._maybe_new_connection_if_current_is_lower_than_min()
 
     def __str__(self):
@@ -202,8 +211,9 @@ class ConnectionPool:
 
         self._loop.call_later(self._purge_unused_connections_after, self._purge_unused_connections)
 
-    def _wakeup_next_waiter_or_append_to_unused(self, connection):
-        self._connections_last_time_used[connection] = time.monotonic()
+    def _wakeup_next_waiter_or_append_to_unused(self, connection, connection_error=None):
+        if connection:
+            self._connections_last_time_used[connection] = time.monotonic()
 
         waiter_found = None
         for waiter in reversed(self._waiters):
@@ -211,10 +221,13 @@ class ConnectionPool:
                 waiter_found = waiter
                 break
 
-        if waiter_found is not None:
+        if waiter_found is not None and not connection_error:
             waiter_found.set_result(connection)
             self._waiters.remove(waiter_found)
-        else:
+        elif waiter_found is not None and connection_error:
+            waiter_found.set_exception(connection_error)
+            self._waiters.remove(waiter_found)
+        elif connection:
             self._unused_connections.append(connection)
 
     async def _create_new_connection(self, backoff=None, retries=None) -> None:
@@ -233,6 +246,8 @@ class ConnectionPool:
                 ssl=self._ssl,
                 ssl_verify=self._ssl_verify,
                 ssl_extra_ca=self._ssl_extra_ca,
+                username=self._username,
+                password=self._password,
                 timeout=self._connection_timeout,
             )
             elapsed = time.monotonic() - start
@@ -261,6 +276,9 @@ class ConnectionPool:
             error = True
         except asyncio.CancelledError:
             logger.info(f"{self} create connection stopped, connection pool is closing")
+        except AuthenticationError as exc:
+            logger.warning(f"{self} new connection could not be created, failed authentication!")
+            self._wakeup_next_waiter_or_append_to_unused(connection=None, connection_error=exc)
         finally:
             if error:
                 self._metrics.connections_created_with_error += 1
@@ -418,7 +436,7 @@ class BaseConnectionContext:
     async def __aenter__(self) -> MemcacheAsciiProtocol:
         raise NotImplementedError
 
-    async def __aexit__(self, fexc_type, exc, tb) -> None:
+    async def __aexit__(self, exc_type, exc, tb) -> None:
         self._connection_pool.release_connection(self._connection, exc=exc)
 
 
