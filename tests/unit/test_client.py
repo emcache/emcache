@@ -314,7 +314,7 @@ class TestClient:
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
         connection = AsyncMock()
-        connection.fetch_command = AsyncMock(return_value=iter([[b"foo"], [b"value"], [0], [0]]))
+        connection.fetch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0]])
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -330,7 +330,7 @@ class TestClient:
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
         connection = AsyncMock()
-        connection.get_and_touch_command = AsyncMock(return_value=iter([[b"foo"], [b"value"], [0], [0]]))
+        connection.get_and_touch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0]])
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -372,7 +372,7 @@ class TestClient:
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
         connection = AsyncMock()
-        connection.fetch_command = AsyncMock(return_value=iter([[b"foo"], [b"value"], [0], [0]]))
+        connection.fetch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0]])
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -388,7 +388,7 @@ class TestClient:
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
         connection = AsyncMock()
-        connection.get_and_touch_command = AsyncMock(return_value=iter([[b"foo"], [b"value"], [0], [0]]))
+        connection.get_and_touch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0]])
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -519,7 +519,7 @@ class TestClient:
     async def test_delete_error_command(self, client):
         # patch what is necesary for returnning an error string
         connection = AsyncMock()
-        connection.delete_command = AsyncMock(return_value=iter([b"ERROR"]))
+        connection.delete_command = AsyncMock(return_value=b"ERROR")
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -562,7 +562,7 @@ class TestClient:
     async def test_flush_all_error_command(self, client, memcached_host_address):
         # patch what is necesary for returnning an error string
         connection = AsyncMock()
-        connection.flush_all_command = AsyncMock(return_value=iter([b"ERROR"]))
+        connection.flush_all_command = AsyncMock(return_value=b"ERROR")
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -576,7 +576,7 @@ class TestClient:
         # patch what is necesary for rasing an exception for the first query and
         # a "valid" response from the others
         connection = AsyncMock()
-        connection.fetch_command.side_effect = MagicMock(side_effect=iter([OSError(), b"Ok", b"Ok"]))
+        connection.fetch_command.side_effect = MagicMock(side_effect=[OSError(), b"Ok", b"Ok"])
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node1 = Mock()
@@ -595,7 +595,7 @@ class TestClient:
         # patch what is necesary for rasing an exception for the first query and
         # a "valid" response from the others
         connection = AsyncMock()
-        connection.get_and_touch_command.side_effect = MagicMock(side_effect=iter([OSError(), b"Ok", b"Ok"]))
+        connection.get_and_touch_command.side_effect = MagicMock(side_effect=[OSError(), b"Ok", b"Ok"])
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node1 = Mock()
@@ -630,13 +630,13 @@ class TestClient:
     async def autobatching(self, event_loop, mocker):
         item = Item(b"value", None, None)
         autobatching_get_noflags = MagicMock()
-        autobatching_get_noflags.execute = AsyncMock(return_value=iter([item]))
+        autobatching_get_noflags.execute = AsyncMock(return_value=[item])
         autobatching_get_flags = MagicMock()
-        autobatching_get_flags.execute = AsyncMock(return_value=iter([item]))
+        autobatching_get_flags.execute = AsyncMock(return_value=[item])
         autobatching_gets_noflags = MagicMock()
-        autobatching_gets_noflags.execute = AsyncMock(return_value=iter([item]))
+        autobatching_gets_noflags.execute = AsyncMock(return_value=[item])
         autobatching_gets_flags = MagicMock()
-        autobatching_gets_flags.execute = AsyncMock(return_value=iter([item]))
+        autobatching_gets_flags.execute = AsyncMock(return_value=[item])
         return (autobatching_get_noflags, autobatching_get_flags, autobatching_gets_noflags, autobatching_gets_flags)
 
     @pytest.fixture
