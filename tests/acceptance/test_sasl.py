@@ -1,7 +1,6 @@
 # MIT License
 # Copyright (c) 2020-2024 Pau Freixes
 
-import asyncio
 import logging
 import os
 import sys
