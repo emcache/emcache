@@ -1,6 +1,6 @@
 # MIT License
 # Copyright (c) 2020-2024 Pau Freixes
-import os.path
+import os
 import sys
 
 from setuptools import Extension, setup
