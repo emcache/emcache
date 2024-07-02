@@ -57,8 +57,7 @@ jobs:
         make -C .. test
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=a1
-      #VERSION::${GITHUB_REF/refs\/tags\//}
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
     - uses: actions/upload-artifact@v3
       with:
         name: ${{ steps.get_version.outputs.VERSION }}
@@ -105,8 +104,7 @@ jobs:
         make -C .. test
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=a2
-      #VERSION::${GITHUB_REF/refs\/tags\//}
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
     - uses: actions/upload-artifact@v3
       with:
         name: ${{ steps.get_version.outputs.VERSION }}
@@ -144,8 +142,7 @@ jobs:
         docker run --platform linux/arm64 --entrypoint bash -v `pwd`:/io python:${{matrix.python-version}}-bookworm /io/bin/test_aarch_wheel.sh
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=a3
-      #${GITHUB_REF/refs\/tags\//}
+      run: echo ::set-output name=${GITHUB_REF/refs\/tags\//}
     - uses: actions/upload-artifact@v3
       with:
         name: aarch64-${{ steps.get_version.outputs.VERSION }}
