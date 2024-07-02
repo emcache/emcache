@@ -20,8 +20,8 @@ with open(Path(os.path.dirname(__file__)) / "data" / "auth_pwd.txt", "r") as f:
     username, password = f.readline().rstrip().split(":")
 
 
-@pytest.fixture()
-async def authed_client(event_loop):
+@pytest.fixture
+async def authed_client():
     client = await create_client(
         [MemcachedHostAddress("localhost", 11214)], timeout=1.0, username=username, password=password
     )
