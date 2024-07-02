@@ -50,6 +50,9 @@ cdef class AsciiMultiLineParser:
         cdef int value_size = 0
         cdef char* c_buffer = self.buffer_
 
+        if self.buffer_.startswith(b"CLIENT ERROR"):
+            return
+
         # iterate until the END
         while current_pos < (len_ - 5):
 
@@ -101,3 +104,6 @@ cdef class AsciiMultiLineParser:
 
     def cas(self):
         return self.cas_
+
+    def value(self):
+        return self.buffer_[:-2]
