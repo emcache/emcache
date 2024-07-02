@@ -10,13 +10,7 @@ from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
 from .autobatching import AutoBatching
 from .base import Client, ClusterEvents, ClusterManagment, Item
-from .client_errors import (
-    AuthenticationError,
-    CommandError,
-    NotFoundCommandError,
-    NotStoredStorageCommandError,
-    StorageCommandError,
-)
+from .client_errors import CommandError, NotFoundCommandError, NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster
 from .default_values import (
     DEFAULT_AUTOBATCHING_ENABLED,
