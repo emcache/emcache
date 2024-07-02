@@ -24,13 +24,13 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest==6.2.5",
-    "pytest-mock==3.1.0",
+    "pytest==8.2.2",
+    "pytest-mock==3.14.0",
     "pytest-asyncio==0.11.0",
-    "pytest-cov==2.8.1",
-    "black==22.3.0",
-    "isort==4.3.21",
-    "flake8==6.1.0",
+    "coverage==7.5.4",
+    "black==24.4.2",
+    "isort==5.13.2",
+    "flake8==7.1.0",
 ]
 
 [project.urls]
@@ -49,9 +49,6 @@ package-data = { emcache = ["py.typed"] }
 
 [tool.black]
 line-length = 120
-
-[tool.pytest.ini_options]
-junit_family = "xunit1"
 
 [tool.coverage.report]
 show_missing = true
