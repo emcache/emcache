@@ -26,7 +26,6 @@ cdef class AsciiMultiLineParser:
 
     def feed_data(self, bytes buffer_):
         cdef int len_
-        cdef char* c_buffer
 
         self.buffer_.extend(buffer_)
 
@@ -34,12 +33,14 @@ cdef class AsciiMultiLineParser:
         if len_ < 1:
             return
         
-        c_buffer = self.buffer_
+        cdef char* c_buffer = self.buffer_
         if len_ >= 5:
             if strcmp(<const char *> c_buffer + (len_ - 5), END) == 0:
                 self._parse(len_)
                 self.future.set_result(None)
-                return
+            elif self.buffer_.startswith(b"CLIENT_ERROR"):
+                self.future.set_result(None)
+
 
     cdef void _parse(self, int len_):
         cdef bytes item
@@ -49,9 +50,6 @@ cdef class AsciiMultiLineParser:
         cdef int current_pos = 0
         cdef int value_size = 0
         cdef char* c_buffer = self.buffer_
-
-        if self.buffer_.startswith(b"CLIENT ERROR"):
-            return
 
         # iterate until the END
         while current_pos < (len_ - 5):

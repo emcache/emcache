@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from emcache import MemcachedHostAddress, create_client
-from emcache.client_errors import AuthenticationError
+from emcache.client_errors import AuthenticationError, CommandError
 
 pytestmark = pytest.mark.asyncio
 
@@ -39,7 +39,7 @@ class TestAuth:
     @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
     async def test_auth_error_no_userpass(self):
         client = await create_client([MemcachedHostAddress("localhost", 11214)], timeout=1.0)
-        with pytest.raises(asyncio.TimeoutError):
+        with pytest.raises(CommandError):
             await client.get(b"key")
 
     @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")

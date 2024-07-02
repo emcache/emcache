@@ -327,7 +327,8 @@ class _Client(Client):
                 return await self._autobatching_flags_nocas.execute(key)
 
         result = await self._fetch_command(b"get", key)
-        if len(result) == 1:
+
+        if len(result) != 4:
             raise CommandError(f"Command finished with error, response returned {result}")
 
         keys, values, flags, _ = result
@@ -361,7 +362,7 @@ class _Client(Client):
                 return await self._autobatching_flags_cas.execute(key)
 
         result = await self._fetch_command(b"gets", key)
-        if len(result) == 1:
+        if len(result) != 4:
             raise CommandError(f"Command finished with error, response returned {result}")
 
         keys, values, flags, cas = result
@@ -392,14 +393,14 @@ class _Client(Client):
         results = {}
         if not return_flags:
             for result in nodes_results:
-                if len(result) == 1:
+                if len(result) != 4:
                     raise CommandError(f"Command finished with error, response returned {result}")
                 keys, values, flags, _ = result
                 for idx in range(len(keys)):
                     results[keys[idx]] = Item(values[idx], None, None)
         else:
             for result in nodes_results:
-                if len(result) == 1:
+                if len(result) != 4:
                     raise CommandError(f"Command finished with error, response returned {result}")
                 keys, values, flags, _ = result
                 for idx in range(len(keys)):
@@ -418,14 +419,14 @@ class _Client(Client):
         results = {}
         if not return_flags:
             for result in nodes_results:
-                if len(result) == 1:
+                if len(result) != 4:
                     raise CommandError(f"Command finished with error, response returned {result}")
                 keys, values, flags, cas = result
                 for idx in range(len(keys)):
                     results[keys[idx]] = Item(values[idx], None, cas[idx])
         else:
             for result in nodes_results:
-                if len(result) == 1:
+                if len(result) != 4:
                     raise CommandError(f"Command finished with error, response returned {result}")
                 keys, values, flags, cas = result
                 for idx in range(len(keys)):
@@ -735,7 +736,7 @@ class _Client(Client):
         gat <exptime> <key>\r\n
         """
         result = await self._get_and_touch_command(b"gat", exptime, key)
-        if len(result) == 1:
+        if len(result) != 4:
             raise CommandError(f"Command finished with error, response returned {result}")
 
         keys, values, flags, _ = result
@@ -756,7 +757,7 @@ class _Client(Client):
         gats <exptime> <key>\r\n
         """
         result = await self._get_and_touch_command(b"gats", exptime, key)
-        if len(result) == 1:
+        if len(result) != 4:
             raise CommandError(f"Command finished with error, response returned {result}")
 
         keys, values, flags, cas = result
@@ -780,14 +781,14 @@ class _Client(Client):
         results = {}
         if not return_flags:
             for result in nodes_results:
-                if len(result) == 1:
+                if len(result) != 4:
                     raise CommandError(f"Command finished with error, response returned {result}")
                 keys, values, flags, _ = result
                 for idx in range(len(keys)):
                     results[keys[idx]] = Item(values[idx], None, None)
         else:
             for result in nodes_results:
-                if len(result) == 1:
+                if len(result) != 4:
                     raise CommandError(f"Command finished with error, response returned {result}")
                 keys, values, flags, _ = result
                 for idx in range(len(keys)):
@@ -806,14 +807,14 @@ class _Client(Client):
         results = {}
         if not return_flags:
             for result in nodes_results:
-                if len(result) == 1:
+                if len(result) != 4:
                     raise CommandError(f"Command finished with error, response returned {result}")
                 keys, values, flags, cas = result
                 for idx in range(len(keys)):
                     results[keys[idx]] = Item(values[idx], None, cas[idx])
         else:
             for result in nodes_results:
-                if len(result) == 1:
+                if len(result) != 4:
                     raise CommandError(f"Command finished with error, response returned {result}")
                 keys, values, flags, cas = result
                 for idx in range(len(keys)):

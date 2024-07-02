@@ -172,7 +172,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             self._transport.write(data)
             await future
             keys, values, flags, cas = parser.keys(), parser.values(), parser.flags(), parser.cas()
-            if parser.value().startswith(b"CLIENT ERROR"):
+            if parser.value().startswith(b"CLIENT_ERROR"):
                 return parser.value()
             return keys, values, flags, cas
         finally:
