@@ -1,5 +1,4 @@
 #!/bin/bash
-
 set -eou
 
 cd /io/vendor/murmur3

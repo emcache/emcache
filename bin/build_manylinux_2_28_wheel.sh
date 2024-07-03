@@ -7,6 +7,9 @@ PYTHON=/usr/local/bin/python$PYTHON_VERSION
 $PYTHON -m venv /$PYTHON_VERSION
 source /$PYTHON_VERSION/bin/activate
 
+cd /io
+git config --global --add safe.directory /io
+
 cd /io/vendor/murmur3
 make static
 cd /io
