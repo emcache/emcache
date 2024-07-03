@@ -1,12 +1,11 @@
 #!/bin/bash
-set -eou
-cd /io
 
-cd vendor/murmur3
+set -eou
+
+cd /io/vendor/murmur3
 make static
 cd /io
 
-pip install Cython
 make install-dev
 pip uninstall -y emcache
 
