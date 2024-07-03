@@ -22,6 +22,7 @@ cdef class AsciiOneLineParser:
 
     def feed_data(self, bytes buffer_):
         cdef int len_
+        cdef char* c_buffer
 
         self.buffer_.extend(buffer_)
 
@@ -32,7 +33,7 @@ cdef class AsciiOneLineParser:
         if len_ < 1:
             return
 
-        cdef char* c_buffer = self.buffer_
+        c_buffer = self.buffer_
         if strcmp(<const char *> c_buffer + (len_ - 2), CRLF) == 0:
             self.future.set_result(None)
 

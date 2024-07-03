@@ -84,7 +84,7 @@ class _InflightBatches:
             # which invalidates the whole batch
             return
 
-        returned_keys, values, flags, cas = results
+        returned_keys, values, flags, cas, client_error = results
 
         # First we wake up waiters which we got a result
         for idx in range(len(returned_keys)):
