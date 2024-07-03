@@ -31,27 +31,27 @@ async def authed_client(event_loop):
 
 
 class TestAuth:
-    @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
+    @pytest.mark.skipif(sys.platform == "darwin", reason="SASL not supported by memcached running in Mac.")
     async def test_auth(self, authed_client):
         await authed_client.get(b"key")
 
-    @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
+    @pytest.mark.skipif(sys.platform == "darwin", reason="SASL not supported by memcached running in Mac.")
     async def test_auth_error_no_userpass(self):
         client = await create_client([MemcachedHostAddress("localhost", 11214)], timeout=1.0)
         with pytest.raises(CommandError):
             await client.get(b"key")
 
-    @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
+    @pytest.mark.skipif(sys.platform == "darwin", reason="SASL not supported by memcached running in Mac.")
     async def test_auth_error_no_password(self):
         with pytest.raises(ValueError):
             await create_client([MemcachedHostAddress("localhost", 11214)], username=username, timeout=1.0)
 
-    @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
+    @pytest.mark.skipif(sys.platform == "darwin", reason="SASL not supported by memcached running in Mac.")
     async def test_auth_error_no_username(self):
         with pytest.raises(ValueError):
             await create_client([MemcachedHostAddress("localhost", 11214)], password=password, timeout=1.0)
 
-    @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
+    @pytest.mark.skipif(sys.platform == "darwin", reason="SASL not supported by memcached running in Mac.")
     async def test_auth_error_wrong_userpass(self):
         client = await create_client(
             [MemcachedHostAddress("localhost", 11214)], username="wrong", password="wrong", timeout=1.0
@@ -59,7 +59,7 @@ class TestAuth:
         with pytest.raises(AuthenticationError):
             await client.get(b"key")
 
-    @pytest.mark.skipif(sys.platform == "darwin", reason="This server is not built with SASL support.")
+    @pytest.mark.skipif(sys.platform == "darwin", reason="SASL not supported by memcached running in Mac.")
     async def test_auth_error_disable_sasl(self):
         client = await create_client(
             [MemcachedHostAddress("localhost", 11211)], username="wrong", password="wrong", timeout=1.0
