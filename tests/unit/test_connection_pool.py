@@ -36,6 +36,8 @@ async def minimal_connection_pool(mocker):
         False,
         False,
         None,
+        None,
+        None,
     )
 
 
@@ -58,15 +60,21 @@ class TestConnectionPool:
 
     async def test_minimum_max_connections(self):
         with pytest.raises(ValueError):
-            ConnectionPool(MemcachedHostAddress("localhost", 11211), 0, 1, None, None, lambda _: _, False, False, None)
+            ConnectionPool(
+                MemcachedHostAddress("localhost", 11211), 0, 1, None, None, lambda _: _, False, False, None, None, None
+            )
 
     async def test_minimum_min_connections(self):
         with pytest.raises(ValueError):
-            ConnectionPool(MemcachedHostAddress("localhost", 11211), 1, -1, None, None, lambda _: _, False, False, None)
+            ConnectionPool(
+                MemcachedHostAddress("localhost", 11211), 1, -1, None, None, lambda _: _, False, False, None, None, None
+            )
 
     async def test_maximum_min_connections(self):
         with pytest.raises(ValueError):
-            ConnectionPool(MemcachedHostAddress("localhost", 11211), 1, 2, None, None, lambda _: _, False, False, None)
+            ConnectionPool(
+                MemcachedHostAddress("localhost", 11211), 1, 2, None, None, lambda _: _, False, False, None, None, None
+            )
 
     async def test_close(self, mocker):
         connection = Mock()
@@ -79,7 +87,7 @@ class TestConnectionPool:
         _ = mocker.patch("emcache.connection_pool.create_protocol", AsyncMock(side_effect=f))
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None, None, None
         )
 
         # wait till the create_connection has ben called and a connection has been
@@ -97,7 +105,7 @@ class TestConnectionPool:
         # not specific to metrics but they are simulating most of the situations that
         # are needed for incrementing the counters.
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None, None, None
         )
         assert isinstance(connection_pool.metrics(), ConnectionPoolMetrics)
 
@@ -113,7 +121,7 @@ class TestConnectionPool:
         # Check that the latencies measured are well calculated when metrics
         # method is called.
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None, None, None
         )
         connection_pool._create_connection_latencies = [float(i) for i in range(0, 101)]
 
@@ -155,13 +163,21 @@ class TestConnectionPool:
             False,
             False,
             None,
+            None,
+            None,
         )
 
         # wait till the min_connections have been created.
         await ev.wait()
 
         create_protocol.assert_called_with(
-            MemcachedHostAddress("localhost", 11211), ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=None
+            MemcachedHostAddress("localhost", 11211),
+            ssl=False,
+            ssl_verify=False,
+            ssl_extra_ca=None,
+            username=None,
+            password=None,
+            timeout=None,
         )
         assert connection_pool.total_connections == min_connections
 
@@ -182,21 +198,29 @@ class TestConnectionPool:
 
         create_protocol = mocker.patch("emcache.connection_pool.create_protocol", AsyncMock(side_effect=f))
 
-        _ = ConnectionPool(MemcachedHostAddress("localhost", 11211), 1, 1, None, 1.0, lambda _: _, False, False, None)
+        _ = ConnectionPool(
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, 1.0, lambda _: _, False, False, None, None, None
+        )
 
         # wait till the create_connection has ben called and a connection has been
         # returned.
         await ev.wait()
 
         create_protocol.assert_called_with(
-            MemcachedHostAddress("localhost", 11211), ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=1.0
+            MemcachedHostAddress("localhost", 11211),
+            ssl=False,
+            ssl_verify=False,
+            ssl_extra_ca=None,
+            username=None,
+            password=None,
+            timeout=1.0,
         )
 
     async def test_create_connection_max_observed_latencies(self, event_loop, mocker, not_closed_connection):
         mocker.patch("emcache.connection_pool.create_protocol", AsyncMock(return_value=not_closed_connection))
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None, None, None
         )
 
         # Perform twice operations than the maximum observed latencies by removing
@@ -216,7 +240,7 @@ class TestConnectionPool:
         mocker.patch("emcache.connection_pool.create_protocol", AsyncMock(return_value=not_closed_connection))
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None, None, None
         )
 
         connection_context = connection_pool.create_connection_context()
@@ -238,7 +262,7 @@ class TestConnectionPool:
         )
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, 1.0, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, 1.0, lambda _: _, False, False, None, None, None
         )
 
         async def coro(connection_context):
@@ -260,6 +284,8 @@ class TestConnectionPool:
                     ssl=False,
                     ssl_verify=False,
                     ssl_extra_ca=None,
+                    username=None,
+                    password=None,
                     timeout=1.0,
                 ),
                 call(
@@ -267,6 +293,8 @@ class TestConnectionPool:
                     ssl=False,
                     ssl_verify=False,
                     ssl_extra_ca=None,
+                    username=None,
+                    password=None,
                     timeout=1.0,
                 ),
             ]
@@ -290,7 +318,7 @@ class TestConnectionPool:
         )
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, 1.0, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, 1.0, lambda _: _, False, False, None, None, None
         )
 
         async def coro(connection_context):
@@ -307,7 +335,13 @@ class TestConnectionPool:
 
         # check that we have called once the create_protocol
         create_protocol.assert_called_once_with(
-            MemcachedHostAddress("localhost", 11211), ssl=False, ssl_verify=False, ssl_extra_ca=None, timeout=1.0
+            MemcachedHostAddress("localhost", 11211),
+            ssl=False,
+            ssl_verify=False,
+            ssl_extra_ca=None,
+            username=None,
+            password=None,
+            timeout=1.0,
         )
 
         assert connection_pool.total_connections == 0
@@ -325,7 +359,7 @@ class TestConnectionPool:
         )
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, 1.0, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, 1.0, lambda _: _, False, False, None, None, None
         )
 
         async def coro(connection_context):
@@ -361,7 +395,7 @@ class TestConnectionPool:
         )
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 3, 1, None, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 3, 1, None, None, lambda _: _, False, False, None, None, None
         )
 
         async def coro(connection_context):
@@ -391,7 +425,7 @@ class TestConnectionPool:
 
         # Limit the number of maximum connection to 2
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 2, 1, None, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 2, 1, None, None, lambda _: _, False, False, None, None, None
         )
 
         # Events used for having only at most one concurrent create_connection, otherwise
@@ -445,7 +479,7 @@ class TestConnectionPool:
         connection_closed.closed.return_value = True
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 2, 1, None, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 2, 1, None, None, lambda _: _, False, False, None, None, None
         )
 
         # we add by hand a closed connection and a none closed one to the pool
@@ -478,7 +512,7 @@ class TestConnectionPool:
         )
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None, None, None
         )
 
         async def coro(connection_context):
@@ -506,6 +540,8 @@ class TestConnectionPool:
                     ssl=False,
                     ssl_verify=False,
                     ssl_extra_ca=None,
+                    username=None,
+                    password=None,
                     timeout=None,
                 ),
                 call(
@@ -513,6 +549,8 @@ class TestConnectionPool:
                     ssl=False,
                     ssl_verify=False,
                     ssl_extra_ca=None,
+                    username=None,
+                    password=None,
                     timeout=None,
                 ),
             ]
@@ -532,7 +570,7 @@ class TestConnectionPool:
         )
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None, None, None
         )
 
         async def coro(connection_context, raise_exception=False):
@@ -564,6 +602,8 @@ class TestConnectionPool:
                     ssl=False,
                     ssl_verify=False,
                     ssl_extra_ca=None,
+                    username=None,
+                    password=None,
                     timeout=None,
                 ),
                 call(
@@ -571,6 +611,8 @@ class TestConnectionPool:
                     ssl=False,
                     ssl_verify=False,
                     ssl_extra_ca=None,
+                    username=None,
+                    password=None,
                     timeout=None,
                 ),
             ]
@@ -588,7 +630,7 @@ class TestConnectionPool:
         mocker.patch("emcache.connection_pool.create_protocol", AsyncMock(return_value=not_closed_connection))
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None, None, None
         )
 
         waiters_woken_up = []
@@ -623,7 +665,7 @@ class TestConnectionPool:
         mocker.patch("emcache.connection_pool.create_protocol", AsyncMock(side_effect=never_return_connection))
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None, None, None
         )
 
         async def coro(connection_context):
@@ -653,7 +695,7 @@ class TestConnectionPool:
         mocker.patch("emcache.connection_pool.create_protocol", AsyncMock(return_value=not_closed_connection))
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None, None, None
         )
 
         waiters_woken_up = []
@@ -715,7 +757,7 @@ class TestConnectionPool:
         get_running_loop.return_value.call_later = call_later
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 3, 1, 60, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 3, 1, 60, None, lambda _: _, False, False, None, None, None
         )
 
         # Check that the call late was done with the right parameters
@@ -795,6 +837,8 @@ class TestConnectionPool:
             False,
             False,
             None,
+            None,
+            None,
         )
 
         # we add N min expired connections that must not be removed since they are the minimum ones
@@ -826,7 +870,9 @@ class TestConnectionPool:
         asyncio_patched.get_running_loop = get_running_loop
         get_running_loop.return_value.call_later = call_later
 
-        _ = ConnectionPool(MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None)
+        _ = ConnectionPool(
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, None, lambda _: _, False, False, None, None, None
+        )
 
         # check that the mock wiring was done correctly by at least observing
         # the call to the `get_running_loop`
@@ -841,7 +887,7 @@ class TestConnectionPool:
         now = time.monotonic()
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, 60, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, 60, None, lambda _: _, False, False, None, None, None
         )
 
         # Create a new connection and use it
@@ -861,7 +907,7 @@ class TestConnectionPool:
         mocker.patch("emcache.connection_pool.create_protocol", AsyncMock(return_value=connection))
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, 60, None, lambda _: _, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, 60, None, lambda _: _, False, False, None, None, None
         )
 
         # Create a new connection and use it
@@ -889,7 +935,7 @@ class TestConnectionPool:
         cb_mock = Mock()
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, 1.0, cb_mock, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, 1.0, cb_mock, False, False, None, None, None
         )
 
         async def coro(connection_context):
@@ -923,7 +969,7 @@ class TestConnectionPool:
         cb_mock = Mock()
 
         connection_pool = ConnectionPool(
-            MemcachedHostAddress("localhost", 11211), 1, 1, None, 1.0, cb_mock, False, False, None
+            MemcachedHostAddress("localhost", 11211), 1, 1, None, 1.0, cb_mock, False, False, None, None, None
         )
 
         async def coro(connection_context):

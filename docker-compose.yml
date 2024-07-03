@@ -16,6 +16,13 @@ services:
       - ./:/app
     ports:
       - "11213:11213"
+  memcached4:
+    image: memcached
+    command: [ '-p', '11214', '-S', '-Y', '/app/tests/acceptance/data/auth_pwd.txt' ]
+    volumes:
+      - ./:/app
+    ports:
+      - "11214:11214"
   memcached_unix1:
     image: memcached
     container_name: memcached_unix1

@@ -59,12 +59,13 @@ class TestMemcacheAsciiProtocol:
 
         protocol.data_received(b"VALUE foo 0 5\r\nvalue\r\nEND\r\n")
 
-        keys, values, flags, cas = await task
+        keys, values, flags, cas, client_error = await task
 
         assert keys == [b"foo"]
         assert values == [b"value"]
         assert flags == [0]
         assert cas == [None]
+        assert client_error == bytearray()
 
         protocol._transport.write.assert_called_with(b"get foo\r\n")
         assert protocol._parser is None
@@ -78,12 +79,13 @@ class TestMemcacheAsciiProtocol:
 
         protocol.data_received(b"VALUE foo 0 5 1\r\nvalue\r\nEND\r\n")
 
-        keys, values, flags, cas = await task
+        keys, values, flags, cas, client_error = await task
 
         assert keys == [b"foo"]
         assert values == [b"value"]
         assert flags == [0]
         assert cas == [1]
+        assert client_error == bytearray()
 
         protocol._transport.write.assert_called_with(b"gets foo\r\n")
 
@@ -265,12 +267,13 @@ class TestMemcacheAsciiProtocol:
 
         protocol.data_received(b"VALUE foo 0 5\r\nvalue\r\nEND\r\n")
 
-        keys, values, flags, cas = await task
+        keys, values, flags, cas, client_error = await task
 
         assert keys == [b"foo"]
         assert values == [b"value"]
         assert flags == [0]
         assert cas == [None]
+        assert client_error == bytearray()
 
         protocol._transport.write.assert_called_with(b"gat 0 foo\r\n")
         assert protocol._parser is None
@@ -284,12 +287,13 @@ class TestMemcacheAsciiProtocol:
 
         protocol.data_received(b"VALUE foo 0 5 1\r\nvalue\r\nEND\r\n")
 
-        keys, values, flags, cas = await task
+        keys, values, flags, cas, client_error = await task
 
         assert keys == [b"foo"]
         assert values == [b"value"]
         assert flags == [0]
         assert cas == [1]
+        assert client_error == bytearray()
 
         protocol._transport.write.assert_called_with(b"gats 0 foo\r\n")
 
@@ -405,16 +409,53 @@ class TestMemcacheAsciiProtocol:
 
         assert protocol._parser is None
 
+    async def test_auth_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.auth_command("a", "a")
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"STORED\r\n")
+
+        result = await task
+
+        assert result == b"STORED"
+
+        protocol._transport.write.assert_called_with(b"set _ _ _ 3\r\na a\r\n")
+        assert protocol._parser is None
+
+    async def test_auth_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.auth_command("a", "a")
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        # check that the protocol is yes or yes set to None
+        assert protocol._parser is None
+
 
 async def test_create_protocol(event_loop, mocker):
     loop_mock = Mock()
     mocker.patch("emcache.protocol.asyncio.get_running_loop", return_value=loop_mock)
 
     protocol_mock = Mock()
+    protocol_mock.auth = AsyncMock()
     loop_mock.create_connection = AsyncMock(return_value=(None, protocol_mock))
 
     protocol = await create_protocol(
-        MemcachedHostAddress("localhost", 11211), ssl=False, ssl_verify=False, ssl_extra_ca=None
+        MemcachedHostAddress("localhost", 11211),
+        ssl=False,
+        ssl_verify=False,
+        ssl_extra_ca=None,
+        username=None,
+        password=None,
     )
     assert protocol is protocol_mock
     loop_mock.create_connection.assert_called_with(MemcacheAsciiProtocol, host="localhost", port=11211, ssl=False)
