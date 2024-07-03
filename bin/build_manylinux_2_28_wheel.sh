@@ -11,9 +11,9 @@ cd /io
 
 git config --global --add safe.directory /io
 
-cd /io/vendor/murmur3
+pushd vendor/murmur3
 make static
-cd /io
+popd
 
 python -m pip install --upgrade pip
 python -m pip install auditwheel cython setuptools build -U
