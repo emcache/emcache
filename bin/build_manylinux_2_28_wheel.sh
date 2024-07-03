@@ -9,15 +9,15 @@ source /$PYTHON_VERSION/bin/activate
 
 cd /io
 
-pacman -Syu base-devel linux-headers
+git config --global --add safe.directory /io
 
-pushd vendor/murmur3
+cd /io/vendor/murmur3
 make static
-popd
+cd /io
 
 python -m pip install --upgrade pip
-python -m pip install auditwheel cython setuptools build -U
+python -m pip install auditwheel cython setuptools wheel
 make compile
-python -m build
+python setup.py bdist_wheel
 auditwheel repair dist/emcache-*.whl -w dist
 rm dist/emcache-*-linux*
