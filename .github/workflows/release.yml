@@ -1,8 +1,8 @@
 name: PyPi release
 on:
-  push:
-    tags:
-      - v*
+  push
+#    tags:
+#      - v*
 
 jobs:
   # Use Any Python version, cibuildwheel downloads multiple python version to create each build environment.

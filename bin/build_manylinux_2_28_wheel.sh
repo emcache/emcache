@@ -16,8 +16,8 @@ make static
 cd /io
 
 python -m pip install --upgrade pip
-python -m pip install auditwheel cython setuptools wheel
+python -m pip install auditwheel cython setuptools build
 make compile
-python setup.py bdist_wheel
+python -m build
 auditwheel repair dist/emcache-*.whl -w dist
 rm dist/emcache-*-linux*
