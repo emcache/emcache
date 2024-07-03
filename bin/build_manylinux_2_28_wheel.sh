@@ -9,8 +9,7 @@ source /$PYTHON_VERSION/bin/activate
 
 cd /io
 
-git config --global --add safe.directory /io
-
+sudo pacman -Syu
 pushd vendor/murmur3
 make static
 popd
