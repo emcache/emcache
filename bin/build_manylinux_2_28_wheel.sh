@@ -9,7 +9,8 @@ source /$PYTHON_VERSION/bin/activate
 
 cd /io
 
-sudo pacman -Syu
+pacman -Syu base-devel linux-headers
+
 pushd vendor/murmur3
 make static
 popd
