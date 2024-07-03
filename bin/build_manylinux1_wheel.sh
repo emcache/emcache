@@ -39,10 +39,9 @@ fi
 cd /io/vendor/murmur3
 make static
 cd /io
-
-${PYTHON} -m pip install --upgrade pip
+${PYTHON} -m pip install -U pip
 ${PIP} install Cython auditwheel
-make compile
+PYTHON=${PYTHON} PIP=${PIP} CYTHON=${CYTHON} make compile
 ${PYTHON} setup.py bdist_wheel
 ${AUDITWHEEL} repair dist/emcache-*.whl -w dist
 rm dist/emcache-*-linux*
