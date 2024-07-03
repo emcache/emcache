@@ -59,12 +59,13 @@ class TestMemcacheAsciiProtocol:
 
         protocol.data_received(b"VALUE foo 0 5\r\nvalue\r\nEND\r\n")
 
-        keys, values, flags, cas = await task
+        keys, values, flags, cas, client_error = await task
 
         assert keys == [b"foo"]
         assert values == [b"value"]
         assert flags == [0]
         assert cas == [None]
+        assert client_error == bytearray()
 
         protocol._transport.write.assert_called_with(b"get foo\r\n")
         assert protocol._parser is None
@@ -78,12 +79,13 @@ class TestMemcacheAsciiProtocol:
 
         protocol.data_received(b"VALUE foo 0 5 1\r\nvalue\r\nEND\r\n")
 
-        keys, values, flags, cas = await task
+        keys, values, flags, cas, client_error = await task
 
         assert keys == [b"foo"]
         assert values == [b"value"]
         assert flags == [0]
         assert cas == [1]
+        assert client_error == bytearray()
 
         protocol._transport.write.assert_called_with(b"gets foo\r\n")
 
@@ -265,12 +267,13 @@ class TestMemcacheAsciiProtocol:
 
         protocol.data_received(b"VALUE foo 0 5\r\nvalue\r\nEND\r\n")
 
-        keys, values, flags, cas = await task
+        keys, values, flags, cas, client_error = await task
 
         assert keys == [b"foo"]
         assert values == [b"value"]
         assert flags == [0]
         assert cas == [None]
+        assert client_error == bytearray()
 
         protocol._transport.write.assert_called_with(b"gat 0 foo\r\n")
         assert protocol._parser is None
@@ -284,12 +287,13 @@ class TestMemcacheAsciiProtocol:
 
         protocol.data_received(b"VALUE foo 0 5 1\r\nvalue\r\nEND\r\n")
 
-        keys, values, flags, cas = await task
+        keys, values, flags, cas, client_error = await task
 
         assert keys == [b"foo"]
         assert values == [b"value"]
         assert flags == [0]
         assert cas == [1]
+        assert client_error == bytearray()
 
         protocol._transport.write.assert_called_with(b"gats 0 foo\r\n")
 

@@ -30,7 +30,7 @@ class TestInfligthBartches:
 
     async def test_multiple_batches(self, event_loop, mocker, cluster, ops):
         connection = AsyncMock()
-        connection.fetch_command = AsyncMock(return_value=(list(ops.keys()), list(ops.keys()), None, None))
+        connection.fetch_command = AsyncMock(return_value=(list(ops.keys()), list(ops.keys()), None, None, bytearray()))
         node = Mock()
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
@@ -55,7 +55,7 @@ class TestInfligthBartches:
     async def test_timeout_value_used(self, event_loop, mocker, cluster, ops):
         optimeout_class = mocker.patch("emcache.autobatching.OpTimeout", MagicMock())
         connection = AsyncMock()
-        connection.fetch_command = AsyncMock(return_value=(list(ops.keys()), list(ops.keys()), None, None))
+        connection.fetch_command = AsyncMock(return_value=(list(ops.keys()), list(ops.keys()), None, None, bytearray()))
         node = Mock()
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
@@ -78,7 +78,7 @@ class TestInfligthBartches:
 
     async def test_futures_are_wake_up_no_side_effect_on_cancellation(self, event_loop, cluster, ops):
         connection = AsyncMock()
-        connection.fetch_command = AsyncMock(return_value=(list(ops.keys()), list(ops.keys()), None, None))
+        connection.fetch_command = AsyncMock(return_value=(list(ops.keys()), list(ops.keys()), None, None, bytearray()))
         node = Mock()
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
@@ -105,7 +105,7 @@ class TestInfligthBartches:
 
     async def test_futures_missing_keys_are_wake_up_no_side_effect_on_cancellation(self, event_loop, cluster, ops):
         connection = AsyncMock()
-        connection.fetch_command = AsyncMock(return_value=([], [], None, None))
+        connection.fetch_command = AsyncMock(return_value=([], [], None, None, bytearray()))
         node = Mock()
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
@@ -191,7 +191,7 @@ class TestInfligthBartches:
         on_finish = Mock()
 
         connection = AsyncMock()
-        connection.fetch_command = AsyncMock(return_value=(list(ops.keys()), list(ops.keys()), None, None))
+        connection.fetch_command = AsyncMock(return_value=(list(ops.keys()), list(ops.keys()), None, None, bytearray()))
         node = Mock()
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection

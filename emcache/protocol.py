@@ -171,10 +171,14 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             self._parser = parser
             self._transport.write(data)
             await future
-            keys, values, flags, cas = parser.keys(), parser.values(), parser.flags(), parser.cas()
-            if parser.value().startswith(b"CLIENT_ERROR"):
-                return parser.value()
-            return keys, values, flags, cas
+            keys, values, flags, cas, client_error = (
+                parser.keys(),
+                parser.values(),
+                parser.flags(),
+                parser.cas(),
+                parser.client_error(),
+            )
+            return keys, values, flags, cas, client_error
         finally:
             self._parser = None
 
@@ -192,7 +196,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
     async def fetch_command(
         self, cmd: bytes, keys: Tuple[bytes]
-    ) -> Tuple[List[bytes], List[bytes], List[int], List[int]]:
+    ) -> Tuple[List[bytes], List[bytes], List[int], List[int], bytearray]:
         data = b"%b %b\r\n" % (cmd, b" ".join(keys))
         return await self._extract_multi_line_data(data)
 
@@ -262,7 +266,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
 
     async def get_and_touch_command(
         self, cmd: bytes, exptime: int, keys: Tuple[bytes]
-    ) -> Tuple[List[bytes], List[bytes], List[int], List[int]]:
+    ) -> Tuple[List[bytes], List[bytes], List[int], List[int], bytearray]:
         data = b"%b %a %b\r\n" % (cmd, exptime, b" ".join(keys))
         return await self._extract_multi_line_data(data)
 

@@ -314,7 +314,7 @@ class TestClient:
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
         connection = AsyncMock()
-        connection.fetch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0]])
+        connection.fetch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0], bytearray()])
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -330,7 +330,7 @@ class TestClient:
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
         connection = AsyncMock()
-        connection.get_and_touch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0]])
+        connection.get_and_touch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0], bytearray()])
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -372,7 +372,7 @@ class TestClient:
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
         connection = AsyncMock()
-        connection.fetch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0]])
+        connection.fetch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0], bytearray()])
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
@@ -388,7 +388,7 @@ class TestClient:
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
 
         connection = AsyncMock()
-        connection.get_and_touch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0]])
+        connection.get_and_touch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0], bytearray()])
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()

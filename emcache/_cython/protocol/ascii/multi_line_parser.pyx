@@ -6,6 +6,7 @@ from libc.string cimport strncmp
 
 
 cdef const char* END = "END\r\n"
+cdef const char* CLIENT_ERROR = "CLIENT_ERROR"
 
 
 @cython.freelist(32)
@@ -17,6 +18,7 @@ cdef class AsciiMultiLineParser:
         self.keys_ = []
         self.flags_ = []
         self.cas_ = []
+        self.client_error_ = bytearray()
 
     def __init__(self, future):
         self.future = future
@@ -26,6 +28,7 @@ cdef class AsciiMultiLineParser:
 
     def feed_data(self, bytes buffer_):
         cdef int len_
+        cdef char* c_buffer
 
         self.buffer_.extend(buffer_)
 
@@ -33,12 +36,14 @@ cdef class AsciiMultiLineParser:
         if len_ < 1:
             return
         
-        cdef char* c_buffer = self.buffer_
+        c_buffer = self.buffer_
         if len_ >= 5:
             if strcmp(<const char *> c_buffer + (len_ - 5), END) == 0:
                 self._parse(len_)
                 self.future.set_result(None)
-            elif self.buffer_.startswith(b"CLIENT_ERROR"):
+        if len_ >= 12:
+            if strncmp(<const char *> c_buffer, CLIENT_ERROR, 12) == 0:
+                self.client_error_ = self.buffer_
                 self.future.set_result(None)
 
 
@@ -103,5 +108,5 @@ cdef class AsciiMultiLineParser:
     def cas(self):
         return self.cas_
 
-    def value(self):
-        return self.buffer_[:-2]
+    def client_error(self):
+        return self.client_error_

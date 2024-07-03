@@ -9,5 +9,6 @@ cdef class AsciiMultiLineParser:
         list values_
         list flags_
         list cas_
+        bytearray client_error_
 
     cdef void _parse(self, int len_)
