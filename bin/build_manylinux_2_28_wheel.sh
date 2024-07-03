@@ -15,7 +15,7 @@ make static
 cd /io
 
 python -m pip install -U pip
-python -m pip install auditwheel Cython setuptools wheel
+python -m pip install auditwheel Cython setuptools wheel -U
 make compile
 python setup.py bdist_wheel
 auditwheel repair dist/emcache-*.whl -w dist
