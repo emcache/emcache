@@ -53,14 +53,14 @@ jobs:
         make -C ../vendor/murmur3 clean static_macos
         pip install setuptools
         make -C .. install-dev
-        pip install emcache-*-cp311-cp311-macosx_10_9_universal2.whl --upgrade
+        pip install emcache-*-cp311-cp311-macosx_10_9_universal2.whl -U
         make -C .. test
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      run: echo "VERSION=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
     - uses: actions/upload-artifact@v3
       with:
-        name: ${{ steps.get_version.outputs.VERSION }}
+        name: macos-${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
 
   build_linux:
@@ -104,10 +104,10 @@ jobs:
         make -C .. test
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      run: echo "VERSION=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
     - uses: actions/upload-artifact@v3
       with:
-        name: ${{ steps.get_version.outputs.VERSION }}
+        name: linux-${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
 
   build_linux_aarch64:
@@ -142,7 +142,7 @@ jobs:
         docker run --platform linux/arm64 --entrypoint bash -v `pwd`:/io python:${{matrix.python-version}}-bookworm /io/bin/test_aarch_wheel.sh
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=${GITHUB_REF/refs\/tags\//}
+      run: echo "VERSION=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
     - uses: actions/upload-artifact@v3
       with:
         name: aarch64-${{ steps.get_version.outputs.VERSION }}
@@ -167,7 +167,7 @@ jobs:
       run: ls -R
       working-directory: wheelhouse/
     - name: Publish distribution to PyPI
-      uses: pypa/gh-action-pypi-publish@master
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
         packages_dir: wheelhouse/
         password: ${{ secrets.PYPI_RELEASE_UPLOAD }}
