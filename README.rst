@@ -181,11 +181,13 @@ Testing
 Run docker containers, add read write privileges
 
 .. code-block:: bash
-    docker-compose up -d
+
+    docker compose up -d
     docker exec memcached_unix1 sh -c "chmod a+rw /tmp/emcache.test1.sock"
     docker exec memcached_unix2 sh -c "chmod a+rw /tmp/emcache.test2.sock"
 
 Run tests
 
 .. code-block:: bash
+
     make test
