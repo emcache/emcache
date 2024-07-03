@@ -161,9 +161,9 @@ Compile murmur3
 
 .. code-block:: bash
 
-    pushd vendor/murmur3
+    cd vendor/murmur3
     make static
-    popd
+    cd ../../
 
 Install emcache with dev dependencies
 
