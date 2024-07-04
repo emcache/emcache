@@ -59,7 +59,7 @@ jobs:
           make -C ../vendor/murmur3 clean static_macos
           pip install setuptools -U
           make -C .. install-dev
-          pip install emcache-*-${{ matrix.python-version.num }}-${{ matrix.python-version.build }}-macosx_10_9_universal2.whl -U
+          pip install emcache-*-${{ matrix.python-version.build }}-${{ matrix.python-version.build }}-macosx_10_9_universal2.whl -U
           make -C .. test
       - name: Get the version
         id: get_version
