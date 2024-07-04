@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "emcache"
-version = "1.2.2"
+version = "1.3.0"
 authors = [{ name = "Pau Freixes", email = "pfreixes@gmail.com" }]
 description = "A high performance asynchronous Python client for Memcached with full batteries included"
 readme = "README.rst"
