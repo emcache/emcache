@@ -29,8 +29,8 @@ jobs:
           cd vendor/murmur3
           make static_macos
           cd -
-          python -m pip install --upgrade pip
-          pip install setuptools wheel cibuildwheel==2.19.2
+          python -m pip install -U pip
+          pip install setuptools wheel cibuildwheel -U
           make compile
           python -m cibuildwheel --platform macos --output-dir dist/
         env:
@@ -98,7 +98,7 @@ jobs:
           cd test_wheel
           rm -f ../.install-cython
           make -C ../vendor/murmur3 static
-          pip install setuptools
+          pip install setuptools -U
           make -C .. install-dev
           pip install emcache-*.whl --upgrade
           make -C .. test

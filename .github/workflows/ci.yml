@@ -34,8 +34,8 @@ jobs:
         make static
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install setuptools
+        python -m pip install -U pip
+        pip install setuptools -U
         make install-dev
     - name: Lint with flake8
       run: |
@@ -52,7 +52,7 @@ jobs:
     - name: Docker dependencies
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
-        docker-compose up -d
+        docker compose up -d
         docker exec memcached_unix1 sh -c "chmod a+rw /tmp/emcache.test1.sock"
         docker exec memcached_unix2 sh -c "chmod a+rw /tmp/emcache.test2.sock"
     - name: Test
