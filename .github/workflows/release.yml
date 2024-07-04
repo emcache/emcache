@@ -13,7 +13,13 @@ jobs:
     strategy:
       matrix:
         os: [ macos-latest ]
-        python-version: [ "3.12" ]
+        python-version: [
+          { "num": "3.8", "build": "cp38" },
+          { "num": "3.9", "build": "cp39" },
+          { "num": "3.10", "build": "cp310" },
+          { "num": "3.11", "build": "cp311" },
+          { "num": "3.12", "build": "cp312" },
+        ]
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -23,7 +29,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ matrix.python-version.num }}
       - name: Generate macos-wheel
         run: |
           cd vendor/murmur3
@@ -35,7 +41,7 @@ jobs:
           python -m cibuildwheel --platform macos --output-dir dist/
         env:
           CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
-          CIBW_SKIP: "pp*"
+          CIBW_BUILD: ${{ matrix.python-version.build }}-macosx_*
       - name: Mac acceptance test dependencies
         run: |
           brew install memcached
@@ -51,16 +57,16 @@ jobs:
           cd test_wheel
           rm -f ../.install-cython
           make -C ../vendor/murmur3 clean static_macos
-          pip install setuptools
+          pip install setuptools -U
           make -C .. install-dev
-          pip install emcache-*-cp312-cp312-macosx_10_9_universal2.whl -U
+          pip install emcache-*-${{ matrix.python-version.build }}-${{ matrix.python-version.build }}-macosx_10_9_universal2.whl -U
           make -C .. test
       - name: Get the version
         id: get_version
         run: echo "VERSION=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: macos-${{ steps.get_version.outputs.VERSION }}
+          name: macos-${{ steps.get_version.outputs.VERSION }}-py${{ matrix.python-version.num }}
           path: test_wheel/emcache-*.whl
 
   build_linux:
@@ -105,9 +111,9 @@ jobs:
       - name: Get the version
         id: get_version
         run: echo "VERSION=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: linux-${{ steps.get_version.outputs.VERSION }}
+          name: linux-${{ steps.get_version.outputs.VERSION }}-py${{ matrix.python-version }}
           path: test_wheel/emcache-*.whl
 
   build_linux_aarch64:
@@ -143,9 +149,9 @@ jobs:
       - name: Get the version
         id: get_version
         run: echo "VERSION=$GITHUB_REF_NAME" >> $GITHUB_OUTPUT
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
-          name: aarch64-${{ steps.get_version.outputs.VERSION }}
+          name: aarch64-${{ steps.get_version.outputs.VERSION }}-py${{ matrix.python-version }}
           path: test_wheel/emcache-*.whl
 
   upload:
@@ -153,15 +159,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
-          # build_macos and build_linux will uses same version,
-          # so we can download it at once
-          name: ${{ needs.build_linux.outputs.version }}
-          path: wheelhouse/
-      - uses: actions/download-artifact@v3
-        with:
-          name: aarch64-${{ needs.build_linux_aarch64.outputs.version }}
           path: wheelhouse/
       - name: Display content
         run: ls -R
