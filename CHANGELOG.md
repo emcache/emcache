@@ -1,3 +1,8 @@
+1.3.0
+================
+- Suppot for SASL authentication [143](https://github.com/emcache/emcache/pull/143)
+- Added also support for the following commands: `cache_memlimit`, `stats` and `verbosity`
+
 1.2.2
 ================
 - Adds support for gat, gats, gat_many and gats_many commands [123](https://github.com/emcache/emcache/pull/123)

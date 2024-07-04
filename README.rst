@@ -18,6 +18,7 @@ on the experience of other Memcached clients, providing the following main chara
 - Support for many Memcached hosts, distributing traffic around them by using the `Rendezvous hashing <https://emcache.readthedocs.io/en/latest/advanced_topics.html#hashing-algorithm>`_ algorithm.
 - Support for different commands and different flag behaviors like ``noreply``, ``exptime`` or ``flags``.
 - Support for SSL/TLS protocol.
+- Support for SASL authentication by ASCII protocol.
 - Support for `autodiscovery <https://emcache.readthedocs.io/en/latest/client.html#autodiscovery>`_, which should work with AWS and GCP memcached clusters.
 - Adaptative `connection pool <https://emcache.readthedocs.io/en/latest/advanced_topics.html#connection-pool>`_, which increases the number of connections per Memcache host depending on the traffic.
 - `Node healthiness <https://emcache.readthedocs.io/en/latest/advanced_topics.html#healthy-and-unhealthy-nodes>`_ traceability and an optional flag for disabling unhealthy for participating in the commands.
@@ -69,7 +70,9 @@ Emcache has currently support, among many of them, for the following commands:
 - **delete** The command allows for explicit deletion of items.
 - **touch** The command is used to update the expiration time of an existing item without fetching it.
 - **increment/decrement** Commands are used to change data for some item in-place, incrementing or decrementing it.
-
+- **cache_memlimit** This command allow set in runtime cache memory limit.
+- **stats** Show a list of required statistics about the server, depending on the arguments.
+- **verbosity** Command control STDOUT/STDERR info, choose level and look logging memcached.
 
 Take a look at the documentation for getting a list of all of the `operations <https://emcache.readthedocs.io/en/latest/operations.html>`_ that are currently supported.
 
@@ -170,3 +173,20 @@ Install emcache with dev dependencies
 .. code-block:: bash
 
     make install-dev
+
+Testing
+===========
+
+Run docker containers, add read write privileges
+
+.. code-block:: bash
+
+    docker compose up -d
+    docker exec memcached_unix1 sh -c "chmod a+rw /tmp/emcache.test1.sock"
+    docker exec memcached_unix2 sh -c "chmod a+rw /tmp/emcache.test2.sock"
+
+Run tests
+
+.. code-block:: bash
+
+    make test
