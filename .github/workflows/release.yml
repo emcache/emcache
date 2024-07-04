@@ -14,11 +14,11 @@ jobs:
       matrix:
         os: [ macos-latest ]
         python-version: [
-          { "num": "3.8", "build" : "cp38"},
-          { "num": "3.9", "build" : "cp39"},
-          { "num": "3.10", "build" : "cp310"},
-          { "num": "3.11", "build" : "cp311"},
-          { "num": "3.12", "build" : "cp312"},
+          { "num": "3.8", "build": "cp38" },
+          { "num": "3.9", "build": "cp39" },
+          { "num": "3.10", "build": "cp310" },
+          { "num": "3.11", "build": "cp311" },
+          { "num": "3.12", "build": "cp312" },
         ]
 
     runs-on: ${{ matrix.os }}
