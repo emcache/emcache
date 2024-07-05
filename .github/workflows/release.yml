@@ -42,6 +42,8 @@ jobs:
         memcached -d -p 11211
         memcached -d -p 11212
         memcached -d -p 11213 --enable-ssl -o ssl_chain_cert=./tests/acceptance/data/localhost.crt,ssl_key=./tests/acceptance/data/localhost.key
+        memcached -d -s /tmp/emcache.test1.sock
+        memcached -d -s /tmp/emcache.test2.sock
     - name: Test generated wheel (Universal2 to x86-64 Only)
       run: |
         mkdir test_wheel
@@ -90,6 +92,8 @@ jobs:
     - name: Linux acceptance test dependencies
       run: |
         docker compose up -d
+        docker exec memcached_unix1 sh -c "chmod a+rw /tmp/emcache.test1.sock"
+        docker exec memcached_unix2 sh -c "chmod a+rw /tmp/emcache.test2.sock"
     - name: Test generated wheel
       run: |
         mkdir test_wheel
