@@ -731,7 +731,7 @@ class TestClient:
     async def test_cache_memlimit_error_command(self, client, memcached_host_address):
         # patch what is necesary for returnning an error string
         connection = AsyncMock()
-        connection.cache_memlimit = AsyncMock(return_value=ERROR)
+        connection.cache_memlimit_command = AsyncMock(return_value=ERROR)
         connection_context = AsyncMock()
         connection_context.__aenter__.return_value = connection
         node = Mock()
