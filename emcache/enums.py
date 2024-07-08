@@ -1,7 +1,7 @@
-import enum
+from enum import Enum
 
 
-class Watcher(enum.StrEnum):
+class Watcher(str, Enum):
     fetchers = "fetchers"
     mutations = "mutations"
     evictions = "evictions"
