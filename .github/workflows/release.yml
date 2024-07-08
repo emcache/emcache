@@ -23,6 +23,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     steps:
+<<<<<<< HEAD
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
@@ -68,6 +69,56 @@ jobs:
         with:
           name: macos-${{ steps.get_version.outputs.VERSION }}-py${{ matrix.python-version.num }}
           path: test_wheel/emcache-*.whl
+=======
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Generate macos-wheel
+      run: |
+        cd vendor/murmur3
+        make static_macos
+        cd -
+        python -m pip install --upgrade pip
+        pip install setuptools wheel cibuildwheel==2.11.2
+        make compile
+        python -m cibuildwheel --platform macos --output-dir dist/
+      env:
+        CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
+        CIBW_SKIP: "pp*"
+    - name: Mac acceptance test dependencies
+      run: |
+        brew install memcached
+        memcached -d -p 11211
+        memcached -d -p 11212
+        memcached -d -p 11213 --enable-ssl -o ssl_chain_cert=./tests/acceptance/data/localhost.crt,ssl_key=./tests/acceptance/data/localhost.key
+        memcached -d -s /tmp/emcache.test1.sock
+        memcached -d -s /tmp/emcache.test2.sock
+    - name: Test generated wheel (Universal2 to x86-64 Only)
+      run: |
+        mkdir test_wheel
+        cp dist/*.whl test_wheel
+        cd test_wheel
+        pip install virtualenv
+        python -m virtualenv env
+        source env/bin/activate
+        rm -f ../.install-cython
+        make -C ../vendor/murmur3 clean static_macos
+        pip install setuptools
+        make -C .. install-dev
+        pip install emcache-*-cp311-cp311-macosx_10_9_universal2.whl --upgrade
+        make -C .. test
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+    - uses: actions/upload-artifact@v3
+      with:
+        name: ${{ steps.get_version.outputs.VERSION }}
+        path: test_wheel/emcache-*.whl
+>>>>>>> master
 
   build_linux:
     outputs:
@@ -78,6 +129,7 @@ jobs:
         python-version: [ "3.8", "3.9", "3.10", "3.11", "3.12" ]
     runs-on: ${{ matrix.os }}
     steps:
+<<<<<<< HEAD
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
@@ -115,6 +167,48 @@ jobs:
         with:
           name: linux-${{ steps.get_version.outputs.VERSION }}-py${{ matrix.python-version }}
           path: test_wheel/emcache-*.whl
+=======
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Generate manylinux1-wheel
+      run: |
+        mkdir /tmp/emcache
+        cp -r . /tmp/emcache
+        docker run -v /tmp/emcache:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux2014_x86_64 /io/bin/build_manylinux1_wheel.sh
+        mkdir dist
+        cp /tmp/emcache/dist/emcache-*.whl dist/
+    - name: Linux acceptance test dependencies
+      run: |
+        docker compose up -d
+        docker exec memcached_unix1 sh -c "chmod a+rw /tmp/emcache.test1.sock"
+        docker exec memcached_unix2 sh -c "chmod a+rw /tmp/emcache.test2.sock"
+    - name: Test generated wheel
+      run: |
+        mkdir test_wheel
+        cp dist/emcache-*.whl test_wheel
+        cd test_wheel
+        pip install virtualenv
+        python -m virtualenv env
+        source env/bin/activate
+        rm -f ../.install-cython
+        make -C ../vendor/murmur3 static
+        pip install setuptools
+        make -C .. install-dev
+        pip install emcache-*.whl --upgrade
+        make -C .. test
+    - name: Get the version
+      id: get_version
+      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+    - uses: actions/upload-artifact@v3
+      with:
+        name: ${{ steps.get_version.outputs.VERSION }}
+        path: test_wheel/emcache-*.whl
+>>>>>>> master
 
   build_linux_aarch64:
     outputs:
