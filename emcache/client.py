@@ -4,7 +4,7 @@
 import asyncio
 import logging
 import re
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
@@ -27,6 +27,7 @@ from .default_values import (
     DEFAULT_STARTUP_WAIT_AUTODISCOVERY,
     DEFAULT_TIMEOUT,
 )
+from .enums import Watcher
 from .node import Node
 from .protocol import DELETED, END, EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED, VERSION
 from .timeout import OpTimeout
@@ -331,12 +332,9 @@ class _Client(Client):
             raise CommandError(f"Command finished with error, response returned {client_error}")
 
         if key not in keys:
-            return None
+            return
 
-        if not return_flags:
-            return Item(values[0], None, None)
-        else:
-            return Item(values[0], flags[0], None)
+        return Item(values[0], None if not return_flags else flags[0], None)
 
     async def gets(self, key: bytes, return_flags=False) -> Optional[Item]:
         """Return the value associated with the key and its cas value as
@@ -353,22 +351,20 @@ class _Client(Client):
         """
         # route the execution to the Autobatching logic if its enabled
         if self._autobatching:
-            if not return_flags:
-                return await self._autobatching_noflags_cas.execute(key)
-            else:
-                return await self._autobatching_flags_cas.execute(key)
+            return (
+                await self._autobatching_noflags_cas.execute(key)
+                if not return_flags
+                else await self._autobatching_flags_cas.execute(key)
+            )
 
         keys, values, flags, cas, client_error = await self._fetch_command(b"gets", key)
         if client_error:
             raise CommandError(f"Command finished with error, response returned {client_error}")
 
         if key not in keys:
-            return None
+            return
 
-        if not return_flags:
-            return Item(values[0], None, cas[0])
-        else:
-            return Item(values[0], flags[0], cas[0])
+        return Item(values[0], None if not return_flags else flags[0], cas[0])
 
     async def get_many(self, keys: Sequence[bytes], return_flags=False) -> Dict[bytes, Item]:
         """Return the values associated with the keys.
@@ -386,19 +382,11 @@ class _Client(Client):
         nodes_results = await self._fetch_many_command(b"get", keys, return_flags=return_flags)
 
         results = {}
-        if not return_flags:
-            for keys, values, flags, _, client_error in nodes_results:
-                if client_error:
-                    raise CommandError(f"Command finished with error, response returned {client_error}")
-                for idx in range(len(keys)):
-                    results[keys[idx]] = Item(values[idx], None, None)
-        else:
-            for keys, values, flags, _, client_error in nodes_results:
-                if client_error:
-                    raise CommandError(f"Command finished with error, response returned {client_error}")
-                for idx in range(len(keys)):
-                    results[keys[idx]] = Item(values[idx], flags[idx], None)
-
+        for keys, values, flags, _, client_error in nodes_results:
+            if client_error:
+                raise CommandError(f"Command finished with error, response returned {client_error}")
+            for idx in range(len(keys)):
+                results[keys[idx]] = Item(values[idx], None if not return_flags else flags[idx], None)
         return results
 
     async def gets_many(self, keys: Sequence[bytes], return_flags=False) -> Dict[bytes, Item]:
@@ -410,19 +398,11 @@ class _Client(Client):
         nodes_results = await self._fetch_many_command(b"gets", keys, return_flags=return_flags)
 
         results = {}
-        if not return_flags:
-            for keys, values, flags, cas, client_error in nodes_results:
-                if client_error:
-                    raise CommandError(f"Command finished with error, response returned {client_error}")
-                for idx in range(len(keys)):
-                    results[keys[idx]] = Item(values[idx], None, cas[idx])
-        else:
-            for keys, values, flags, cas, client_error in nodes_results:
-                if client_error:
-                    raise CommandError(f"Command finished with error, response returned {client_error}")
-                for idx in range(len(keys)):
-                    results[keys[idx]] = Item(values[idx], flags[idx], cas[idx])
-
+        for keys, values, flags, cas, client_error in nodes_results:
+            if client_error:
+                raise CommandError(f"Command finished with error, response returned {client_error}")
+            for idx in range(len(keys)):
+                results[keys[idx]] = Item(values[idx], None if not return_flags else flags[idx], cas[idx])
         return results
 
     async def set(self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False) -> None:
@@ -632,8 +612,6 @@ class _Client(Client):
         elif result != TOUCHED:
             raise CommandError(f"Command finished with error, response returned {result}")
 
-        return
-
     async def delete(self, key: bytes, *, noreply: bool = False) -> None:
         """Delete an exixting key.
 
@@ -660,8 +638,6 @@ class _Client(Client):
             raise NotFoundCommandError()
         elif result != DELETED:
             raise CommandError(f"Command finished with error, response returned {result}")
-
-        return
 
     async def flush_all(
         self,
@@ -690,8 +666,6 @@ class _Client(Client):
 
         if result != OK:
             raise CommandError(f"Command finished with error, response returned {result}")
-
-        return
 
     async def version(
         self, memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath]
@@ -731,12 +705,9 @@ class _Client(Client):
             raise CommandError(f"Command finished with error, response returned {client_error}")
 
         if key not in keys:
-            return None
+            return
 
-        if not return_flags:
-            return Item(values[0], None, None)
-        else:
-            return Item(values[0], flags[0], None)
+        return Item(values[0], None if not return_flags else flags[0], None)
 
     async def gats(self, exptime: int, key: bytes, return_flags=False) -> Optional[Item]:
         """Gats command is used to fetch item and update the
@@ -750,12 +721,9 @@ class _Client(Client):
             raise CommandError(f"Command finished with error, response returned {client_error}")
 
         if key not in keys:
-            return None
+            return
 
-        if not return_flags:
-            return Item(values[0], None, cas[0])
-        else:
-            return Item(values[0], flags[0], cas[0])
+        return Item(values[0], None if not return_flags else flags[0], cas[0])
 
     async def gat_many(self, exptime: int, keys: Sequence[bytes], return_flags=False) -> Dict[bytes, Item]:
         """Return the values associated with the keys.
@@ -766,19 +734,11 @@ class _Client(Client):
         nodes_results = await self._get_and_touch_many_command(b"gat", exptime, keys, return_flags=return_flags)
 
         results = {}
-        if not return_flags:
-            for keys, values, flags, _, client_error in nodes_results:
-                if client_error:
-                    raise CommandError(f"Command finished with error, response returned {client_error}")
-                for idx in range(len(keys)):
-                    results[keys[idx]] = Item(values[idx], None, None)
-        else:
-            for keys, values, flags, _, client_error in nodes_results:
-                if client_error:
-                    raise CommandError(f"Command finished with error, response returned {client_error}")
-                for idx in range(len(keys)):
-                    results[keys[idx]] = Item(values[idx], flags[idx], None)
-
+        for keys, values, flags, _, client_error in nodes_results:
+            if client_error:
+                raise CommandError(f"Command finished with error, response returned {client_error}")
+            for idx in range(len(keys)):
+                results[keys[idx]] = Item(values[idx], None if not return_flags else flags[idx], None)
         return results
 
     async def gats_many(self, exptime: int, keys: Sequence[bytes], return_flags=False) -> Dict[bytes, Item]:
@@ -790,19 +750,11 @@ class _Client(Client):
         nodes_results = await self._get_and_touch_many_command(b"gats", exptime, keys, return_flags=return_flags)
 
         results = {}
-        if not return_flags:
-            for keys, values, flags, cas, client_error in nodes_results:
-                if client_error:
-                    raise CommandError(f"Command finished with error, response returned {client_error}")
-                for idx in range(len(keys)):
-                    results[keys[idx]] = Item(values[idx], None, cas[idx])
-        else:
-            for keys, values, flags, cas, client_error in nodes_results:
-                if client_error:
-                    raise CommandError(f"Command finished with error, response returned {client_error}")
-                for idx in range(len(keys)):
-                    results[keys[idx]] = Item(values[idx], flags[idx], cas[idx])
-
+        for keys, values, flags, cas, client_error in nodes_results:
+            if client_error:
+                raise CommandError(f"Command finished with error, response returned {client_error}")
+            for idx in range(len(keys)):
+                results[keys[idx]] = Item(values[idx], None if not return_flags else flags[idx], cas[idx])
         return results
 
     async def cache_memlimit(
@@ -824,8 +776,6 @@ class _Client(Client):
 
         if result != OK:
             raise CommandError(f"Command finished with error, response returned {result}")
-
-        return
 
     async def stats(self, memcached_host_address: MemcachedHostAddress, *args: str) -> Dict[str, str]:
         """The memcached command via "stats" which show needed statistics about server.
@@ -875,7 +825,39 @@ class _Client(Client):
         if result != OK:
             raise CommandError(f"Command finished with error, response returned {result}")
 
-        return
+    async def watch(
+        self,
+        event_handler: Callable,
+        memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
+        watcher: Watcher,
+    ) -> None:
+        """Inspect  memcached  internally.
+        For more information about options command watch, check out the official memcached documentation.
+
+        1. fetchers - show logs after every fetching commands.
+        2. mutations - show logs after every stored commands.
+        3. evictions - show logs after evictions keys from cache.
+        4. connevents - show logs after open or close connection clients.
+        5. proxyreqs - show logs after requests/responses clients in proxy mode by config.
+        6. proxyuser - show logs by lua configs.
+        7. deletions - show logs after removing commands.
+
+        Example of a really simple event_handler function
+
+        .. code:: python
+
+                async def my_event_handler(message):
+                        print(message)
+        """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        node = self._cluster.node(memcached_host_address)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                result = await connection.watch_command(watcher, event_handler)
+        if result != OK:
+            raise CommandError(f"Command finished with error, response returned {result}")
 
 
 async def create_client(

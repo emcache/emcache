@@ -3,10 +3,11 @@
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Mapping, Optional, Sequence, Union
+from typing import Callable, Dict, Mapping, Optional, Sequence, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from .connection_pool import ConnectionPoolMetrics
+from .enums import Watcher
 
 
 @dataclass
@@ -342,6 +343,32 @@ class Client(metaclass=ABCMeta):
 
         Send command "verbosity <level> [noreply]\r\n"
         Return always "OK\r\n" if skip noreply and correct command.
+        """
+
+    @abstractmethod
+    async def watch(
+        self,
+        event_handler: Callable,
+        memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
+        watcher: Watcher,
+    ) -> None:
+        """Inspect  memcached  internally.
+        For more information about options command watch, check out the official memcached documentation.
+
+        1. fetchers - show logs after every fetching commands.
+        2. mutations - show logs after every stored commands.
+        3. evictions - show logs after evictions keys from cache.
+        4. connevents - show logs after open or close connection clients.
+        5. proxyreqs - show logs after requests/responses clients in proxy mode by config.
+        6. proxyuser - show logs by lua configs.
+        7. deletions - show logs after removing commands.
+
+        Example of a really simple event_handler function.
+
+        .. code:: python
+
+                async def my_event_handler(message):
+                        print(message)
         """
 
 

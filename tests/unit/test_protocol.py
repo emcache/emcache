@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from emcache import MemcachedHostAddress
+from emcache.enums import Watcher
 from emcache.protocol import ERROR, OK, MemcacheAsciiProtocol, create_protocol
 
 pytestmark = pytest.mark.asyncio
@@ -488,6 +489,43 @@ class TestMemcacheAsciiProtocol:
     async def test_auth_command_with_error(self, event_loop, protocol):
         async def coro():
             return await protocol.auth_command("a", "a")
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        task.cancel()
+
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        # check that the protocol is yes or yes set to None
+        assert protocol._parser is None
+
+    async def test_watch_command(self, event_loop, protocol):
+        async def my_event_handler():
+            pass
+
+        async def coro():
+            return await protocol.watch_command(Watcher.fetchers, my_event_handler)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"OK\r\n")
+
+        result = await task
+
+        assert result == b"OK"
+
+        protocol._transport.write.assert_called_with(b"watch fetchers\r\n")
+        assert protocol._parser is None
+
+    async def test_watch_command_with_error(self, event_loop, protocol):
+        async def my_event_handler():
+            pass
+
+        async def coro():
+            return await protocol.watch_command(Watcher.fetchers, my_event_handler)
 
         task = event_loop.create_task(coro())
         await asyncio.sleep(0)

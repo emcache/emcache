@@ -23,9 +23,18 @@ def node_addresses(request):
     return request.param
 
 
-@pytest.fixture()
+@pytest.fixture
 async def client(node_addresses, event_loop):
     client = await create_client(node_addresses, timeout=2.0)
+    try:
+        yield client
+    finally:
+        await client.close()
+
+
+@pytest.fixture
+async def client2(node_addresses, event_loop):
+    client = await create_client([MemcachedHostAddress("localhost", 11211)], timeout=2.0)
     try:
         yield client
     finally:
