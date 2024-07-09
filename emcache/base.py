@@ -3,7 +3,7 @@
 
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Mapping, Optional, Sequence, Union, Coroutine
+from typing import Coroutine, Dict, Mapping, Optional, Sequence, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from .connection_pool import ConnectionPoolMetrics
