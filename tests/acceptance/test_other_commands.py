@@ -7,6 +7,7 @@ import sys
 import pytest
 
 from emcache import NotFoundCommandError
+from emcache.enums import Watcher
 
 pytestmark = pytest.mark.asyncio
 
@@ -194,3 +195,31 @@ class TestVerbosity:
     async def test_verbosity(self, client, node_addresses, noreply):
         for node_address in node_addresses:
             assert await client.verbosity(node_address, 2, noreply=noreply) is None
+
+
+class TestWatch:
+
+    async def test_watch(self, client, client2, node_addresses, key_generation):
+        key = next(key_generation)
+        count_call_my_event_handler = 0
+        count_requests = 0
+
+        async def my_event_handler(data):
+            global count_call_my_event_handler
+            count_call_my_event_handler += 1
+            assert count_requests == count_call_my_event_handler
+            assert b"key=%b" % key in data
+
+        for node_address in node_addresses:
+            assert await client.watch(my_event_handler, node_address, Watcher.fetchers) is None
+            count_requests += 1
+            await client2.get(key)
+
+    async def test_after_watch_unavailable_other_commands(self, client, node_addresses):
+        async def my_event_handler(data):
+            pass
+
+        for node_address in node_addresses:
+            assert await client.watch(my_event_handler, node_address, Watcher.fetchers) is None
+            with pytest.raises(asyncio.TimeoutError):
+                await client.version(node_address)

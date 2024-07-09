@@ -10,6 +10,7 @@ from typing import Final, List, Optional, Tuple, Union
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
 from .client_errors import AuthenticationError
+from .enums import Watcher
 
 try:
     import ssl as ssl_module
@@ -111,6 +112,10 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         # and will depend on the nature of the command
         self._parser = None
 
+        # Initialize custom handler after memcached watch command, now is empty.
+        # Memcached send logs for current connection and don't receive data.
+        self._watch_handler = None
+
     def connection_made(self, transport: asyncio.Transport) -> None:
         self._transport = transport
         sock = transport.get_extra_info("socket")
@@ -138,6 +143,10 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         return self._closed
 
     def data_received(self, data: bytes) -> None:
+        if self._watch_handler:
+            asyncio.create_task(self._watch_handler(data))
+            return
+
         if self._parser is None:
             raise RuntimeError(f"Receiving data when no parser is conifgured {data}")
 
@@ -298,6 +307,13 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         value = f"{username} {password}".encode()
         data = b"set _ _ _ %a\r\n%b\r\n" % (len(value), value)
         return await self._extract_one_line_data(data)
+
+    async def watch_command(self, watcher: Watcher, event_handler):
+        data = b"watch %b\r\n" % watcher.encode()
+        result = await self._extract_one_line_data(data)
+        if result == OK:
+            self._watch_handler = event_handler
+        return result
 
 
 async def create_protocol(
