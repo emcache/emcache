@@ -4,8 +4,7 @@
 import asyncio
 import logging
 import re
-from collections.abc import Coroutine, Sequence
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
@@ -828,7 +827,7 @@ class _Client(Client):
 
     async def watch(
         self,
-        event_handler: Coroutine,
+        event_handler: Callable,
         memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
         watcher: Watcher,
     ) -> None:

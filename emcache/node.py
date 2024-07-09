@@ -2,8 +2,7 @@
 # Copyright (c) 2020-2024 Pau Freixes
 
 import logging
-from collections.abc import Callable
-from typing import Optional, Union
+from typing import Callable, Optional, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from .connection_pool import BaseConnectionContext, ConnectionPool, ConnectionPoolMetrics
