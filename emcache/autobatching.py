@@ -3,7 +3,8 @@
 
 import asyncio
 import logging
-from typing import Awaitable, Callable, Dict, List, Optional
+from collections.abc import Awaitable, Callable
+from typing import Dict, List, Optional
 
 from ._cython import cyemcache
 from .base import Client, Item

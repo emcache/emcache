@@ -2,8 +2,9 @@
 # Copyright (c) 2020-2024 Pau Freixes
 
 from abc import ABCMeta, abstractmethod
+from collections.abc import Coroutine, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Callable, Dict, Mapping, Optional, Sequence, Union
+from typing import Dict, Optional, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from .connection_pool import ConnectionPoolMetrics
@@ -348,7 +349,7 @@ class Client(metaclass=ABCMeta):
     @abstractmethod
     async def watch(
         self,
-        event_handler: Callable,
+        event_handler: Coroutine,
         memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
         watcher: Watcher,
     ) -> None:

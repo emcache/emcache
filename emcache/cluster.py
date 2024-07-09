@@ -4,7 +4,8 @@
 import asyncio
 import logging
 import random
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from collections.abc import Mapping, Sequence
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache

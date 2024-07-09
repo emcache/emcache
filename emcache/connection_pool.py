@@ -5,9 +5,10 @@ import asyncio
 import logging
 import time
 from collections import deque
+from collections.abc import Callable
 from copy import copy
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from .client_errors import AuthenticationError
