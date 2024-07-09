@@ -839,8 +839,9 @@ class _Client(Client):
         3. evictions - show logs after evictions keys from cache.
         4. connevents - show logs after open or close connection clients.
         5. proxyreqs - show logs after requests/responses clients in proxy mode by config.
-        6. proxyuser - show logs by lua configs.
-        7. deletions - show logs after removing commands.
+        6. proxyevents - show logs proxy errors and system events.
+        7. proxyuser - show logs by lua configs.
+        8. deletions - show logs after removing commands.
 
         Example of a really simple event_handler function
 

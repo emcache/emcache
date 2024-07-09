@@ -7,5 +7,6 @@ class Watcher(str, Enum):
     evictions = "evictions"
     connevents = "connevents"
     proxyreqs = "proxyreqs"
+    proxyevents = "proxyevents"
     proxyuser = "proxyuser"
     deletions = "deletions"
