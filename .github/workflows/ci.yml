@@ -63,7 +63,14 @@ jobs:
         make test
     - name: Coverage
       run: |
-        memcached -d -p 11215 -A
-        memcached -d -s /tmp/emcache.test3.sock
-        docker exec memcached_unix3 sh -c "chmod a+rw /tmp/emcache.test3.sock"
+        # up containers after shutdowns
+        if [ ${{ matrix.os }} == 'ubuntu-latest' ]; then
+          docker compose up memcached_unix3 -d
+          docker exec memcached_unix3 sh -c "chmod a+rw /tmp/emcache.test3.sock"
+  
+        elif [ ${{ matrix.os }} == 'macos-latest' ]; then
+          memcached -d -p 11215 -A
+          memcached -d -s /tmp/emcache.test3.sock
+          docker exec memcached_unix3 sh -c "chmod a+rw /tmp/emcache.test3.sock"
+        
         make coverage

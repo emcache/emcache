@@ -52,3 +52,10 @@ services:
     command: [ '-s', '/tmp/emcache.test2.sock' ]
     volumes:
       - "/tmp:/tmp"
+
+  memcached_unix3:
+    image: "memcached:alpine"
+    container_name: "memcached_unix3"
+    command: [ '-s', '/tmp/emcache.test3.sock' ]
+    volumes:
+      - "/tmp:/tmp"
