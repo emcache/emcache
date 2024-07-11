@@ -877,6 +877,26 @@ class _Client(Client):
 
         return
 
+    async def shutdown(
+        self,
+        memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
+        *,
+        graceful: bool = False,
+    ) -> None:
+        """
+        Stop memcached with a kill signal(SIGINT). Use graceful param for soft stop server(SIGUSR1).
+        """
+        if self._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        node = self._cluster.node(memcached_host_address)
+        async with OpTimeout(self._timeout, self._loop):
+            async with node.connection() as connection:
+                result = await connection.shutdown_command(graceful)
+
+        if result != b"Connection closed by foreign host":
+            raise CommandError(f"Command finished with error, response returned {result}")
+
 
 async def create_client(
     node_addresses: Sequence[Union[MemcachedHostAddress, MemcachedUnixSocketPath]],

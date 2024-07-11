@@ -774,6 +774,23 @@ class TestClient:
         with pytest.raises(CommandError):
             await client.verbosity(memcached_host_address, -1)
 
+    async def test_shutdown_client_closed(self, client, memcached_host_address):
+        await client.close()
+        with pytest.raises(RuntimeError):
+            await client.shutdown(memcached_host_address)
+
+    async def test_shutdown_error_command(self, client, memcached_host_address):
+        # patch what is necesary for returnning an error string
+        connection = AsyncMock()
+        connection.shutdown_command = AsyncMock(return_value=ERROR)
+        connection_context = AsyncMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.node.return_value = node
+        with pytest.raises(CommandError):
+            await client.shutdown(memcached_host_address)
+
 
 async def test_create_client_default_values(event_loop, mocker):
     client_class = mocker.patch("emcache.client._Client")
