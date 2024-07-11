@@ -197,7 +197,6 @@ class TestVerbosity:
 
 
 class TestShutdown:
-    @pytest.mark.skipif(sys.platform == "darwin", reason="Macos doesn't support connection with memcached mode -A")
     @pytest.mark.parametrize(
         "graceful,address",
         [(False, MemcachedHostAddress("localhost", 11215)), (True, MemcachedHostAddress("localhost", 11216))],
