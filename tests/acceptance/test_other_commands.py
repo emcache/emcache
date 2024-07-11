@@ -6,7 +6,7 @@ import sys
 
 import pytest
 
-from emcache import MemcachedHostAddress, NotFoundCommandError, create_client
+from emcache import MemcachedHostAddress, MemcachedUnixSocketPath, NotFoundCommandError, create_client
 
 pytestmark = pytest.mark.asyncio
 
@@ -199,7 +199,7 @@ class TestVerbosity:
 class TestShutdown:
     @pytest.mark.parametrize(
         "graceful,address",
-        [(False, MemcachedHostAddress("localhost", 11215)), (True, MemcachedHostAddress("localhost", 11216))],
+        [(False, MemcachedHostAddress("localhost", 11215)), (True, MemcachedUnixSocketPath("/tmp/emcache.test3.sock"))],
     )
     async def test_shutdown(self, graceful, address):
         client = await create_client([address], timeout=1.0)
