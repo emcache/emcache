@@ -10,6 +10,7 @@ from typing import Final, List, Optional, Tuple, Union
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
 from .client_errors import AuthenticationError
+from .enums import Stats
 
 try:
     import ssl as ssl_module
@@ -280,7 +281,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
             return
         return await self._extract_one_line_data(data)
 
-    async def stats_command(self, *args: str) -> Optional[bytes]:
+    async def stats_command(self, *args: Stats) -> Optional[bytes]:
         data = b"stats %b\r\n" % " ".join(args).encode() if args else b"stats\r\n"
         return await self._extract_one_line_data(data)
 

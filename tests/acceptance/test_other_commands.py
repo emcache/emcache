@@ -7,6 +7,7 @@ import sys
 import pytest
 
 from emcache import NotFoundCommandError
+from emcache.enums import Stats
 
 pytestmark = pytest.mark.asyncio
 
@@ -183,9 +184,9 @@ class TestStats:
         for node_address in node_addresses:
             default_stats = await client.stats(node_address)
             assert default_stats["version"]
-            settings_stats = await client.stats(node_address, "settings")
+            settings_stats = await client.stats(node_address, Stats.settings)
             assert settings_stats["verbosity"]
-            args_stats = await client.stats(node_address, "settings", "items")
+            args_stats = await client.stats(node_address, Stats.settings, Stats.items)
             assert args_stats["verbosity"]
 
 

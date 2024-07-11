@@ -7,6 +7,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from emcache import MemcachedHostAddress
+from emcache.enums import Stats
 from emcache.protocol import ERROR, OK, MemcacheAsciiProtocol, create_protocol
 
 pytestmark = pytest.mark.asyncio
@@ -408,7 +409,7 @@ class TestMemcacheAsciiProtocol:
 
     async def test_stats_command(self, event_loop, protocol):
         async def coro():
-            return await protocol.stats_command("sizes")
+            return await protocol.stats_command(Stats.sizes)
 
         task = event_loop.create_task(coro())
         await asyncio.sleep(0)

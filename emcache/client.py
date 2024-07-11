@@ -27,6 +27,7 @@ from .default_values import (
     DEFAULT_STARTUP_WAIT_AUTODISCOVERY,
     DEFAULT_TIMEOUT,
 )
+from .enums import Stats
 from .node import Node
 from .protocol import DELETED, END, EXISTS, NOT_FOUND, NOT_STORED, OK, STORED, TOUCHED, VERSION
 from .timeout import OpTimeout
@@ -827,7 +828,7 @@ class _Client(Client):
 
         return
 
-    async def stats(self, memcached_host_address: MemcachedHostAddress, *args: str) -> Dict[str, str]:
+    async def stats(self, memcached_host_address: MemcachedHostAddress, *args: Stats) -> Dict[str, str]:
         """The memcached command via "stats" which show needed statistics about server.
         Client send without arguments - `stats\r\n`, with arguments - `stats <args>\r\n`.
         Depending on the arguments, the server will return statistics to you until it finishes `END\r\n`.
