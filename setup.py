@@ -5,6 +5,7 @@ import os
 import re
 import sys
 
+from Cython.Build import cythonize
 from setuptools import Extension, setup
 
 if sys.platform in ("win32", "cygwin", "cli"):
@@ -19,7 +20,7 @@ MURMUR3_DIR = os.path.join(os.path.dirname(__file__), "vendor", "murmur3")
 extensions = [
     Extension(
         "emcache._cython.cyemcache",
-        sources=["emcache/_cython/cyemcache.c"],
+        sources=["emcache/_cython/cyemcache.pyx"],
         include_dirs=[MURMUR3_DIR],
         library_dirs=[MURMUR3_DIR],
         libraries=["murmur3"],
@@ -34,7 +35,7 @@ dev_requires = [
     "coverage==7.5.3",
     "black==24.4.2",
     "isort==5.13.2",
-    "flake8==7.0.0",
+    "flake8==7.1.0",
 ]
 
 
@@ -60,7 +61,7 @@ setup(
     platforms=["*nix"],
     packages=["emcache"],
     package_data={"emcache": ["py.typed"]},
-    ext_modules=extensions,
+    ext_modules=cythonize(extensions, language_level=3, annotate=False),
     extras_require={"dev": dev_requires},
     classifiers=[
         "Development Status :: 4 - Beta",

@@ -9,19 +9,10 @@ clean:
 	find . -name '__pycache__' | xargs rm -rf
 	find . -type f -name "*.pyc" -delete
 
-.install-cython:
-	$(PIP) install Cython==3.0.10
-	touch .install-cython
-
-emcache/_cython/cyemcache.c: emcache/_cython/cyemcache.pyx
-	$(CYTHON) -3 -o $@ $< -I emcache
-
-cythonize: .install-cython emcache/_cython/cyemcache.c
-
 setup-build:
 	$(PYTHON) setup.py build_ext --inplace
 
-compile: clean cythonize setup-build
+compile: clean setup-build
 
 install-dev: compile
 	$(PIP) install -e ".[dev]"
