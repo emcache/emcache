@@ -20,12 +20,18 @@ services:
       - "11213:11213"
 
   memcached4:
-    image: memcached
+    image: "memcached:alpine"
     command: [ '-p', '11214', '-S', '-Y', '/app/tests/acceptance/data/auth_pwd.txt' ]
     volumes:
       - "./:/app"
     ports:
       - "11214:11214"
+
+  memcached5:
+    image: "memcached:alpine"
+    command: [ '-p', '11215', '-A' ]
+    ports:
+      - "11215:11215"
 
   memcached_unix1:
     image: "memcached:alpine"
@@ -38,5 +44,12 @@ services:
     image: "memcached:alpine"
     container_name: "memcached_unix2"
     command: [ '-s', '/tmp/emcache.test2.sock' ]
+    volumes:
+      - "/tmp:/tmp"
+
+  memcached_unix3:
+    image: "memcached:alpine"
+    container_name: "memcached_unix3"
+    command: [ '-s', '/tmp/emcache.test3.sock', '-A' ]
     volumes:
       - "/tmp:/tmp"

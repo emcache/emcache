@@ -245,7 +245,7 @@ class Client(metaclass=ABCMeta):
         memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
         delay: int = 0,
         *,
-        noreply: bool = False
+        noreply: bool = False,
     ) -> None:
         """Flush all keys in a specific memcached host address.
 
@@ -333,7 +333,7 @@ class Client(metaclass=ABCMeta):
         memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
         level: int,
         *,
-        noreply: bool = False
+        noreply: bool = False,
     ) -> None:
         """Increase level of log verbosity for a memcached server.
         1 - print standard errors/warnings
@@ -342,6 +342,17 @@ class Client(metaclass=ABCMeta):
 
         Send command "verbosity <level> [noreply]\r\n"
         Return always "OK\r\n" if skip noreply and correct command.
+        """
+
+    @abstractmethod
+    async def shutdown(
+        self,
+        memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
+        *,
+        graceful: bool = False,
+    ) -> None:
+        """
+        Stop memcached with a kill signal(SIGINT). Use graceful param for soft stop server(SIGUSR1).
         """
 
 
