@@ -10,6 +10,7 @@ clean:
 	find . -type f -name "*.pyc" -delete
 
 setup-build:
+	$(PIP) install Cython setuptools -U
 	$(PYTHON) setup.py build_ext --inplace
 
 compile: clean setup-build
