@@ -64,7 +64,7 @@ jobs:
     - name: Coverage
       run: |
         if [ ${{ matrix.os }} == 'ubuntu-latest' ]; then
-          docker compose up memcached_unix3 -d
+          docker compose up memcached_unix3 memcached5 -d
           docker exec memcached_unix3 sh -c "chmod a+rw /tmp/emcache.test3.sock"
         elif [ ${{ matrix.os }} == 'macos-latest' ]; then
           memcached -d -p 11215 -A

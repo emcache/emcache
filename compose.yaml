@@ -33,12 +33,6 @@ services:
     ports:
       - "11215:11215"
 
-  memcached6:
-    image: "memcached:alpine"
-    command: [ '-p', '11216', '-A' ]
-    ports:
-      - "11216:11216"
-
   memcached_unix1:
     image: "memcached:alpine"
     container_name: "memcached_unix1"
