@@ -245,7 +245,7 @@ class Client(metaclass=ABCMeta):
         memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
         delay: int = 0,
         *,
-        noreply: bool = False
+        noreply: bool = False,
     ) -> None:
         """Flush all keys in a specific memcached host address.
 
@@ -333,7 +333,7 @@ class Client(metaclass=ABCMeta):
         memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
         level: int,
         *,
-        noreply: bool = False
+        noreply: bool = False,
     ) -> None:
         """Increase level of log verbosity for a memcached server.
         1 - print standard errors/warnings
