@@ -164,7 +164,7 @@ class AutoBatching:
         if self._client.closed:
             raise RuntimeError("Emcache client is closed")
 
-        if cyemcache.is_key_valid(key) is False:
+        if not cyemcache.is_key_valid(key):
             raise ValueError("Key has invalid charcters")
 
         future = self._loop.create_future()
