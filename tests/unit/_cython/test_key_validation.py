@@ -9,7 +9,7 @@ from emcache._cython import cyemcache
 class TestIsKeyValid:
     @pytest.mark.parametrize("key", [b"foo", b"bar", b"foobar", b"foobarfoo", b"123foobarfoo123", "ñ".encode("utf8")])
     def test_valid_keys(self, key):
-        assert not cyemcache.is_key_valid(key)
+        assert cyemcache.is_key_valid(key)
 
     @pytest.mark.parametrize(
         "key",
