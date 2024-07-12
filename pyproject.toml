@@ -44,9 +44,9 @@ Issues = "https://github.com/emcache/emcache/issues"
 Changelog = "https://github.com/emcache/emcache/blob/master/CHANGELOG.md"
 
 [tool.setuptools]
-platforms = ["*nix"]
 packages = ["emcache"]
 package-data = { emcache = ["py.typed"] }
+platforms = ["*nix"]
 
 [tool.black]
 line-length = 120

@@ -22,7 +22,4 @@ extensions = [
     )
 ]
 
-setup(
-    packages=["emcache"],
-    ext_modules=cythonize(extensions, language_level=3, annotate=False),
-)
+setup(ext_modules=cythonize(extensions, language_level=3, annotate=False))
