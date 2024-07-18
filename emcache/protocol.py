@@ -138,7 +138,6 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         return self._closed
 
     def data_received(self, data: bytes) -> None:
-        print(data)
         if self._parser is None:
             raise RuntimeError(f"Receiving data when no parser is conifgured {data}")
 

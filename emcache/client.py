@@ -717,7 +717,8 @@ class _Client(Client):
         if not result or not result.startswith(VERSION):
             raise CommandError(f"Command finished with error, response returned {result}")
 
-        return result.removeprefix(b"VERSION ").decode()
+        _, num = result.split(b" ")
+        return num.decode()
 
     async def gat(self, exptime: int, key: bytes, return_flags=False) -> Optional[Item]:
         """Gat command is used to fetch item and update the
