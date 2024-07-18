@@ -941,7 +941,7 @@ class _Pipeline(Pipeline):
                 raise ValueError("Key has invalid charcters")
         return b"%b %a %b\r\n" % (command, exptime, b" ".join(keys))
 
-    async def execute(self) -> list[Union[str, dict]]:
+    async def execute(self) -> List[Union[str, Dict]]:
         """Accumulate commands and push on memcached server."""
         if self.client._closed:
             raise RuntimeError("Emcache client is closed")
