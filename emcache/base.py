@@ -344,6 +344,114 @@ class Client(metaclass=ABCMeta):
         Return always "OK\r\n" if skip noreply and correct command.
         """
 
+    @abstractmethod
+    def pipeline(self, memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath]) -> "Pipeline":
+        """Return Pipeline object which support execute many commands to the Memcached server in one step."""
+
+
+class Pipeline(metaclass=ABCMeta):
+    @abstractmethod
+    async def execute(self):
+        """Accumulate commands and push on memcached server."""
+
+    @abstractmethod
+    def get(self, key: bytes) -> "Pipeline":
+        """Push memcached `get` command in stack."""
+
+    @abstractmethod
+    def gets(self, key: bytes) -> "Pipeline":
+        """Push memcached `gets` command in stack."""
+
+    @abstractmethod
+    def get_many(self, keys: Sequence[bytes]) -> "Pipeline":
+        """Push memcached `get*` command in stack."""
+
+    @abstractmethod
+    def gets_many(self, keys: Sequence[bytes]) -> "Pipeline":
+        """Push memcached `gets*` command in stack."""
+
+    @abstractmethod
+    async def set(
+        self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False
+    ) -> "Pipeline":
+        """Push memcached `set` command in stack."""
+
+    @abstractmethod
+    def add(self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False) -> "Pipeline":
+        """Push memcached `add` command in stack."""
+
+    @abstractmethod
+    def replace(
+        self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False
+    ) -> "Pipeline":
+        """Push memcached `replace` command in stack."""
+
+    @abstractmethod
+    def append(self, key: bytes, value: bytes, *, noreply: bool = False) -> "Pipeline":
+        """Push memcached `append` command in stack."""
+
+    @abstractmethod
+    def prepend(self, key: bytes, value: bytes, *, noreply: bool = False) -> "Pipeline":
+        """Push memcached `prepend` command in stack."""
+
+    @abstractmethod
+    def cas(
+        self, key: bytes, value: bytes, cas: int, *, flags: int = 0, exptime: int = 0, noreply: bool = False
+    ) -> "Pipeline":
+        """Push memcached `cas` command in stack."""
+
+    @abstractmethod
+    def increment(self, key: bytes, value: int, *, noreply: bool = False) -> "Pipeline":
+        """Push memcached `increment` command in stack."""
+
+    @abstractmethod
+    def decrement(self, key: bytes, value: int, *, noreply: bool = False) -> "Pipeline":
+        """Push memcached `decrement` command in stack."""
+
+    @abstractmethod
+    def touch(self, key: bytes, exptime: int, *, noreply: bool = False) -> "Pipeline":
+        """Push memcached `touch` command in stack."""
+
+    @abstractmethod
+    def delete(self, key: bytes, *, noreply: bool = False) -> "Pipeline":
+        """Push memcached `delete` command in stack."""
+
+    @abstractmethod
+    def flush_all(self, delay: int = 0, *, noreply: bool = False) -> "Pipeline":
+        """Push memcached `flush_all` command in stack."""
+
+    @abstractmethod
+    def version(self) -> "Pipeline":
+        """Push memcached `version` command in stack."""
+
+    @abstractmethod
+    def gat(self, exptime: int, key: bytes) -> "Pipeline":
+        """Push memcached `gat` command in stack."""
+
+    @abstractmethod
+    def gats(self, exptime: int, key: bytes) -> "Pipeline":
+        """Push memcached `gats` command in stack."""
+
+    @abstractmethod
+    def gat_many(self, exptime: int, keys: Sequence[bytes]) -> "Pipeline":
+        """Push memcached `gat*` command in stack."""
+
+    @abstractmethod
+    def gats_many(self, exptime: int, keys: Sequence[bytes]) -> "Pipeline":
+        """Push memcached `gats*` command in stack."""
+
+    @abstractmethod
+    def cache_memlimit(self, value: int, *, noreply: bool = False) -> "Pipeline":
+        """Push memcached `cache_memlimit` command in stack."""
+
+    @abstractmethod
+    def stats(self, *args: str) -> "Pipeline":
+        """Push memcached `stats` command in stack."""
+
+    @abstractmethod
+    def verbosity(self, level: int, *, noreply: bool = False) -> "Pipeline":
+        """Push memcached `verbosity` command in stack."""
+
 
 class ClusterEvents(metaclass=ABCMeta):
     """ClusterEvents can be used for being notified about different

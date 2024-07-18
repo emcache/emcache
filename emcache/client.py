@@ -9,9 +9,10 @@ from typing import Dict, List, Optional, Sequence, Tuple, Union
 from ._address import MemcachedHostAddress, MemcachedUnixSocketPath
 from ._cython import cyemcache
 from .autobatching import AutoBatching
-from .base import Client, ClusterEvents, ClusterManagment, Item
+from .base import Client, ClusterEvents, ClusterManagment, Item, Pipeline
 from .client_errors import CommandError, NotFoundCommandError, NotStoredStorageCommandError, StorageCommandError
 from .cluster import Cluster
+from .constants import regex_memcached_responses
 from .default_values import (
     DEFAULT_AUTOBATCHING_ENABLED,
     DEFAULT_AUTOBATCHING_MAX_KEYS,
@@ -716,8 +717,7 @@ class _Client(Client):
         if not result or not result.startswith(VERSION):
             raise CommandError(f"Command finished with error, response returned {result}")
 
-        _, version_value = result.split(b" ")
-        return version_value.decode()
+        return result.removeprefix(b"VERSION ").decode()
 
     async def gat(self, exptime: int, key: bytes, return_flags=False) -> Optional[Item]:
         """Gat command is used to fetch item and update the
@@ -876,6 +876,242 @@ class _Client(Client):
             raise CommandError(f"Command finished with error, response returned {result}")
 
         return
+
+    def pipeline(self, memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath]) -> "_Pipeline":
+        return _Pipeline(memcached_host_address, self)
+
+
+class _Pipeline(Pipeline):
+    def __init__(
+        self, memcached_host_address: Union[MemcachedHostAddress, MemcachedUnixSocketPath], client: _Client
+    ) -> None:
+        self.memcached_host_address = memcached_host_address
+        self.client = client
+        self.stack = []
+
+    async def __aenter__(self: "_Pipeline") -> "_Pipeline":
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.stack = []
+
+    def _retrieval_command(self, command: bytes, keys: Sequence[bytes]) -> bytes:
+        """Proxy function used for all fetch many commands `get_many`, `gets_many`"""
+        for key in keys:
+            if cyemcache.is_key_valid(key) is False:
+                raise ValueError("Key has invalid charcters")
+        return b"%b %b\r\n" % (command, b" ".join(keys))
+
+    def _storage_command(
+        self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool, cas: int = None
+    ) -> bytes:
+        """Proxy function used for all storage commands `add`, `set`,
+        `replace`, `append` and `prepend`.
+        """
+        if cas is not None and cas > MAX_ALLOWED_CAS_VALUE:
+            raise ValueError(f"flags can not be higher than {MAX_ALLOWED_FLAG_VALUE}")
+
+        if flags > MAX_ALLOWED_FLAG_VALUE:
+            raise ValueError(f"flags can not be higher than {MAX_ALLOWED_FLAG_VALUE}")
+
+        if cyemcache.is_key_valid(key) is False:
+            raise ValueError("Key has invalid charcters")
+
+        if cas is not None:
+            extra = b" %a" % cas if not noreply else b" %a noreply" % cas
+        else:
+            extra = b"" if not noreply else b" noreply"
+
+        return b"%b %b %a %a %a%b\r\n%b\r\n" % (command, key, flags, exptime, len(value), extra, value)
+
+    def _incr_decr_command(self, command: bytes, key: bytes, value: int, noreply: bool) -> bytes:
+        """Proxy function used for incr and decr."""
+        if value < 0:
+            raise ValueError("Incr or Decr by a positive value number expected")
+
+        if cyemcache.is_key_valid(key) is False:
+            raise ValueError("Key has invalid charcters")
+
+        return b"%b %b %a%b\r\n" % (command, key, value, b" noreply" if noreply else b"")
+
+    def _get_and_touch_command(self, command: bytes, exptime: int, keys: Sequence[bytes]) -> bytes:
+        """Proxy function used for all get_and_touch many commands `gat_many`, `gats_many`"""
+        for key in keys:
+            if cyemcache.is_key_valid(key) is False:
+                raise ValueError("Key has invalid charcters")
+        return b"%b %a %b\r\n" % (command, exptime, b" ".join(keys))
+
+    async def execute(self) -> list[str | dict]:
+        """Accumulate commands and push on memcached server."""
+        if self.client._closed:
+            raise RuntimeError("Emcache client is closed")
+
+        commands = b"".join(self.stack)
+        node = self.client._cluster.node(self.memcached_host_address)
+        async with OpTimeout(self.client._timeout, self.client._loop):
+            async with node.connection() as connection:
+                result = await connection._extract_pipeline_data(commands)
+
+        response = []
+
+        for i in regex_memcached_responses.finditer(result.decode()):
+            groups = i.groupdict()
+            if error_message := groups["error_message"]:
+                response.append(error_message)
+            elif client_error := groups["client_error"]:
+                response.append(client_error)
+            elif groups["error"]:
+                response.append("ERROR")
+            elif groups["stored"]:
+                response.append("STORED")
+            elif groups["not_stored"]:
+                response.append("NOT_STORED")
+            elif groups["exists"]:
+                response.append("EXISTS")
+            elif groups["not_found"]:
+                response.append("NOT_FOUND")
+            elif groups["end"]:
+                response.append("END")
+            elif groups["value"]:
+                response.append(
+                    Item(groups["data"], int(groups["flags"]), int(groups["cas"]) if groups["cas"] else None)
+                )
+            elif groups["deleted"]:
+                response.append("DELETED")
+            elif groups["touched"]:
+                response.append("TOUCHED")
+            elif version := groups["version"]:
+                response.append(version.removeprefix("VERSION "))
+            elif groups["ok"]:
+                response.append("OK")
+            elif stats := groups["stats"]:
+                response.append(dict(s.groups() for s in re.finditer(r"STAT (.+) (.+)\r\n", stats)))
+            elif incr_decr_value := groups["incr_decr_value"]:
+                response.append(int(incr_decr_value))
+            else:
+                ...
+
+        self.stack = []
+        return response
+
+    def get(self, key: bytes) -> "_Pipeline":
+        """Push memcached `get` command in stack."""
+        self.stack.append(self._retrieval_command(b"get", (key,)))
+        return self
+
+    def gets(self, key: bytes) -> "_Pipeline":
+        """Push memcached `gets` command in stack."""
+        self.stack.append(self._retrieval_command(b"gets", (key,)))
+        return self
+
+    def get_many(self, keys: Sequence[bytes]) -> "_Pipeline":
+        """Push memcached `get*` command in stack."""
+        self.stack.append(self._retrieval_command(b"get", keys))
+        return self
+
+    def gets_many(self, keys: Sequence[bytes]) -> "_Pipeline":
+        """Push memcached `gets*` command in stack."""
+        self.stack.append(self._retrieval_command(b"gets", keys))
+        return self
+
+    def set(self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False) -> "_Pipeline":
+        """Push memcached `set` command in stack."""
+        self.stack.append(self._storage_command(b"set", key, value, flags, exptime, noreply))
+        return self
+
+    def add(self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False) -> "_Pipeline":
+        """Push memcached `add` command in stack."""
+        self.stack.append(self._storage_command(b"add", key, value, flags, exptime, noreply))
+        return self
+
+    def replace(
+        self, key: bytes, value: bytes, *, flags: int = 0, exptime: int = 0, noreply: bool = False
+    ) -> "_Pipeline":
+        """Push memcached `replace` command in stack."""
+        self.stack.append(self._storage_command(b"replace", key, value, flags, exptime, noreply))
+        return self
+
+    def append(self, key: bytes, value: bytes, *, noreply: bool = False) -> "_Pipeline":
+        """Push memcached `append` command in stack."""
+        self.stack.append(self._storage_command(b"append", key, value, 0, 0, noreply))
+        return self
+
+    def prepend(self, key: bytes, value: bytes, *, noreply: bool = False) -> "_Pipeline":
+        """Push memcached `prepend` command in stack."""
+        self.stack.append(self._storage_command(b"prepend", key, value, 0, 0, noreply))
+        return self
+
+    def cas(
+        self, key: bytes, value: bytes, cas: int, *, flags: int = 0, exptime: int = 0, noreply: bool = False
+    ) -> "_Pipeline":
+        """Push memcached `cas` command in stack."""
+        self.stack.append(self._storage_command(b"cas", key, value, flags, exptime, noreply, cas))
+        return self
+
+    def increment(self, key: bytes, value: int, *, noreply: bool = False) -> "_Pipeline":
+        """Push memcached `increment` command in stack."""
+        self.stack.append(self._incr_decr_command(b"incr", key, value, noreply))
+        return self
+
+    def decrement(self, key: bytes, value: int, *, noreply: bool = False) -> "_Pipeline":
+        """Push memcached `decrement` command in stack."""
+        self.stack.append(self._incr_decr_command(b"decr", key, value, noreply))
+        return self
+
+    def touch(self, key: bytes, exptime: int, *, noreply: bool = False) -> "_Pipeline":
+        """Push memcached `touch` command in stack."""
+        self.stack.append(b"touch %b %a%b\r\n" % (key, exptime, b" noreply" if noreply else b""))
+        return self
+
+    def delete(self, key: bytes, *, noreply: bool = False) -> "_Pipeline":
+        """Push memcached `delete` command in stack."""
+        self.stack.append(b"delete %b%b\r\n" % (key, b" noreply" if noreply else b""))
+        return self
+
+    def flush_all(self, delay: int = 0, *, noreply: bool = False) -> "_Pipeline":
+        """Push memcached `flush_all` command in stack."""
+        self.stack.append(b"flush_all %a%b\r\n" % (delay, b" noreply" if noreply else b""))
+        return self
+
+    def version(self) -> "_Pipeline":
+        """Push memcached `version` command in stack."""
+        self.stack.append(b"version\r\n")
+        return self
+
+    def gat(self, exptime: int, key: bytes) -> "_Pipeline":
+        """Push memcached `gat` command in stack."""
+        self.stack.append(self._get_and_touch_command(b"gat", exptime, (key,)))
+        return self
+
+    def gats(self, exptime: int, key: bytes) -> "_Pipeline":
+        """Push memcached `gats` command in stack."""
+        self.stack.append(self._get_and_touch_command(b"gats", exptime, (key,)))
+        return self
+
+    def gat_many(self, exptime: int, keys: Sequence[bytes]) -> "_Pipeline":
+        """Push memcached `gat*` command in stack."""
+        self.stack.append(self._get_and_touch_command(b"gat", exptime, keys))
+        return self
+
+    def gats_many(self, exptime: int, keys: Sequence[bytes]) -> "_Pipeline":
+        """Push memcached `gats*` command in stack."""
+        self.stack.append(self._get_and_touch_command(b"gats", exptime, keys))
+        return self
+
+    def cache_memlimit(self, value: int, *, noreply: bool = False) -> "_Pipeline":
+        """Push memcached `cache_memlimit` command in stack."""
+        self.stack.append(b"cache_memlimit %a%b\r\n" % (value, b" noreply" if noreply else b""))
+        return self
+
+    def stats(self, *args: str) -> "_Pipeline":
+        """Push memcached `stats` command in stack."""
+        self.stack.append(b"stats %b\r\n" % " ".join(args).encode() if args else b"stats\r\n")
+        return self
+
+    def verbosity(self, level: int, *, noreply: bool = False) -> "_Pipeline":
+        """Push memcached `verbosity` command in stack."""
+        self.stack.append(b"verbosity %a%b\r\n" % (level, b" noreply" if noreply else b""))
+        return self
 
 
 async def create_client(

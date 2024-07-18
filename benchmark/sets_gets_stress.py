@@ -89,18 +89,8 @@ async def main():
         help="Memcache port, by default 11211. Multiple addresses can be provided using a coma seaparator",
         default="11211",
     )
-    parser.add_argument(
-        "--concurrency",
-        help="Number of concurrency clients, by default 32",
-        type=int,
-        default=32,
-    )
-    parser.add_argument(
-        "--duration",
-        help="Test duration in seconds, by default 60",
-        type=int,
-        default=60,
-    )
+    parser.add_argument("--concurrency", help="Number of concurrency clients, by default 32", type=int, default=32)
+    parser.add_argument("--duration", help="Test duration in seconds, by default 60", type=int, default=60)
     parser.add_argument(
         "--test",
         help="Test to be executed set_get, set_get_autobatching or set_get_many, by default sets and gets stress",

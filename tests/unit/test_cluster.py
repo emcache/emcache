@@ -338,7 +338,7 @@ class TestCluster:
                     None,
                     None,
                     None,
-                ),
+                )
             ]
         )
 
@@ -648,10 +648,7 @@ class TestCluster:
 
         # Check that hooks were called by just waiting for the events
         await asyncio.wait(
-            {
-                asyncio.create_task(ev_cb_on_healthy_node.wait()),
-                asyncio.create_task(ev_cb_on_unhealthy_node.wait()),
-            }
+            {asyncio.create_task(ev_cb_on_healthy_node.wait()), asyncio.create_task(ev_cb_on_unhealthy_node.wait())}
         )
 
         # Check that the instance of the cluster managment was the right one

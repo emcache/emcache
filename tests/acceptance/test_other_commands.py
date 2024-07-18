@@ -194,3 +194,63 @@ class TestVerbosity:
     async def test_verbosity(self, client, node_addresses, noreply):
         for node_address in node_addresses:
             assert await client.verbosity(node_address, 2, noreply=noreply) is None
+
+
+class TestPipeline:
+    async def test_pipeline(self, client, node_addresses):
+        count_commands = 17
+        for node_address in node_addresses:
+            async with client.pipeline(node_address) as pipe:
+                (
+                    pipe.version()
+                    .version()
+                    .version()
+                    .stats()
+                    .stats()
+                    .stats()
+                    .stats()
+                    .version()
+                    .get(b"key")
+                    .delete(b"key")
+                    .get(b"key")
+                    .set(b"key", b"value")
+                    .get(b"key")
+                    .delete(b"key")
+                    .version()
+                    .stats()
+                    .stats()
+                )
+                result = await pipe.execute()
+            assert count_commands == len(result)
+
+    async def test_pipeline_all_commands(self, client, node_addresses):
+        count_commands = 22
+        for node_address in node_addresses:
+            async with client.pipeline(node_address) as pipe:
+                (
+                    pipe.get(b"key")
+                    .gets(b"key")
+                    .get_many((b"key1", b"key2"))
+                    .gets_many((b"key1", b"key2"))
+                    .gat(0, b"key")
+                    .gats(0, b"key")
+                    .gat_many(0, (b"key1", b"key2"))
+                    .gats_many(0, (b"key1", b"key2"))
+                    .set(b"key", b"value")
+                    .add(b"key", b"value")
+                    .replace(b"key", b"value")
+                    .append(b"key", b"value")
+                    .prepend(b"key", b"value")
+                    .cas(b"key", b"value", 0)
+                    .increment(b"key", 1)
+                    .decrement(b"key", 1)
+                    .touch(b"key", 1)
+                    .delete(b"key")
+                    .flush_all()
+                    .version()
+                    .stats()
+                    .verbosity(1)
+                )
+                result = await pipe.execute()
+
+        assert count_commands == len(result)
