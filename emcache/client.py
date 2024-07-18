@@ -717,7 +717,7 @@ class _Client(Client):
         if not result or not result.startswith(VERSION):
             raise CommandError(f"Command finished with error, response returned {result}")
 
-        _, num = result.split(b" ")
+        _, num = result.split(b" ", 1)
         return num.decode()
 
     async def gat(self, exptime: int, key: bytes, return_flags=False) -> Optional[Item]:
@@ -982,7 +982,7 @@ class _Pipeline(Pipeline):
             elif groups["touched"]:
                 response.append("TOUCHED")
             elif version := groups["version"]:
-                response.append(version.removeprefix("VERSION "))
+                response.append(version.split(" ", 1)[1])
             elif groups["ok"]:
                 response.append("OK")
             elif stats := groups["stats"]:
