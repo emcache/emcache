@@ -8,11 +8,7 @@ import mmh3
 from emcache._cython import cyemcache
 
 NUM_ITERATIONS = 1_000_000
-KEYS = [
-    b"12345678",
-    b"123456789101112123134",
-    b"12345678123123123123123123123",
-]
+KEYS = [b"12345678", b"123456789101112123134", b"12345678123123123123123123123"]
 
 
 async def mmh3_hash32(num_hashes):

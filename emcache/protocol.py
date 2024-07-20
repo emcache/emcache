@@ -194,6 +194,20 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         finally:
             self._parser = None
 
+    async def _extract_pipeline_data(self, data: bytes):
+        future = self._loop.create_future()
+        parser = cyemcache.AsciiPipeLineParser(future)
+        self._parser = parser
+        self._transport.write(data + b"mn\r\n")
+        try:
+            await future
+        except asyncio.CancelledError:
+            logger.warning("Canceled future of parsing pipeline. Error response: %s", future)
+        else:
+            return parser.value()
+        finally:
+            self._parser = None
+
     async def fetch_command(
         self, cmd: bytes, keys: Tuple[bytes]
     ) -> Tuple[List[bytes], List[bytes], List[int], List[int], bytearray]:
@@ -203,7 +217,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
     async def storage_command(
         self, command: bytes, key: bytes, value: bytes, flags: int, exptime: int, noreply: bool, cas: Optional[int]
     ) -> Optional[bytes]:
-        if cas:
+        if cas is not None:
             extra = b" %a" % cas if not noreply else b" %a noreply" % cas
         else:
             extra = b"" if not noreply else b" noreply"
