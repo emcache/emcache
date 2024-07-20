@@ -34,12 +34,10 @@ cdef class AsciiMultiLineParser:
             return
         
         c_buffer = self.buffer_
-        if len_ >= 5:
-            if strcmp(<const char *> c_buffer + (len_ - 5), END) == 0:
+        if len_ >= 5 and strcmp(<const char *> c_buffer + (len_ - 5), END) == 0:
                 self._parse(len_)
                 self.future.set_result(None)
-        if len_ >= 12:
-            if strncmp(<const char *> c_buffer, CLIENT_ERROR, 12) == 0:
+        if len_ >= 12 and strncmp(<const char *> c_buffer, CLIENT_ERROR, 12) == 0:
                 self.client_error_ = self.buffer_
                 self.future.set_result(None)
 
