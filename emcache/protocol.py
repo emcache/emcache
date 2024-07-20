@@ -198,8 +198,7 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         future = self._loop.create_future()
         parser = cyemcache.AsciiPipeLineParser(future)
         self._parser = parser
-        self._transport.write(data)
-        self._transport.write(b"mn\r\n")
+        self._transport.write(data + b"mn\r\n")
         try:
             await future
         except asyncio.CancelledError:
