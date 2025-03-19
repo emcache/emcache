@@ -1,24 +1,29 @@
 # MIT License
 # Copyright (c) 2020-2024 Pau Freixes
 
+import sys
 import time
 
 import pytest
 
 from emcache import MemcachedHostAddress, MemcachedUnixSocketPath, create_client
 
-
-@pytest.fixture(
-    params=[
-        pytest.param(
-            [MemcachedHostAddress("localhost", 11211), MemcachedHostAddress("localhost", 11212)], id="tcp_client"
-        ),
+NODE_ADDRESS_PARAMS = [
+    pytest.param(
+        [MemcachedHostAddress("localhost", 11211), MemcachedHostAddress("localhost", 11212)],
+        id="tcp_client"
+    )
+]
+if sys.platform != "darwin":
+    NODE_ADDRESS_PARAMS.append(
         pytest.param(
             [MemcachedUnixSocketPath("/tmp/emcache.test1.sock"), MemcachedUnixSocketPath("/tmp/emcache.test2.sock")],
-            id="unix_client",
-        ),
-    ]
-)
+            id="unix_client"
+        )
+    )
+
+
+@pytest.fixture(params=NODE_ADDRESS_PARAMS)
 def node_addresses(request):
     return request.param
 

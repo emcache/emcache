@@ -44,7 +44,7 @@ acceptance:
 unit:
 	pytest -sv tests/unit
 
-test: 
+test:
 	pytest -sv tests
 
 coverage:
