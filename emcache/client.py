@@ -160,7 +160,7 @@ class _Client(Client):
         if flags > MAX_ALLOWED_FLAG_VALUE:
             raise ValueError(f"flags can not be higher than {MAX_ALLOWED_FLAG_VALUE}")
 
-        if cyemcache.is_key_valid(key) is False:
+        if not cyemcache.is_key_valid(key):
             raise ValueError("Key has invalid charcters")
 
         node = self._cluster.pick_node(key)
@@ -176,7 +176,7 @@ class _Client(Client):
         if value < 0:
             raise ValueError("Incr or Decr by a positive value number expected")
 
-        if cyemcache.is_key_valid(key) is False:
+        if not cyemcache.is_key_valid(key):
             raise ValueError("Key has invalid charcters")
 
         node = self._cluster.pick_node(key)
@@ -189,7 +189,7 @@ class _Client(Client):
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
-        if cyemcache.is_key_valid(key) is False:
+        if not cyemcache.is_key_valid(key):
             raise ValueError("Key has invalid charcters")
 
         node = self._cluster.pick_node(key)
@@ -208,7 +208,7 @@ class _Client(Client):
             return {}
 
         for key in keys:
-            if cyemcache.is_key_valid(key) is False:
+            if not cyemcache.is_key_valid(key):
                 raise ValueError("Key has invalid charcters")
 
         async def node_operation(node: Node, keys: List[bytes]):
@@ -237,7 +237,7 @@ class _Client(Client):
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
-        if cyemcache.is_key_valid(key) is False:
+        if not cyemcache.is_key_valid(key):
             raise ValueError("Key has invalid charcters")
 
         node = self._cluster.pick_node(key)
@@ -256,7 +256,7 @@ class _Client(Client):
             return {}
 
         for key in keys:
-            if cyemcache.is_key_valid(key) is False:
+            if not cyemcache.is_key_valid(key):
                 raise ValueError("Key has invalid charcters")
 
         async def node_operation(node: Node, keys: List[bytes]):
@@ -616,7 +616,7 @@ class _Client(Client):
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
-        if cyemcache.is_key_valid(key) is False:
+        if not cyemcache.is_key_valid(key):
             raise ValueError("Key has invalid charcters")
 
         node = self._cluster.pick_node(key)
@@ -645,7 +645,7 @@ class _Client(Client):
         if self._closed:
             raise RuntimeError("Emcache client is closed")
 
-        if cyemcache.is_key_valid(key) is False:
+        if not cyemcache.is_key_valid(key):
             raise ValueError("Key has invalid charcters")
 
         node = self._cluster.pick_node(key)
