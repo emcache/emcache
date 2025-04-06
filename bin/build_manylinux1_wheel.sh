@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+
 if [ $PYTHON_VERSION == "3.8" ]
 then
     PYTHON=/opt/python/cp38-cp38/bin/python
@@ -37,9 +39,8 @@ fi
 cd /io/vendor/murmur3
 make static
 cd /io
-${PYTHON} -m pip install --upgrade pip
-${PIP} install Cython
-${PIP} install auditwheel
+${PYTHON} -m pip install -U pip
+${PIP} install Cython auditwheel
 PYTHON=${PYTHON} PIP=${PIP} CYTHON=${CYTHON} make compile
 ${PYTHON} setup.py bdist_wheel
 ${AUDITWHEEL} repair dist/emcache-*.whl -w dist
