@@ -500,6 +500,36 @@ class TestMemcacheAsciiProtocol:
         # check that the protocol is yes or yes set to None
         assert protocol._parser is None
 
+    async def test_shutdown_command(self, event_loop, protocol):
+        async def coro():
+            return await protocol.shutdown_command(graceful=True)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"Connection closed by foreign host\r\n")
+
+        result = await task
+
+        assert result == b"Connection closed by foreign host"
+
+        protocol._transport.write.assert_called_with(b"shutdown graceful\r\n")
+
+    async def test_shutdown_command_with_error(self, event_loop, protocol):
+        async def coro():
+            return await protocol.shutdown_command(graceful=False)
+
+        task = event_loop.create_task(coro())
+        await asyncio.sleep(0)
+
+        protocol.data_received(b"ERROR\r\n")
+
+        result = await task
+
+        assert result == ERROR
+
+        protocol._transport.write.assert_called_with(b"shutdown\r\n")
+
 
 async def test_create_protocol(event_loop, mocker):
     loop_mock = Mock()

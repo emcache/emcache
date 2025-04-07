@@ -49,15 +49,26 @@ jobs:
         memcached -d -p 11213 --enable-ssl -o ssl_chain_cert=./tests/acceptance/data/localhost.crt,ssl_key=./tests/acceptance/data/localhost.key
         memcached -d -s /tmp/emcache.test1.sock
         memcached -d -s /tmp/emcache.test2.sock
+        memcached -d -p 11215 -A
+        memcached -d -s /tmp/emcache.test3.sock -A
     - name: Docker dependencies
       if: ${{ matrix.os == 'ubuntu-latest' }}
       run: |
         docker compose up -d
         docker exec memcached_unix1 sh -c "chmod a+rw /tmp/emcache.test1.sock"
         docker exec memcached_unix2 sh -c "chmod a+rw /tmp/emcache.test2.sock"
+        docker exec memcached_unix3 sh -c "chmod a+rw /tmp/emcache.test3.sock"
     - name: Test
       run: |
         make test
     - name: Coverage
       run: |
+        if [ ${{ matrix.os }} == 'ubuntu-latest' ]; then
+          docker compose up memcached_unix3 memcached5 -d
+          docker exec memcached_unix3 sh -c "chmod a+rw /tmp/emcache.test3.sock"
+        elif [ ${{ matrix.os }} == 'macos-latest' ]; then
+          memcached -d -p 11215 -A
+          memcached -d -s /tmp/emcache.test3.sock -A
+        fi
+
         make coverage

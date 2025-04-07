@@ -299,6 +299,11 @@ class MemcacheAsciiProtocol(asyncio.Protocol):
         data = b"set _ _ _ %a\r\n%b\r\n" % (len(value), value)
         return await self._extract_one_line_data(data)
 
+    async def shutdown_command(self, graceful: bool) -> Optional[bytes]:
+        extra = b" graceful" if graceful else b""
+        data = b"shutdown%b\r\n" % extra
+        return await self._extract_one_line_data(data)
+
 
 async def create_protocol(
     address: Union[MemcachedHostAddress, MemcachedUnixSocketPath],
