@@ -23,6 +23,7 @@ from emcache.default_values import (
     DEFAULT_SSL_VERIFY,
     DEFAULT_TIMEOUT,
 )
+from emcache.enums import Watcher
 from emcache.protocol import DELETED, ERROR, NOT_FOUND, STORED, TOUCHED
 
 pytestmark = pytest.mark.asyncio
@@ -325,6 +326,22 @@ class TestClient:
 
         optimeout_class.assert_called()
 
+    @pytest.mark.parametrize("command", ["get", "gets"])
+    async def test_fetch_command_client_error(self, client, command, mocker):
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
+
+        connection = AsyncMock()
+        connection.fetch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0], bytearray(b"CLIENT_ERROR")])
+        connection_context = AsyncMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        f = getattr(client, command)
+        with pytest.raises(CommandError):
+            await f(b"foo")
+        optimeout_class.assert_called()
+
     @pytest.mark.parametrize("command", ["gat", "gats"])
     async def test_get_and_touch_command_use_timeout(self, client, command, mocker):
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
@@ -339,6 +356,24 @@ class TestClient:
         f = getattr(client, command)
         await f(0, b"foo")
 
+        optimeout_class.assert_called()
+
+    @pytest.mark.parametrize("command", ["gat", "gats"])
+    async def test_get_and_touch_command_client_error(self, client, command, mocker):
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
+
+        connection = AsyncMock()
+        connection.get_and_touch_command = AsyncMock(
+            return_value=[[b"foo"], [b"value"], [0], [0], bytearray(b"CLIENT_ERROR")]
+        )
+        connection_context = AsyncMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_node.return_value = node
+        f = getattr(client, command)
+        with pytest.raises(CommandError):
+            await f(0, b"foo")
         optimeout_class.assert_called()
 
     @pytest.mark.parametrize("command", ["get", "gets"])
@@ -383,6 +418,23 @@ class TestClient:
 
         optimeout_class.assert_called()
 
+    @pytest.mark.parametrize("command", ["get_many", "gets_many"])
+    async def test_fetch_many_command_client_error(self, client, command, mocker):
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
+
+        connection = AsyncMock()
+        connection.fetch_command = AsyncMock(return_value=[[b"foo"], [b"value"], [0], [0], bytearray(b"CLIENT_ERROR")])
+        connection_context = AsyncMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_nodes.return_value = {node: [b"foo"]}
+        f = getattr(client, command)
+        with pytest.raises(CommandError):
+            await f([b"foo"])
+
+        optimeout_class.assert_called()
+
     @pytest.mark.parametrize("command", ["gat_many", "gats_many"])
     async def test_get_and_touch_many_command_use_timeout(self, client, command, mocker):
         optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
@@ -396,6 +448,25 @@ class TestClient:
         client._cluster.pick_nodes.return_value = {node: [b"foo"]}
         f = getattr(client, command)
         await f(0, [b"foo"])
+
+        optimeout_class.assert_called()
+
+    @pytest.mark.parametrize("command", ["gat_many", "gats_many"])
+    async def test_get_and_touch_many_command_client_error(self, client, command, mocker):
+        optimeout_class = mocker.patch("emcache.client.OpTimeout", MagicMock())
+
+        connection = AsyncMock()
+        connection.get_and_touch_command = AsyncMock(
+            return_value=[[b"foo"], [b"value"], [0], [0], bytearray(b"CLIENT_ERROR")]
+        )
+        connection_context = AsyncMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.pick_nodes.return_value = {node: [b"foo"]}
+        f = getattr(client, command)
+        with pytest.raises(CommandError):
+            await f(0, [b"foo"])
 
         optimeout_class.assert_called()
 
@@ -773,6 +844,28 @@ class TestClient:
         client._cluster.node.return_value = node
         with pytest.raises(CommandError):
             await client.verbosity(memcached_host_address, -1)
+
+    async def test_watch_client_closed(self, client, memcached_host_address):
+        async def my_event_handler(data):
+            pass
+
+        await client.close()
+        with pytest.raises(RuntimeError):
+            await client.watch(my_event_handler, memcached_host_address, Watcher.fetchers)
+
+    async def test_watch_error_command(self, client, memcached_host_address):
+        async def my_event_handler(data):
+            pass
+
+        connection = AsyncMock()
+        connection.watch_command = AsyncMock(return_value=b"ERROR")
+        connection_context = AsyncMock()
+        connection_context.__aenter__.return_value = connection
+        node = Mock()
+        node.connection.return_value = connection_context
+        client._cluster.node.return_value = node
+        with pytest.raises(CommandError):
+            await client.watch(my_event_handler, memcached_host_address, "fake")
 
 
 async def test_create_client_default_values(event_loop, mocker):
