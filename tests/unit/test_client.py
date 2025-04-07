@@ -23,6 +23,7 @@ from emcache.default_values import (
     DEFAULT_SSL_VERIFY,
     DEFAULT_TIMEOUT,
 )
+from emcache.enums import Stats
 from emcache.protocol import DELETED, ERROR, NOT_FOUND, STORED, TOUCHED
 
 pytestmark = pytest.mark.asyncio
@@ -743,7 +744,7 @@ class TestClient:
     async def test_stats_client_closed(self, client, memcached_host_address):
         await client.close()
         with pytest.raises(RuntimeError):
-            await client.stats(memcached_host_address, "settings")
+            await client.stats(memcached_host_address, Stats.settings)
 
     async def test_stats_error_command(self, client, memcached_host_address):
         # patch what is necesary for returnning an error string
