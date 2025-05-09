@@ -1,6 +1,10 @@
+1.3.1
+================
+- Support for Python 3.13
+
 1.3.0
 ================
-- Suppot for SASL authentication [143](https://github.com/emcache/emcache/pull/143)
+- Support for SASL authentication [143](https://github.com/emcache/emcache/pull/143)
 - Added also support for the following commands: `cache_memlimit`, `stats` and `verbosity`
 
 1.2.2
