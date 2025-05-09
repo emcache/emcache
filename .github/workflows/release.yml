@@ -159,13 +159,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4.1.7
       with:
         # build_macos and build_linux will uses same version,
         # so we can download it at once
         name: ${{ needs.build_linux.outputs.version }}
         path: wheelhouse/
-    - uses: actions/download-artifact@v3
+    - uses: actions/download-artifact@v4.1.7
       with:
         name: aarch64-${{ needs.build_linux_aarch64.outputs.version }}
         path: wheelhouse/
