@@ -6,7 +6,8 @@ cd vendor/murmur3
 make static
 cd /io
 
-pip install Cython
+pip install --upgrade pip
+pip install setuptools wheel Cython
 make install-dev
 pip uninstall -y emcache
 

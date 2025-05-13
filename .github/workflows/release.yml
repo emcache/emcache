@@ -63,7 +63,7 @@ jobs:
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
     - uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.get_version.outputs.VERSION }}
+        name: macos-${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
 
   build_linux:
@@ -113,7 +113,7 @@ jobs:
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
     - uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.get_version.outputs.VERSION }}
+        name: linux-x86_64-py${{ matrix.python-version }}-${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
 
   build_linux_aarch64:
@@ -151,23 +151,18 @@ jobs:
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
     - uses: actions/upload-artifact@v4
       with:
-        name: aarch64-${{ steps.get_version.outputs.VERSION }}
+        name: linux-aarch64-py${{ matrix.python-version }}-${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
 
   upload:
     needs: [build_macos, build_linux, build_linux_aarch64]
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
     - uses: actions/checkout@v4
     - uses: actions/download-artifact@v4
       with:
-        # build_macos and build_linux will uses same version,
-        # so we can download it at once
-        name: ${{ needs.build_linux.outputs.version }}
-        path: wheelhouse/
-    - uses: actions/download-artifact@v4
-      with:
-        name: aarch64-${{ needs.build_linux_aarch64.outputs.version }}
         path: wheelhouse/
     - name: Display content
       run: ls -R
