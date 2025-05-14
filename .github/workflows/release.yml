@@ -157,8 +157,6 @@ jobs:
   upload:
     needs: [build_macos, build_linux, build_linux_aarch64]
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
     steps:
     - uses: actions/checkout@v4
     - uses: actions/download-artifact@v4
@@ -170,6 +168,6 @@ jobs:
     - name: Publish distribution to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        packages-dir: wheelhouse/
+        packages-dir: wheelhouse/*/*.whl
         password: ${{ secrets.PYPI_RELEASE_UPLOAD }}
         repository-url: https://upload.pypi.org/legacy/
