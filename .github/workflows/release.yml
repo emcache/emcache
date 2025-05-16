@@ -167,6 +167,12 @@ jobs:
         find wheelhouse/ -mindepth 2 -type f -name '*.whl' -exec mv {} wheelhouse/ \;
         echo "Contents of wheelhouse after moving wheels:"
         ls -R wheelhouse/
+    - name: Clean up artifact directories in wheelhouse
+      run: |
+        echo "Removing artifact subdirectories..."
+        find wheelhouse/ -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
+        echo "Final contents of wheelhouse:"
+        ls -R wheelhouse/
     - name: Display content
       run: ls -R
     - name: Publish distribution to PyPI
