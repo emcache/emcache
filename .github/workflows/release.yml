@@ -162,10 +162,13 @@ jobs:
     - uses: actions/download-artifact@v4
       with:
         path: wheelhouse/
-    - name: Move wheels to top-level wheelhouse directory
+    - name: Clean up artifact directories in wheelhouse
       run: |
-        find wheelhouse/ -mindepth 2 -type f -name '*.whl' -exec mv {} wheelhouse/ \;
-        echo "Contents of wheelhouse after moving wheels:"
+        echo "Initial contents of wheelhouse:"
+        ls -R wheelhouse/
+        echo "Removing artifact subdirectories..."
+        find wheelhouse/ -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
+        echo "Final contents of wheelhouse:"
         ls -R wheelhouse/
     - name: Display content
       run: ls -R
