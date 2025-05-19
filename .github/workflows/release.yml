@@ -171,10 +171,8 @@ jobs:
       run: |
         echo "Removing artifact subdirectories..."
         find wheelhouse/ -mindepth 1 -maxdepth 1 -type d -exec rm -rf {} \;
-        echo "Final contents of wheelhouse:"
-        ls -R wheelhouse/
     - name: Display content
-      run: ls -R
+      run: ls -R wheelhouse/
     - name: Publish distribution to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
