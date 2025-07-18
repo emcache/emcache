@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ macos-latest ]
-        python-version: ["3.11"]
+        python-version: ["3.11", "3.12"]
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -56,7 +56,7 @@ jobs:
         make -C ../vendor/murmur3 clean static_macos
         pip install setuptools
         make -C .. install-dev
-        pip install emcache-*-cp311-cp311-macosx_10_9_universal2.whl --upgrade
+        pip install emcache-*.whl --upgrade
         make -C .. test
     - name: Get the version
       id: get_version
