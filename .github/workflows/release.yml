@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         os: [ macos-latest ]
-        python-version: ["3.11"]
+        python-version: ["3.11", "3.12"]
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -30,7 +30,7 @@ jobs:
         make static_macos
         cd -
         python -m pip install --upgrade pip
-        pip install setuptools wheel cibuildwheel==2.11.2
+        pip install setuptools wheel cibuildwheel==2.11.2 cython
         make compile
         python -m cibuildwheel --platform macos --output-dir dist/
       env:
@@ -54,9 +54,9 @@ jobs:
         source env/bin/activate
         rm -f ../.install-cython
         make -C ../vendor/murmur3 clean static_macos
-        pip install setuptools
+        pip install setuptools cython
         make -C .. install-dev
-        pip install emcache-*-cp311-cp311-macosx_10_9_universal2.whl --upgrade
+        pip install emcache-*.whl --upgrade
         make -C .. test
     - name: Get the version
       id: get_version
