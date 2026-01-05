@@ -13,9 +13,10 @@ jobs:
     strategy:
       matrix:
         os: [ macos-latest ]
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
 
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.python-version == '3.14' }}
     steps:
     - uses: actions/checkout@v4
       with:
@@ -30,12 +31,13 @@ jobs:
         make static_macos
         cd -
         python -m pip install --upgrade pip
-        pip install setuptools wheel cibuildwheel==2.11.2 cython
+        pip install setuptools wheel cibuildwheel==2.22.0 cython
         make compile
         python -m cibuildwheel --platform macos --output-dir dist/
       env:
         CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
         CIBW_SKIP: "pp*"
+        CIBW_PRERELEASE_PYTHONS: "1"
     - name: Mac acceptance test dependencies
       run: |
         brew install memcached
@@ -63,7 +65,7 @@ jobs:
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
     - uses: actions/upload-artifact@v4
       with:
-        name: macos-${{ steps.get_version.outputs.VERSION }}
+        name: macos-py${{ matrix.python-version }}-${{ steps.get_version.outputs.VERSION }}
         path: test_wheel/emcache-*.whl
 
   build_linux:
@@ -72,8 +74,9 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.python-version == '3.14' }}
     steps:
     - uses: actions/checkout@v4
       with:
@@ -122,10 +125,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         platforms:
           - linux/arm64
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.python-version == '3.14' }}
     steps:
     - uses: actions/checkout@v4
       with:
