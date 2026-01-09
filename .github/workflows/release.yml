@@ -16,7 +16,6 @@ jobs:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
 
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.python-version == '3.14' }}
     steps:
     - uses: actions/checkout@v4
       with:
@@ -31,13 +30,13 @@ jobs:
         make static_macos
         cd -
         python -m pip install --upgrade pip
-        pip install setuptools wheel cibuildwheel==2.22.0 cython
+        pip install setuptools wheel cibuildwheel==3.3.1 cython
         make compile
         python -m cibuildwheel --platform macos --output-dir dist/
       env:
         CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
         CIBW_SKIP: "pp*"
-        CIBW_PRERELEASE_PYTHONS: "1"
+        CIBW_BUILD: "cp38-* cp39-* cp310-* cp311-* cp312-* cp313-* cp314-*"
     - name: Mac acceptance test dependencies
       run: |
         brew install memcached
@@ -47,7 +46,6 @@ jobs:
         memcached -d -s /tmp/emcache.test1.sock
         memcached -d -s /tmp/emcache.test2.sock
     - name: Test generated wheel (Universal2 to x86-64 Only)
-      if: matrix.python-version != '3.14'
       run: |
         mkdir test_wheel
         # Get Python version without dots (e.g., 3.9 -> 39) to match the correct wheel
@@ -64,11 +62,6 @@ jobs:
         make -C .. install-dev
         pip install emcache-*.whl --upgrade
         make -C .. test
-    - name: Copy wheel for upload (Python 3.14 only, skip test)
-      if: matrix.python-version == '3.14'
-      run: |
-        mkdir test_wheel
-        cp dist/*.whl test_wheel
     - name: Get the version
       id: get_version
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
@@ -85,7 +78,6 @@ jobs:
         os: [ubuntu-latest]
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.python-version == '3.14' }}
     steps:
     - uses: actions/checkout@v4
       with:
@@ -138,7 +130,6 @@ jobs:
         platforms:
           - linux/arm64
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.python-version == '3.14' }}
     steps:
     - uses: actions/checkout@v4
       with:
