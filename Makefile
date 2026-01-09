@@ -10,7 +10,7 @@ clean:
 	find . -type f -name "*.pyc" -delete
 
 .install-cython:
-	$(PIP) install Cython==3.0.10
+	$(PIP) install Cython==3.2.4
 	touch .install-cython
 
 emcache/_cython/cyemcache.c: emcache/_cython/cyemcache.pyx
