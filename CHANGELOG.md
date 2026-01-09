@@ -1,3 +1,7 @@
+1.3.3
+================
+- Support for Python 3.14
+
 1.3.2
 ================
 - Support for Python 3.12 for macos
