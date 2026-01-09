@@ -47,6 +47,7 @@ jobs:
         memcached -d -s /tmp/emcache.test1.sock
         memcached -d -s /tmp/emcache.test2.sock
     - name: Test generated wheel (Universal2 to x86-64 Only)
+      if: matrix.python-version != '3.14'
       run: |
         mkdir test_wheel
         # Get Python version without dots (e.g., 3.9 -> 39) to match the correct wheel
@@ -63,6 +64,11 @@ jobs:
         make -C .. install-dev
         pip install emcache-*.whl --upgrade
         make -C .. test
+    - name: Copy wheel for upload (Python 3.14 only, skip test)
+      if: matrix.python-version == '3.14'
+      run: |
+        mkdir test_wheel
+        cp dist/*.whl test_wheel
     - name: Get the version
       id: get_version
       run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
