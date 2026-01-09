@@ -51,7 +51,8 @@ jobs:
         mkdir test_wheel
         # Get Python version without dots (e.g., 3.9 -> 39) to match the correct wheel
         PY_VERSION=$(python -c "import sys; print(f'{sys.version_info.major}{sys.version_info.minor}')")
-        cp dist/*-cp${PY_VERSION}-*.whl test_wheel
+        # Copy only the universal2 wheel for the current Python version
+        cp dist/*-cp${PY_VERSION}-*-macosx_*_universal2.whl test_wheel
         cd test_wheel
         pip install virtualenv
         python -m virtualenv env
