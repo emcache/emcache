@@ -192,3 +192,4 @@ jobs:
         packages-dir: wheelhouse/
         password: ${{ secrets.PYPI_RELEASE_UPLOAD }}
         repository-url: https://upload.pypi.org/legacy/
+        skip-existing: true
