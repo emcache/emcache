@@ -290,7 +290,7 @@ class Client(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def gat_many(self, exptime: int, keys: Sequence[bytes], return_flags=False) -> Optional[Item]:
+    async def gat_many(self, exptime: int, keys: Sequence[bytes], return_flags=False) -> Dict[bytes, Item]:
         """Return the values associated with the keys.
         Gat command is used to fetch items and update the
         expiration time of an existing items.
@@ -300,7 +300,7 @@ class Client(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    async def gats_many(self, exptime: int, keys: Sequence[bytes], return_flags=False) -> Optional[Item]:
+    async def gats_many(self, exptime: int, keys: Sequence[bytes], return_flags=False) -> Dict[bytes, Item]:
         """Return the values associated with the keys.
         Gats command is used to fetch items and update the
         expiration time of an existing items.
