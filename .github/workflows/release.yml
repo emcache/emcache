@@ -3,41 +3,34 @@ on:
   push:
     tags:
       - v*
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   # Use Any Python version, cibuildwheel downloads multiple python version to create each build environment.
-  # We can only use x86-64 macOS, so we can test on x86-64. But murmur3 is now universal2 binary. So It'll be works for arm64 too.
+  # Build CPython wheels for each supported Python version.
+  # macOS builds target x86_64, universal2 and arm64 architectures. But murmur3 is now universal2 binary. So It'll be works for arm64 too.
   build_macos:
     outputs:
       version: ${{ steps.get_version.outputs.VERSION }}
     strategy:
       matrix:
         os: [ macos-latest ]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
 
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.python-version == '3.14' }}
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: true
-    - name: Set up Python
+    - name: Set up Python for cibuildwheel
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Generate macos-wheel
+    - name: Set cibuildwheel target
       run: |
-        cd vendor/murmur3
-        make static_macos
-        cd -
-        python -m pip install --upgrade pip
-        pip install setuptools wheel cibuildwheel==2.22.0 cython
-        make compile
-        python -m cibuildwheel --platform macos --output-dir dist/
-      env:
-        CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
-        CIBW_SKIP: "pp*"
-        CIBW_PRERELEASE_PYTHONS: "1"
+        PYTHON_TAG=$(python -c "import sys; print(f'cp{sys.version_info.major}{sys.version_info.minor}')")
+        echo "CIBW_BUILD=${PYTHON_TAG}-*" >> "$GITHUB_ENV"
     - name: Mac acceptance test dependencies
       run: |
         brew install memcached
@@ -46,36 +39,33 @@ jobs:
         memcached -d -p 11213 --enable-ssl -o ssl_chain_cert=./tests/acceptance/data/localhost.crt,ssl_key=./tests/acceptance/data/localhost.key
         memcached -d -s /tmp/emcache.test1.sock
         memcached -d -s /tmp/emcache.test2.sock
-    - name: Test generated wheel (Universal2 to x86-64 Only)
-      if: matrix.python-version != '3.14'
+    - name: Generate macos-wheel
       run: |
-        mkdir test_wheel
-        # Get Python version without dots (e.g., 3.9 -> 39) to match the correct wheel
-        PY_VERSION=$(python -c "import sys; print(f'{sys.version_info.major}{sys.version_info.minor}')")
-        # Copy only the universal2 wheel for the current Python version
-        cp dist/*-cp${PY_VERSION}-*-macosx_*_universal2.whl test_wheel
-        cd test_wheel
-        pip install virtualenv
-        python -m virtualenv env
-        source env/bin/activate
-        rm -f ../.install-cython
-        make -C ../vendor/murmur3 clean static_macos
-        pip install setuptools cython
-        make -C .. install-dev
-        pip install emcache-*.whl --upgrade
-        make -C .. test
-    - name: Copy wheel for upload (Python 3.14 only, skip test)
-      if: matrix.python-version == '3.14'
-      run: |
-        mkdir test_wheel
-        cp dist/*.whl test_wheel
+        cd vendor/murmur3
+        make static_macos
+        # lipo exits successfully for thin archives, so assert both slices explicitly.
+        lipo -info libmurmur3.a | grep -q x86_64
+        lipo -info libmurmur3.a | grep -q arm64
+        cd -
+        python -m pip install --upgrade pip
+        pip install setuptools wheel cibuildwheel==4.3.5 cython
+        make cythonize
+        python -m cibuildwheel --platform macos --output-dir dist/
+      env:
+        CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
+        CIBW_SKIP: "pp*"
+        CIBW_TEST_EXTRAS_MACOS: "dev"
+        CIBW_TEST_COMMAND_MACOS: "python -m pytest -sv --import-mode=importlib -p no:cacheprovider {project}/tests"
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      run: |
+        VERSION="${GITHUB_REF_NAME//\//-}"
+        echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
     - uses: actions/upload-artifact@v4
       with:
         name: macos-py${{ matrix.python-version }}-${{ steps.get_version.outputs.VERSION }}
-        path: test_wheel/emcache-*.whl
+        path: dist/emcache-*.whl
+        if-no-files-found: error
 
   build_linux:
     outputs:
@@ -83,9 +73,8 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.python-version == '3.14' }}
     steps:
     - uses: actions/checkout@v4
       with:
@@ -94,13 +83,22 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Generate manylinux1-wheel
+    - name: Set cibuildwheel target
       run: |
-        mkdir /tmp/emcache
-        cp -r . /tmp/emcache
-        docker run -v /tmp/emcache:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux2014_x86_64 /io/bin/build_manylinux1_wheel.sh
-        mkdir dist
-        cp /tmp/emcache/dist/emcache-*.whl dist/
+        PYTHON_TAG=$(python -c "import sys; print(f'cp{sys.version_info.major}{sys.version_info.minor}')")
+        echo "CIBW_BUILD=${PYTHON_TAG}-*" >> "$GITHUB_ENV"
+    - name: Generate manylinux-wheel
+      run: |
+        python -m pip install --upgrade pip cibuildwheel==4.3.5 cython
+        make cythonize
+        python -m cibuildwheel --platform linux --output-dir dist/
+        mkdir -p wheelhouse/
+        cp dist/emcache-*.whl wheelhouse/
+      env:
+        CIBW_ARCHS_LINUX: "x86_64"
+        CIBW_SKIP: "*-musllinux_*"
+        CIBW_MANYLINUX_X86_64_IMAGE: "manylinux2014"
+        CIBW_BEFORE_ALL_LINUX: "make -C {package}/vendor/murmur3 static"
     - name: Linux acceptance test dependencies
       run: |
         docker compose up -d
@@ -108,25 +106,26 @@ jobs:
         docker exec memcached_unix2 sh -c "chmod a+rw /tmp/emcache.test2.sock"
     - name: Test generated wheel
       run: |
-        mkdir test_wheel
-        cp dist/emcache-*.whl test_wheel
-        cd test_wheel
-        pip install virtualenv
-        python -m virtualenv env
-        source env/bin/activate
-        rm -f ../.install-cython
-        make -C ../vendor/murmur3 static
-        pip install setuptools
-        make -C .. install-dev
-        pip install emcache-*.whl --upgrade
-        make -C .. test
+        python -m venv /tmp/wheeltest
+        source /tmp/wheeltest/bin/activate
+        pip install --upgrade pip
+        WHEEL=$(find wheelhouse -maxdepth 1 -name 'emcache-*.whl' -print -quit)
+        pip install "$WHEEL"
+        pip install pytest==8.2.2 pytest-mock==3.14.0 pytest-asyncio==0.23.8
+
+        # Test the installed wheel, not the source checkout.
+        cd /tmp
+        python -m pytest -sv --import-mode=importlib -p no:cacheprovider "$GITHUB_WORKSPACE/tests"
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      run: |
+        VERSION="${GITHUB_REF_NAME//\//-}"
+        echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
     - uses: actions/upload-artifact@v4
       with:
         name: linux-x86_64-py${{ matrix.python-version }}-${{ steps.get_version.outputs.VERSION }}
-        path: test_wheel/emcache-*.whl
+        path: wheelhouse/emcache-*.whl
+        if-no-files-found: error
 
   build_linux_aarch64:
     outputs:
@@ -134,40 +133,55 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
-        platforms:
-          - linux/arm64
+        python-version: ["3.11", "3.12", "3.13", "3.14", "3.15"]
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.python-version == '3.14' }}
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: true
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
+      with:
+        platforms: arm64
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Set cibuildwheel target
+      run: |
+        PYTHON_TAG=$(python -c "import sys; print(f'cp{sys.version_info.major}{sys.version_info.minor}')")
+        echo "CIBW_BUILD=${PYTHON_TAG}-*" >> "$GITHUB_ENV"
     - name: Generate manylinux2014_aarch64-wheel
       run: |
-        mkdir /tmp/emcache
-        cp -r . /tmp/emcache
-        docker run --platform linux/arm64 -v /tmp/emcache:/io -e "PYTHON_VERSION=${{matrix.python-version}}" quay.io/pypa/manylinux_2_28_aarch64 /io/bin/build_manylinux_2_28_wheel.sh
-        mkdir test_wheel/
-        cp /tmp/emcache/dist/emcache-*.whl test_wheel/
+        python -m pip install --upgrade pip cibuildwheel==4.3.5 cython
+        make cythonize
+        python -m cibuildwheel --platform linux --output-dir dist/
+        mkdir -p wheelhouse/
+        cp dist/emcache-*.whl wheelhouse/
+      env:
+        CIBW_ARCHS_LINUX: "aarch64"
+        CIBW_SKIP: "*-musllinux_*"
+        CIBW_MANYLINUX_AARCH64_IMAGE: "manylinux_2_28"
+        CIBW_BEFORE_ALL_LINUX: "make -C {package}/vendor/murmur3 static"
     - name: Run unit tests using the wheel
       run: |
-        docker run --platform linux/arm64 --entrypoint bash -v `pwd`:/io python:${{matrix.python-version}}-bookworm /io/bin/test_aarch_wheel.sh
+        docker run --platform linux/arm64 --entrypoint bash \
+          -v "$(pwd):/io" \
+          python:${{ matrix.python-version }}-bookworm \
+          /io/bin/test_aarch_wheel.sh
     - name: Get the version
       id: get_version
-      run: echo ::set-output name=VERSION::${GITHUB_REF/refs\/tags\//}
+      run: |
+        VERSION="${GITHUB_REF_NAME//\//-}"
+        echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
     - uses: actions/upload-artifact@v4
       with:
         name: linux-aarch64-py${{ matrix.python-version }}-${{ steps.get_version.outputs.VERSION }}
-        path: test_wheel/emcache-*.whl
+        path: wheelhouse/emcache-*.whl
+        if-no-files-found: error
 
   upload:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: [build_macos, build_linux, build_linux_aarch64]
     runs-on: ubuntu-latest
     steps:
