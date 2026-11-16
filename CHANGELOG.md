@@ -1,4 +1,4 @@
-1.3.4 (unreleased)
+1.4.0
 ================
 - Support for Python 3.15
 - Python 3.11 is now the minimum supported version; support for Python 3.8, 3.9 and 3.10 was dropped
